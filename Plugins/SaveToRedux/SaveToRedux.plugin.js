@@ -828,7 +828,7 @@ var SaveToRedux = (() => {
                   };
                   const downloadXenoLib = () => {
                     if (global.XenoLib) return onDone();
-                    request('https://gitlab.com/_Lighty_/bdstuff/raw/master/public/XenoLib/1XenoLib.plugin.js', (error, response, body) => {
+                    request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (error, response, body) => {
                       if (error) return onFail();
                       onDone();
                       fs.writeFile(path.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), body, () => { });
