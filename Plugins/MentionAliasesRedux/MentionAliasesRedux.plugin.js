@@ -1,4 +1,4 @@
-//META{"name":"MentionAliasesRedux","source":"https://gitlab.com/_Lighty_/bdstuff/blob/master/public/plugins/MentionAliasesRedux.plugin.js","website":"https://_lighty_.gitlab.io/bdstuff/?plugin=MentionAliasesRedux"}*//
+//META{"name":"MentionAliasesRedux","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/MentionAliasesRedux/MentionAliasesRedux.plugin.js","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=MentionAliasesRedux"}*//
 /*@cc_on
 @if (@_jscript)
 
@@ -43,8 +43,8 @@ var MentionAliasesRedux = (() => {
       ],
       version: '2.0.2',
       description: 'Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.',
-      github: 'https://gitlab.com/_Lighty_',
-      github_raw: 'https://gitlab.com/_Lighty_/bdstuff/raw/master/public/plugins/MentionAliasesRedux.plugin.js'
+      github: 'https://github.com/1Lighty',
+      github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MentionAliasesRedux/MentionAliasesRedux.plugin.js'
     },
     changelog: [
       {
