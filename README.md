@@ -1,6 +1,6 @@
 # BetterDiscordPlugins
 #### Info
-All of these plugins are developed by me (Lighty), unless otherwise stated. 
+All of these plugins are developed by me (Lighty), unless otherwise stated.
 If you require support for any of these plugins, join my Discord server.
 https://discord.gg/NYvWdN5
 All of these plugins are available for easy downloading on my website.
@@ -16,3 +16,5 @@ Set custom @mention aliases, that can also appear next to their name (nearly) an
 This is also a complete rewrite of Save To by Metalloriff.
 
 Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.
+## [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux")
+Shows an unread badge on folders, server icons and channels, all toggleable with the count adjustable.
