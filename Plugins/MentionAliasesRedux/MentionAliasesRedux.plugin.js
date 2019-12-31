@@ -23,7 +23,7 @@
 
 @else@*/
 /*
- * Copyright© 2019-2020, _Lighty_
+ * Copyright © 2019-2020, _Lighty_
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
@@ -41,21 +41,16 @@ var MentionAliasesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.2',
+      version: '2.0.3',
       description: 'Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MentionAliasesRedux/MentionAliasesRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'plugin has been renamed!',
-        type: 'added',
-        items: ['Plugin has been renamed to MentionAliasesRedux to avoid issues loading due to the original plugin, as well as to be able to distinguish between the two more easily.']
-      },
-      {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed plugin description being wrong', 'Fixed menu button not showing']
+        items: ['Fixed clicking items in the menu not working', 'Fixed tagging groups not working well', 'Fixed unfriendly patch']
       }
     ],
     defaultConfig: [
@@ -156,7 +151,7 @@ var MentionAliasesRedux = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, TextElement, FlexChild, PopoutOpener, Textbox } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, TextElement, FlexChild, PopoutOpener, Textbox, UserSettingsStore } = DiscordModules;
 
     const UserStatusStore = WebpackModules.getByProps('getStatus');
 
@@ -271,7 +266,7 @@ var MentionAliasesRedux = (() => {
       constructor(props) {
         super(props);
         this.handleSubmit = this.handleSubmitPatch.bind(this);
-        this.renderWarning = () => { };
+        this.renderWarning = () => {};
       }
       handleSubmitPatch(e) {
         e.preventDefault();
@@ -309,7 +304,8 @@ var MentionAliasesRedux = (() => {
       }
       handleClick(text, rich) {
         if (!this.props.channelTextAreaRef._editorRef) return Toasts.error('Internal error, cannot get _editorRef');
-        this.props.channelTextAreaRef._editorRef.appendText(text);
+        /* hm.. */
+        this.props.channelTextAreaRef._editorRef.ref.current.insertText(/* UserSettingsStore.useRichChatTextBox ? rich : */ text, true);
       }
       handleMentionsChange() {
         this.setState({ mentions: this.props.getMentions() });
@@ -350,12 +346,12 @@ var MentionAliasesRedux = (() => {
         const children = [];
         try {
           this.state.mentions.users.forEach(({ userId, alias }, index) => {
-            if (!index) children.push(this.renderHeader(`Users—”${this.state.mentions.users.length}`));
+            if (!index) children.push(this.renderHeader(`Users—${this.state.mentions.users.length}`));
             const user = UserStore.getUser(userId);
             children.push(React.createElement(AliasItem, { isUser: true, onContextMenu: e => this.handleContextMenu(e, userId), onClick: () => this.handleClick(`@${user.tag}`, `<@${userId}>`) }, React.createElement('div', { className: AvatarWrapperClassname }, renderAvatar(user)), renderAlias(alias, user.tag, undefined, true)));
           });
           this.state.mentions.groups.forEach((group, index) => {
-            if (!index) children.push(this.renderHeader(`Groups—”${this.state.mentions.groups.length}`, true));
+            if (!index) children.push(this.renderHeader(`Groups—${this.state.mentions.groups.length}`, true));
             const groupUsers = this.props.getGroupUsers(group.users);
             if (groupUsers.note.length > 32) groupUsers.note = groupUsers.note.substr(0, 32 - 3) + '...';
             children.push(React.createElement(AliasItem, { onContextMenu: e => this.handleContextMenu(e, group.id, true), onClick: () => this.handleClick(groupUsers.tags, groupUsers.tagsIds) }, renderAlias(group.name, groupUsers.note, undefined, false)));
@@ -393,7 +389,7 @@ var MentionAliasesRedux = (() => {
 
     class PreviewField extends Settings.SettingField {
       constructor(name, note) {
-        super(name, note, () => { }, Preview);
+        super(name, note, () => {}, Preview);
       }
     }
 
@@ -734,7 +730,7 @@ var MentionAliasesRedux = (() => {
       async patchPrivateChannel(promiseState) {
         const PrivateChannel = await ReactComponents.getComponentByName('PrivateChannel', `.${XenoLib.getSingleClass('closeButton channel')}`);
         if (promiseState.cancelled) return;
-        const TypePatch = function (e) {
+        const TypePatch = function(e) {
           const ret = e.__oldTypeMA(e);
           const nameAndDecorators = Utilities.getNestedProp(ret, 'props.children.props.children.1.props.children.0.props.children');
           if (!nameAndDecorators) return ret;
@@ -756,7 +752,7 @@ var MentionAliasesRedux = (() => {
       async patchFriendRow(promiseState) {
         const FriendRow = await ReactComponents.getComponentByName('FriendRow', `.${XenoLib.getSingleClass('friendsColumn friendsRow')}`);
         if (promiseState.cancelled) return;
-        const TypePatch2 = function (e) {
+        const TypePatch2 = function(e) {
           try {
             const ret = new e.__oldType2MA(e);
             ret.props.children.splice(1, 0, this.createAlias(e.__aliasMA, MemberTagClassname));
@@ -771,7 +767,7 @@ var MentionAliasesRedux = (() => {
             }
           }
         }.bind(this);
-        const TypePatch1 = function (e) {
+        const TypePatch1 = function(e) {
           try {
             const ret = new e.__oldType1MA(e);
             ret.props.__oldType2MA = ret.type;
@@ -805,7 +801,7 @@ var MentionAliasesRedux = (() => {
       async patchMutualFriends(promiseState) {
         const MutualFriends = await ReactComponents.getComponentByName('MutualFriends', `.${XenoLib.getSingleClass('scroller themeGhostHairline')}`);
         if (promiseState.cancelled) return;
-        const TypePatch3 = function (e) {
+        const TypePatch3 = function(e) {
           try {
             const ret = new e.__oldType3MA(e);
             ret.props.children.push(this.createAlias(e.__aliasMA, MemberTagClassname));
@@ -820,7 +816,7 @@ var MentionAliasesRedux = (() => {
             }
           }
         }.bind(this);
-        const TypePatch2 = function (e) {
+        const TypePatch2 = function(e) {
           try {
             const ret = new e.__oldType2MA(e);
             ret.props.__oldType3MA = ret.type;
@@ -836,7 +832,7 @@ var MentionAliasesRedux = (() => {
             }
           }
         }.bind(this);
-        const TypePatch1 = function (e) {
+        const TypePatch1 = function(e) {
           try {
             const ret = new e.__oldType1MA(e);
             const DiscordTag = Utilities.getNestedProp(ret, 'props.children.1');
@@ -877,25 +873,25 @@ var MentionAliasesRedux = (() => {
       async patchChannelTextArea(promiseState) {
         const ChannelTextArea = await ReactComponents.getComponentByName('ChannelTextAreaForm', `.${XenoLib.getSingleClass('channelTextArea')}`);
         if (promiseState.cancelled) return;
-        Patcher.after(
-          WebpackModules.find(m => m.render && m.render.displayName === 'ChannelTextAreaContainer'),
-          'render',
-          (_this, _, ret) => {
-            const props = Utilities.getNestedProp(ret, 'props.children.0.props.children.props.children.2.props.children.2.props');
-            if (!props || props.disabled || !this.settings.display.displayButton) return;
-            const buttons = Utilities.getNestedProp(ret, 'props.children.0.props.children.props.children.2.props.children');
-            if (!buttons) return;
-            const _editorRef = Utilities.getNestedProp(props, 'editorRef.current');
-            buttons.unshift(
-              React.createElement(ChannelTextAreaButton, {
-                iconName: 'Nova_At',
-                label: 'Open Aliases',
-                className: ChannelTextAreaButtonClassname,
-                onClick: e => this.openAliasesPopout(e, { _editorRef })
-              })
-            );
-          }
-        );
+        const ChannelTextAreaContainer = WebpackModules.find(m => m.render && m.render.displayName === 'ChannelTextAreaContainer');
+        const original = ChannelTextAreaContainer.render;
+        Patcher.after(ChannelTextAreaContainer, 'render', (_this, _, ret) => {
+          const ChannelEditorContainer = Utilities.getNestedProp(ret, 'props.children.0.props.children.props.children.1');
+          if (!ChannelEditorContainer || ChannelEditorContainer.props.disabled || !this.settings.display.displayButton) return;
+          const buttons = Utilities.getNestedProp(ret, 'props.children.0.props.children.props.children.2.props.children');
+          if (!buttons) return;
+          const _editorRef = Utilities.getNestedProp(ChannelEditorContainer, 'ref.current');
+          buttons.unshift(
+            React.createElement(ChannelTextAreaButton, {
+              iconName: 'Nova_At',
+              label: 'Open Aliases',
+              className: ChannelTextAreaButtonClassname,
+              onClick: e => this.openAliasesPopout(e, { _editorRef })
+            })
+          );
+        });
+        /* transfer displayName and such, to be friendly to other plugins */
+        Object.keys(original).forEach(name => (ChannelTextAreaContainer.render[name] = original[name]));
         this.patchedModules.push(ChannelTextArea);
         ChannelTextArea.forceUpdateAll();
       }
@@ -998,11 +994,12 @@ var MentionAliasesRedux = (() => {
         Patcher.instead(WebpackModules.getByPrototypes('selectAutocompletion').prototype, 'selectAutocompletion', (_this, args, orig) => {
           const selected = args[0];
           const type = _this.state.autocompleteType;
-          if (type !== 'MENTIONS' || !_this._editorRef) return orig(...args);
-          const autocompletes = _this.props.autocompletes;
+          const _editorRef = _this.props.editorRef.current;
+          if (type !== 'MENTIONS' || !_editorRef) return orig(...args);
+          const autocompletes = _this.state.autocompletes;
           const role = autocompletes.roles[selected - autocompletes.users.length - autocompletes.globals.length];
           if (!role || !role.MA) return orig(...args);
-          _this._editorRef.insertAutocomplete(role.mentioned_users, role.mentioned_users_ids);
+          _editorRef.insertAutocomplete(role.mentioned_users, role.mentioned_users_ids);
         });
       }
 
@@ -1081,112 +1078,112 @@ var MentionAliasesRedux = (() => {
 
   return !global.ZeresPluginLibrary || !global.XenoLib
     ? class {
-      getName() {
-        return this.name.replace(/\s+/g, '');
-      }
-      getAuthor() {
-        return this.author;
-      }
-      getVersion() {
-        return this.version;
-      }
-      getDescription() {
-        return this.description;
-      }
-      stop() { }
-      load() {
-        const XenoLibMissing = !global.XenoLib;
-        const zlibMissing = !global.ZeresPluginLibrary;
-        const bothLibsMissing = XenoLibMissing && zlibMissing;
-        const header = `Missing ${(bothLibsMissing && 'Libraries') || 'Library'}`;
-        const content = `The ${(bothLibsMissing && 'Libraries') || 'Library'} ${(zlibMissing && 'ZeresPluginLibrary') || ''} ${(XenoLibMissing && (zlibMissing ? 'and XenoLib' : 'XenoLib')) || ''} required for ${this.name} ${(bothLibsMissing && 'are') || 'is'} missing.`;
-        const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
-        const TextElement = BdApi.findModuleByProps('Sizes', 'Weights');
-        const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
-        const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${(zlibMissing && '<br/><a href="https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>') || ''}${(zlibMissing && '<br/><a href="http://localhost:7474/XenoLib.js"target="_blank">Click here to download XenoLib</a>') || ''}`);
-        if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
-        ModalStack.push(props => {
-          return BdApi.React.createElement(
-            ConfirmationModal,
-            Object.assign(
-              {
-                header,
-                children: [TextElement({ color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
-                red: false,
-                confirmText: 'Download Now',
-                cancelText: 'Cancel',
-                onConfirm: () => {
-                  const request = require('request');
-                  const fs = require('fs');
-                  const path = require('path');
-                  const waitForLibLoad = callback => {
-                    if (!global.BDEvents) return callback();
-                    const onLoaded = e => {
-                      if (e !== 'ZeresPluginLibrary') return;
-                      BDEvents.off('plugin-loaded', onLoaded);
-                      callback();
-                    };
-                    BDEvents.on('plugin-loaded', onLoaded);
-                  };
-                  const onDone = () => {
-                    if (!global.pluginModule || (!global.BDEvents && !global.XenoLib)) return;
-                    if (!global.BDEvents || global.XenoLib) pluginModule.reloadPlugin(this.name);
-                    else {
-                      const listener = () => {
-                        pluginModule.reloadPlugin(this.name);
-                        BDEvents.off('xenolib-loaded', listener);
-                      };
-                      BDEvents.on('xenolib-loaded', listener);
-                    }
-                  };
-                  const downloadXenoLib = () => {
-                    if (global.XenoLib) return onDone();
-                    request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (error, response, body) => {
-                      if (error) return onFail();
-                      onDone();
-                      fs.writeFile(path.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), body, () => { });
-                    });
-                  };
-                  if (!global.ZeresPluginLibrary) {
-                    request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
-                      if (error) return onFail();
-                      waitForLibLoad(downloadXenoLib);
-                      fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => { });
-                    });
-                  } else downloadXenoLib();
-                }
-              },
-              props
-            )
-          );
-        });
-      }
-
-      start() { }
-      get [Symbol.toStringTag]() {
-        return 'Plugin';
-      }
-      get name() {
-        return config.info.name;
-      }
-      get short() {
-        let string = '';
-        for (let i = 0, len = config.info.name.length; i < len; i++) {
-          const char = config.info.name[i];
-          if (char === char.toUpperCase()) string += char;
+        getName() {
+          return this.name.replace(/\s+/g, '');
         }
-        return string;
+        getAuthor() {
+          return this.author;
+        }
+        getVersion() {
+          return this.version;
+        }
+        getDescription() {
+          return this.description;
+        }
+        stop() {}
+        load() {
+          const XenoLibMissing = !global.XenoLib;
+          const zlibMissing = !global.ZeresPluginLibrary;
+          const bothLibsMissing = XenoLibMissing && zlibMissing;
+          const header = `Missing ${(bothLibsMissing && 'Libraries') || 'Library'}`;
+          const content = `The ${(bothLibsMissing && 'Libraries') || 'Library'} ${(zlibMissing && 'ZeresPluginLibrary') || ''} ${(XenoLibMissing && (zlibMissing ? 'and XenoLib' : 'XenoLib')) || ''} required for ${this.name} ${(bothLibsMissing && 'are') || 'is'} missing.`;
+          const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
+          const TextElement = BdApi.findModuleByProps('Sizes', 'Weights');
+          const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
+          const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${(zlibMissing && '<br/><a href="https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>') || ''}${(zlibMissing && '<br/><a href="http://localhost:7474/XenoLib.js"target="_blank">Click here to download XenoLib</a>') || ''}`);
+          if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
+          ModalStack.push(props => {
+            return BdApi.React.createElement(
+              ConfirmationModal,
+              Object.assign(
+                {
+                  header,
+                  children: [TextElement({ color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
+                  red: false,
+                  confirmText: 'Download Now',
+                  cancelText: 'Cancel',
+                  onConfirm: () => {
+                    const request = require('request');
+                    const fs = require('fs');
+                    const path = require('path');
+                    const waitForLibLoad = callback => {
+                      if (!global.BDEvents) return callback();
+                      const onLoaded = e => {
+                        if (e !== 'ZeresPluginLibrary') return;
+                        BDEvents.off('plugin-loaded', onLoaded);
+                        callback();
+                      };
+                      BDEvents.on('plugin-loaded', onLoaded);
+                    };
+                    const onDone = () => {
+                      if (!global.pluginModule || (!global.BDEvents && !global.XenoLib)) return;
+                      if (!global.BDEvents || global.XenoLib) pluginModule.reloadPlugin(this.name);
+                      else {
+                        const listener = () => {
+                          pluginModule.reloadPlugin(this.name);
+                          BDEvents.off('xenolib-loaded', listener);
+                        };
+                        BDEvents.on('xenolib-loaded', listener);
+                      }
+                    };
+                    const downloadXenoLib = () => {
+                      if (global.XenoLib) return onDone();
+                      request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (error, response, body) => {
+                        if (error) return onFail();
+                        onDone();
+                        fs.writeFile(path.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), body, () => {});
+                      });
+                    };
+                    if (!global.ZeresPluginLibrary) {
+                      request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
+                        if (error) return onFail();
+                        waitForLibLoad(downloadXenoLib);
+                        fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
+                      });
+                    } else downloadXenoLib();
+                  }
+                },
+                props
+              )
+            );
+          });
+        }
+
+        start() {}
+        get [Symbol.toStringTag]() {
+          return 'Plugin';
+        }
+        get name() {
+          return config.info.name;
+        }
+        get short() {
+          let string = '';
+          for (let i = 0, len = config.info.name.length; i < len; i++) {
+            const char = config.info.name[i];
+            if (char === char.toUpperCase()) string += char;
+          }
+          return string;
+        }
+        get author() {
+          return config.info.authors.map(author => author.name).join(', ');
+        }
+        get version() {
+          return config.info.version;
+        }
+        get description() {
+          return config.info.description;
+        }
       }
-      get author() {
-        return config.info.authors.map(author => author.name).join(', ');
-      }
-      get version() {
-        return config.info.version;
-      }
-      get description() {
-        return config.info.description;
-      }
-    }
     : buildPlugin(global.ZeresPluginLibrary.buildPlugin(config));
 })();
 

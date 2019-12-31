@@ -1,4 +1,9 @@
 # [MentionAliasesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=MentionAliasesRedux "MentionAliasesRedux") Changelog
+### 2.0.3
+- Fixed clicking items in the menu not working
+- Fixed tagging groups not working well
+- Fixed unfriendly patch
+
 ### 2.0.2
 - Plugin has been renamed to MentionAliasesRedux to avoid issues loading due to the original plugin, as well as to be able to distinguish between the two more easily.
 - Fixed plugin description being wrong
