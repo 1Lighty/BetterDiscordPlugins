@@ -361,7 +361,7 @@ var SaveToRedux = (() => {
         else url = url.replace('.webp', '.png');
         let fileName = url.substr(url.lastIndexOf('/') + 1);
         if (requiresSize) url += '?size=2048';
-        const match = fileName.match(/([^\/\.]+)(?:\.([0-9a-zA-Z]+))?([^\/]+)?$/);
+        const match = url.match(/([^\/\.]+)(?:\.([0-9a-zA-Z]+))?([^\/]+)?(\/){0,1}$/);
         let name = customName || match[1];
         let extension = match[2];
         if (url.indexOf('//media.tenor.co') !== -1) {
