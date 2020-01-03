@@ -41,16 +41,16 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.2',
+      version: '2.0.3',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'plugin rename',
-        type: 'added',
-        items: ['Plugin has been renamed to SaveToRedux to avoid issues loading due to the original plugin, as well as to be able to distinguish between the two more easily.', 'Changed update URL']
+        title: 'Fixed',
+        type: 'fixed',
+        items: ['Saving pictures from steam now works properly']
       }
     ],
     defaultConfig: [
@@ -357,6 +357,7 @@ var SaveToRedux = (() => {
       }
 
       formatURL(url, requiresSize, customName) {
+        if (url.indexOf('//steamuserimages') !== -1) url = url.replace(/\/$/, '');
         if (url.indexOf('/a_') !== -1) url = url.replace('.webp', '.gif').replace('.png', '.gif');
         else url = url.replace('.webp', '.png');
         let fileName = url.substr(url.lastIndexOf('/') + 1);
@@ -368,8 +369,14 @@ var SaveToRedux = (() => {
           extension = name;
           name = url.match(/\/\/media.tenor.co\/[^\/]+\/([^\/]+)\//)[1];
         } else if (url.indexOf('//i.giphy.com/media/') !== -1) name = url.match(/\/\/i\.giphy\.com\/media\/([^\/]+)\//)[1];
+        else if (url.indexOf('//steamuserimages') !== -1) {
+          extension = 'png';
+          url += '/'; /* ??? */
+        }
         name = this.formatFilename(name);
-        return { fileName: (extension && `${name}.${extension}`) || name, url: url, name, extension };
+        const ret = { fileName: (extension && `${name}.${extension}`) || name, url: url, name, extension };
+        // Logger.info(`[formatURL] url \`${url}\` requiresSize \`${requiresSize}\` customName \`${customName}\`, ret ${JSON.stringify(ret, '', 1)}`);
+        return ret;
       }
 
       constructMenu(url, type, customName) {
@@ -684,10 +691,10 @@ var SaveToRedux = (() => {
           }
           url = src;
           if (!url) return;
-          if (/\.(png|jpe?g|webp|gif|svg)$/i.test(url)) saveType = 'Image';
-          if (/\.(mp4|webm|mov)$/i.test(url)) saveType = 'Video';
-          if (/\.(mp3|ogg|wav|flac)$/i.test(url)) saveType = 'Audio';
-          if (url.indexOf('app.com/emojis/') !== -1) {
+          if (/\.(png|jpe?g|webp|gif|svg)$/i.test(url) || url.indexOf('//steamuserimages') !== -1) saveType = 'Image';
+          else if (/\.(mp4|webm|mov)$/i.test(url)) saveType = 'Video';
+          else if (/\.(mp3|ogg|wav|flac)$/i.test(url)) saveType = 'Audio';
+          else if (url.indexOf('app.com/emojis/') !== -1) {
             saveType = 'Emoji';
             const emojiId = url.split('emojis/')[1].split('.')[0];
             const emoji = EmojiUtils.getDisambiguatedEmojiContext().getById(emojiId);
@@ -768,112 +775,112 @@ var SaveToRedux = (() => {
 
   return !global.ZeresPluginLibrary || !global.XenoLib
     ? class {
-      getName() {
-        return this.name.replace(/\s+/g, '');
-      }
-      getAuthor() {
-        return this.author;
-      }
-      getVersion() {
-        return this.version;
-      }
-      getDescription() {
-        return this.description;
-      }
-      stop() { }
-      load() {
-        const ezlibMissing = !global.XenoLib;
-        const zlibMissing = !global.ZeresPluginLibrary;
-        const bothLibsMissing = ezlibMissing && zlibMissing;
-        const header = `Missing ${(bothLibsMissing && 'Libraries') || 'Library'}`;
-        const content = `The ${(bothLibsMissing && 'Libraries') || 'Library'} ${(zlibMissing && 'ZeresPluginLibrary') || ''} ${(ezlibMissing && (zlibMissing ? 'and XenoLib' : 'XenoLib')) || ''} required for ${this.name} ${(bothLibsMissing && 'are') || 'is'} missing.`;
-        const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
-        const TextElement = BdApi.findModuleByProps('Sizes', 'Weights');
-        const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
-        const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${(zlibMissing && '<br/><a href="https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>') || ''}${(zlibMissing && '<br/><a href="http://localhost:7474/XenoLib.js"target="_blank">Click here to download XenoLib</a>') || ''}`);
-        if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
-        ModalStack.push(props => {
-          return BdApi.React.createElement(
-            ConfirmationModal,
-            Object.assign(
-              {
-                header,
-                children: [TextElement({ color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
-                red: false,
-                confirmText: 'Download Now',
-                cancelText: 'Cancel',
-                onConfirm: () => {
-                  const request = require('request');
-                  const fs = require('fs');
-                  const path = require('path');
-                  const waitForLibLoad = callback => {
-                    if (!global.BDEvents) return callback();
-                    const onLoaded = e => {
-                      if (e !== 'ZeresPluginLibrary') return;
-                      BDEvents.off('plugin-loaded', onLoaded);
-                      callback();
-                    };
-                    BDEvents.on('plugin-loaded', onLoaded);
-                  };
-                  const onDone = () => {
-                    if (!global.pluginModule || (!global.BDEvents && !global.XenoLib)) return;
-                    if (!global.BDEvents || global.XenoLib) pluginModule.reloadPlugin(this.name);
-                    else {
-                      const listener = () => {
-                        pluginModule.reloadPlugin(this.name);
-                        BDEvents.off('xenolib-loaded', listener);
-                      };
-                      BDEvents.on('xenolib-loaded', listener);
-                    }
-                  };
-                  const downloadXenoLib = () => {
-                    if (global.XenoLib) return onDone();
-                    request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (error, response, body) => {
-                      if (error) return onFail();
-                      onDone();
-                      fs.writeFile(path.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), body, () => { });
-                    });
-                  };
-                  if (!global.ZeresPluginLibrary) {
-                    request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
-                      if (error) return onFail();
-                      waitForLibLoad(downloadXenoLib);
-                      fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => { });
-                    });
-                  } else downloadXenoLib();
-                }
-              },
-              props
-            )
-          );
-        });
-      }
-
-      start() { }
-      get [Symbol.toStringTag]() {
-        return 'Plugin';
-      }
-      get name() {
-        return config.info.name;
-      }
-      get short() {
-        let string = '';
-        for (let i = 0, len = config.info.name.length; i < len; i++) {
-          const char = config.info.name[i];
-          if (char === char.toUpperCase()) string += char;
+        getName() {
+          return this.name.replace(/\s+/g, '');
         }
-        return string;
+        getAuthor() {
+          return this.author;
+        }
+        getVersion() {
+          return this.version;
+        }
+        getDescription() {
+          return this.description;
+        }
+        stop() {}
+        load() {
+          const ezlibMissing = !global.XenoLib;
+          const zlibMissing = !global.ZeresPluginLibrary;
+          const bothLibsMissing = ezlibMissing && zlibMissing;
+          const header = `Missing ${(bothLibsMissing && 'Libraries') || 'Library'}`;
+          const content = `The ${(bothLibsMissing && 'Libraries') || 'Library'} ${(zlibMissing && 'ZeresPluginLibrary') || ''} ${(ezlibMissing && (zlibMissing ? 'and XenoLib' : 'XenoLib')) || ''} required for ${this.name} ${(bothLibsMissing && 'are') || 'is'} missing.`;
+          const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
+          const TextElement = BdApi.findModuleByProps('Sizes', 'Weights');
+          const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
+          const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${(zlibMissing && '<br/><a href="https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>') || ''}${(zlibMissing && '<br/><a href="http://localhost:7474/XenoLib.js"target="_blank">Click here to download XenoLib</a>') || ''}`);
+          if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
+          ModalStack.push(props => {
+            return BdApi.React.createElement(
+              ConfirmationModal,
+              Object.assign(
+                {
+                  header,
+                  children: [TextElement({ color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
+                  red: false,
+                  confirmText: 'Download Now',
+                  cancelText: 'Cancel',
+                  onConfirm: () => {
+                    const request = require('request');
+                    const fs = require('fs');
+                    const path = require('path');
+                    const waitForLibLoad = callback => {
+                      if (!global.BDEvents) return callback();
+                      const onLoaded = e => {
+                        if (e !== 'ZeresPluginLibrary') return;
+                        BDEvents.off('plugin-loaded', onLoaded);
+                        callback();
+                      };
+                      BDEvents.on('plugin-loaded', onLoaded);
+                    };
+                    const onDone = () => {
+                      if (!global.pluginModule || (!global.BDEvents && !global.XenoLib)) return;
+                      if (!global.BDEvents || global.XenoLib) pluginModule.reloadPlugin(this.name);
+                      else {
+                        const listener = () => {
+                          pluginModule.reloadPlugin(this.name);
+                          BDEvents.off('xenolib-loaded', listener);
+                        };
+                        BDEvents.on('xenolib-loaded', listener);
+                      }
+                    };
+                    const downloadXenoLib = () => {
+                      if (global.XenoLib) return onDone();
+                      request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (error, response, body) => {
+                        if (error) return onFail();
+                        onDone();
+                        fs.writeFile(path.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), body, () => {});
+                      });
+                    };
+                    if (!global.ZeresPluginLibrary) {
+                      request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
+                        if (error) return onFail();
+                        waitForLibLoad(downloadXenoLib);
+                        fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
+                      });
+                    } else downloadXenoLib();
+                  }
+                },
+                props
+              )
+            );
+          });
+        }
+
+        start() {}
+        get [Symbol.toStringTag]() {
+          return 'Plugin';
+        }
+        get name() {
+          return config.info.name;
+        }
+        get short() {
+          let string = '';
+          for (let i = 0, len = config.info.name.length; i < len; i++) {
+            const char = config.info.name[i];
+            if (char === char.toUpperCase()) string += char;
+          }
+          return string;
+        }
+        get author() {
+          return config.info.authors.map(author => author.name).join(', ');
+        }
+        get version() {
+          return config.info.version;
+        }
+        get description() {
+          return config.info.description;
+        }
       }
-      get author() {
-        return config.info.authors.map(author => author.name).join(', ');
-      }
-      get version() {
-        return config.info.version;
-      }
-      get description() {
-        return config.info.description;
-      }
-    }
     : buildPlugin(global.ZeresPluginLibrary.buildPlugin(config));
 })();
 

@@ -1,4 +1,7 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.3
+- Saving pictures from steam now works properly
+
 ### 2.0.2
 - Plugin has been renamed to SaveToRedux to avoid issues loading due to the original plugin, as well as to be able to distinguish between the two more easily.
 - Changed update URL
