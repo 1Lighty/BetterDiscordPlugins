@@ -400,7 +400,7 @@ var SaveToRedux = (() => {
                 .pipe(FsModule.createWriteStream(path))
                 .on('finish', () => {
                   if (openOnSave) openItem(path);
-                  BdApi.showToast('Saved!', { type: 'success' });
+                  BdApi.showToast(`Saved to '${path}'`, { type: 'success' });
                 })
                 .on('error', e => BdApi.showToast(`Failed to save! ${e}`, { type: 'error', timeout: 10000 }));
             } else if (res.statusCode == 404) BdApi.showToast('Image does not exist!', { type: 'error' });
