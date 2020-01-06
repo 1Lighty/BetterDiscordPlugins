@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.1',
+      version: '1.3.0',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['Optimized User Action notification.', 'Fixed odd behavior with notifications when updating them.', 'Added settings to change where the notifications should show.', 'Changed notification show animation to be duration based instead of physics based.']
+        items: ['User, Channel and Guild context menus now have a state object, setState and forceUpdate functions.', 'Notifications system has been implemented but is still WIP.', 'Now able to stop the context menu from closing when clicking on a context menu item, by passing noClose prop in the third argument of XenoLib.createContextMenuItem.']
       }
     ],
     defaultConfig: [
@@ -524,6 +524,7 @@ var XenoLib = (() => {
           _this.setState = setState;
         }
         if (!_this.state) _this.state = {};
+        ret.props.children.push(document.createElement('div'));
         XenoLib.__contextPatches.forEach(e => {
           try {
             e(_this, menuGroups);
@@ -871,7 +872,7 @@ var XenoLib = (() => {
           const onLoaded = e => {
             if (e !== newName) return;
             BDEvents.off('plugin-loaded', onLoaded);
-            pluginModule.startPlugin(newName);
+            pluginModule.enablePlugin(newName);
           };
           BDEvents.on('plugin-loaded', onLoaded);
         }
