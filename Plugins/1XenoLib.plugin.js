@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.0',
+      version: '1.3.1',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['User, Channel and Guild context menus now have a state object, setState and forceUpdate functions.', 'Notifications system has been implemented but is still WIP.', 'Now able to stop the context menu from closing when clicking on a context menu item, by passing noClose prop in the third argument of XenoLib.createContextMenuItem.']
+        items: ['Optimized User Action notification.', 'Fixed odd behavior with notifications when updating them.', 'Added settings to change where the notifications should show.', 'Changed notification show animation to be duration based instead of physics based.']
       }
     ],
     defaultConfig: [
@@ -77,20 +77,55 @@ var XenoLib = (() => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
     const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions } = DiscordModules;
 
+    const DefaultLibrarySettings = {};
+
+    for (let s = 0; s < config.defaultConfig.length; s++) {
+      const current = config.defaultConfig[s];
+      if (current.type != 'category') {
+        DefaultLibrarySettings[current.id] = current.value;
+      } else {
+        DefaultLibrarySettings[current.id] = {};
+        for (let s = 0; s < current.settings.length; s++) {
+          const subCurrent = current.settings[s];
+          DefaultLibrarySettings[current.id][subCurrent.id] = subCurrent.value;
+        }
+      }
+    }
+
     const ContextMenuSubMenuItem = WebpackModules.getByDisplayName('FluxContainer(SubMenuItem)');
 
     if (global.XenoLib) global.XenoLib.shutdown();
     const XenoLib = {};
     XenoLib.shutdown = () => {
-      Patcher.unpatchAll();
+      try {
+        Patcher.unpatchAll();
+      } catch (e) {
+        Logger.stacktrace('Failed to unpatch all', e);
+      }
       PluginUtilities.removeStyle('XenoLib-CSS');
       if (global.BDEvents) BDEvents.off('plugin-unloaded', listener);
-      const notifWrapper = document.querySelector('.xenoLib-notifications');
-      if (notifWrapper) {
-        ReactDOM.unmountComponentAtNode(notifWrapper);
-        notifWrapper.remove();
+      try {
+        const notifWrapper = document.querySelector('.xenoLib-notifications');
+        if (notifWrapper) {
+          ReactDOM.unmountComponentAtNode(notifWrapper);
+          notifWrapper.remove();
+        }
+      } catch (e) {
+        Logger.stacktrace('Failed to unmount Notifications component', e);
       }
     };
+
+    XenoLib.loadData = (name, key, defaultData, returnNull) => {
+      try {
+        return Object.assign(defaultData ? Utilities.deepclone(defaultData) : {}, BdApi.getData(name, key));
+      } catch (err) {
+        Logger.err(name, 'Unable to load data: ', err);
+        if (returnNull) return null;
+        return Utilities.deepclone(defaultData);
+      }
+    };
+
+    const LibrarySettings = XenoLib.loadData(config.info.name, 'settings', DefaultLibrarySettings);
 
     PluginUtilities.addStyle(
       'XenoLib-CSS',
@@ -140,7 +175,6 @@ var XenoLib = (() => {
         min-height: 100%;
         display: flex;
         flex-direction: column;
-        align-items: flex-end;
         z-index: 1000;
         pointer-events: none;
         font-size: 14px;
@@ -150,7 +184,10 @@ var XenoLib = (() => {
         overflow: hidden;
       }
       .xenoLib-notification-content-wrapper {
-        padding: 20px 20px 0 0;
+        padding: 20px 20px 0 20px;
+      }
+      .xenoLib-centering-bottomLeft .xenoLib-notification-content-wrapper:first-of-type, .xenoLib-centering-bottomMiddle .xenoLib-notification-content-wrapper:first-of-type, .xenoLib-centering-bottomRight .xenoLib-notification-content-wrapper:first-of-type {
+        padding: 0 20px 20px 20px;
       }
       .xenoLib-notification-content {
         padding: 12px;
@@ -167,6 +204,20 @@ var XenoLib = (() => {
         width: auto;
         background-image: linear-gradient(130deg,var(--grad-one),var(--grad-two));
         height: 5px;
+      }
+      .xenoLib-notification-loadbar-user {
+        animation: fade-loadbar-animation 1.5s ease-in-out infinite;
+      }
+      @keyframes fade-loadbar-animation {
+        0% {
+            filter: brightness(75%)
+        }
+        50% {
+            filter: brightness(100%)
+        }
+        to {
+            filter: brightness(75%)
+        }
       }
       .xenoLib-notification-loadbar-striped:before {
         content: "";
@@ -200,6 +251,33 @@ var XenoLib = (() => {
         float: right;
         margin-top: 2px;
       }
+      .topMiddle-xenoLib {
+        top: 0;
+        left: 0;
+        right: 0;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .bottomMiddle-xenoLib {
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .xenoLib-centering-topLeft, .xenoLib-centering-bottomLeft {
+        align-items: flex-start;
+      }
+      .xenoLib-centering-topMiddle, .xenoLib-centering-bottomMiddle {
+        align-items: center;
+      }
+      .xenoLib-centering-topRight, .xenoLib-centering-bottomRight {
+        align-items: flex-end;
+      }
+      .xenoLib-centering-bottomLeft, .xenoLib-centering-bottomMiddle, .xenoLib-centering-bottomRight {
+        flex-direction: column-reverse;
+        bottom: 0;
+      }
       `
     );
 
@@ -222,11 +300,128 @@ var XenoLib = (() => {
     XenoLib.supportServerId = '389049952732446731';
 
     try {
+      /* const pluginAuthors = [
+        {
+          name: 'Lighty',
+          id: XenoLib.authorId,
+          supportServerId: XenoLib.supportServerId,
+          supportServerInvite: 'NYvWdN5',
+          donations: [
+            {
+              url: 'https://paypal.me/lighty13',
+              name: 'Paypal'
+            },
+            {
+              url: 'https://ko-fi.com/lighty_',
+              name: 'Ko-fi'
+            }
+          ]
+        }
+      ]; */
       if (V2C_PluginCard && V2C_ThemeCard) {
+        const ElectronShell = require('electron').shell;
         const LinkClassname = XenoLib.joinClassNames(XenoLib.getClass('anchorUnderlineOnHover anchor'), XenoLib.getClass('anchor anchorUnderlineOnHover'), 'bda-author');
         const handlePatch = (_this, _, ret) => {
           const author = Utilities.getNestedProp(ret, 'props.children.0.props.children.0.props.children.4');
           const footer = Utilities.getNestedProp(ret, 'props.children.2.props.children.0.props.children');
+          /* if (!author) return;
+          const donations = [];
+          const support = [];
+          for (let i = 0; i < pluginAuthors.length; i++) {
+            const pluginAuthor = pluginAuthors[i];
+            const onClick = () => {
+              if (DiscordAPI.currentUser.id === pluginAuthor.id) return;
+              PrivateChannelActions.ensurePrivateChannel(DiscordAPI.currentUser.id, pluginAuthor.id).then(() => {
+                PrivateChannelActions.openPrivateChannel(DiscordAPI.currentUser.id, pluginAuthor.id);
+                LayerManager.popLayer();
+              });
+            };
+            if (typeof author.props.children !== 'string') {
+              if (!Array.isArray(author.props.children)) return;
+              for (let ii = 0; ii < author.props.children.length; ii++) {
+                const name = author.props.children[ii];
+                if (typeof name !== 'string') continue;
+                const idx = name.indexOf(pluginAuthor.name);
+                if (idx === -1) continue;
+                console.log(author.props.children, name, idx, pluginAuthor.name);
+                const pre = name.slice(0, idx);
+                const post = name.slice(idx + pluginAuthor.name.length);
+                author.props.children.splice(idx, 1, pre, React.createElement('a', { className: LinkClassname, onClick }, pluginAuthor.name), post);
+                break;
+              }
+            } else {
+              if (author.props.children.indexOf(pluginAuthor.name) === -1) continue;
+              const idx = author.props.children.indexOf(pluginAuthor.name);
+              const pre = author.props.children.slice(0, idx);
+              const post = author.props.children.slice(idx + pluginAuthor.name.length);
+              author.props.children = [pre, React.createElement('a', { className: LinkClassname, onClick }, pluginAuthor.name), post];
+            }
+            if (Array.isArray(pluginAuthor.donations) && pluginAuthor.donations.length) donations.push({ name: pluginAuthor.name, donations: pluginAuthor.donations });
+            if (pluginAuthor.supportServerId && pluginAuthor.supportServerInvite) support.push({ name: pluginAuthor.name, id: pluginAuthor.supportServerId, invite: pluginAuthor.supportServerInvite });
+          }
+          if (!footer) return;
+          if (donations.length) {
+            footer.push(
+              ' | ',
+              React.createElement(
+                'a',
+                {
+                  className: 'bda-link',
+                  onClick: e => {
+                    ContextMenuActions.openContextMenu(e, e =>
+                      React.createElement(
+                        'div',
+                        { className: DiscordClasses.ContextMenu.contextMenu },
+                        XenoLib.createContextMenuGroup([
+                          donations.map(authorDonations =>
+                            XenoLib.createContextMenuSubMenu(
+                              authorDonations.name,
+                              authorDonations.donations.map(donation => XenoLib.createContextMenuItem(donation.name, () => ElectronShell.openExternal(donation.url)))
+                            )
+                          )
+                        ])
+                      )
+                    );
+                  }
+                },
+                'Donate'
+              )
+            );
+          }
+          if (support.length) {
+            footer.push(
+              ' | ',
+              React.createElement(
+                'a',
+                {
+                  className: 'bda-link',
+                  onClick: () => {
+                    LayerManager.popLayer();
+                    if (GuildStore.getGuild(support[0].id)) GuildActions.transitionToGuildSync(support[0].id);
+                    else InviteActions.openNativeAppModal(support[0].invite);
+                  }
+                },
+                'Support Server'
+              )
+            );
+          }
+          if (_this.props.plugin.showChangelog || _this.props.plugin.getChanges) {
+            footer.push(
+              ' | ',
+              React.createElement(
+                'a',
+                {
+                  className: 'bda-link',
+                  onClick: () => {
+                    if (_this.props.plugin.showChangelog) _this.props.plugin.showChangelog();
+                    else Modals.showChangelogModal(_this.props.plugin.getName() + ' Changelog', _this.props.plugin.getVersion(), _this.props.plugin.getChanges());
+                  }
+                },
+                'Changelog'
+              )
+            );
+          }
+          return; */
           if (!author || typeof author.props.children !== 'string' || author.props.children.indexOf('Lighty') === -1) return;
           const onClick = () => {
             if (DiscordAPI.currentUser.id === XenoLib.authorId) return;
@@ -654,16 +849,6 @@ var XenoLib = (() => {
       }
     };
 
-    XenoLib.loadData = (name, key, defaultData, returnNull) => {
-      try {
-        return Object.assign(defaultData ? Utilities.deepclone(defaultData) : {}, BdApi.getData(name, key));
-      } catch (err) {
-        Logger.err(name, 'Unable to load data: ', err);
-        if (returnNull) return null;
-        return Utilities.deepclone(defaultData);
-      }
-    };
-
     XenoLib.changeName = (currentName, newName) => {
       const path = require('path');
       const fs = require('fs');
@@ -736,7 +921,6 @@ var XenoLib = (() => {
         show(content, options = {}) {
           let id = null;
           api.setState(state => {
-            if (state.data.length >= 100) return state;
             if (!options.allowDuplicates) {
               const notif = state.data.find(n => n.content === content && n.timeout === options.timeout);
               if (notif) {
@@ -745,6 +929,7 @@ var XenoLib = (() => {
                 return state;
               }
             }
+            if (state.data.length >= 100) return state;
             do {
               id = Math.floor(4294967296 * Math.random());
             } while (state.data.findIndex(n => n.id === id) !== -1);
@@ -831,7 +1016,7 @@ var XenoLib = (() => {
               break;
             case 'XL_NOTIFS_DUPLICATE':
               this._animationCancel();
-              this.setState({ counter: this.state.counter + 1, resetBar: !!this.props.timeout });
+              this.setState({ counter: this.state.counter + 1, resetBar: !!this.props.timeout, closeFast: false });
               break;
             case 'XL_NOTIFS_UPDATE':
               this._animationCancel();
@@ -851,7 +1036,7 @@ var XenoLib = (() => {
         }
         checkOffScreen() {
           const bcr = this._contentRef.getBoundingClientRect();
-          if (bcr.bottom > Structs.Screen.height) {
+          if (bcr.bottom > Structs.Screen.height || bcr.top < 0) {
             if (!this.state.offscreen) {
               this._animationCancel();
               this.setState({ offscreen: true });
@@ -872,7 +1057,7 @@ var XenoLib = (() => {
           }
         }
         render() {
-          const config = { tension: 125, friction: 20 };
+          const config = { duration: 200 };
           if (this._contentRef) this._oldOffsetHeight = this._contentRef.offsetHeight;
           return React.createElement(
             ReactSpring.Spring,
@@ -912,10 +1097,6 @@ var XenoLib = (() => {
                 if (!this.props.timeout && !this.state.closeFast) {
                   if (!this.state.loading) {
                     await next({ progress: 100 });
-                    while (!this.state.closeFast) {
-                      await next({ loadbrightness: 0.7 });
-                      await next({ loadbrightness: 1 });
-                    }
                   } else {
                     await next({ loadbrightness: 1 });
                     if (this.state.progress === -1) await next({ progress: 100 });
@@ -988,7 +1169,7 @@ var XenoLib = (() => {
                       className: 'xenoLib-notification-content'
                     },
                     React.createElement(ReactSpring.animated.div, {
-                      className: XenoLib.joinClassNames('xenoLib-notification-loadbar', { 'xenoLib-notification-loadbar-striped': !this.props.timeout && this.state.loading }),
+                      className: XenoLib.joinClassNames('xenoLib-notification-loadbar', { 'xenoLib-notification-loadbar-striped': !this.props.timeout && this.state.loading, 'xenoLib-notification-loadbar-user': !this.props.timeout && !this.state.loading }),
                       style: { right: e.progress.to(e => 100 - e + '%'), filter: e.loadbrightness.to(e => `brightness(${e * 100}%)`) }
                     }),
                     React.createElement(CloseButton, {
@@ -1027,26 +1208,11 @@ var XenoLib = (() => {
         const notifications = useStore(e => {
           return e.data;
         });
-        return [
-          /*           React.createElement(
-            'div',
-            {
-              style: {
-                pointerEvents: 'all'
-              }
-            },
-            React.createElement(WebpackModules.getByDisplayName('Backdrop'), {
-              backdropStyle: 'DARK',
-              zIndexBoost: -1000,
-              onClick: e => e.preventDefault()
-            })
-          ), */
-          notifications.map(item => React.createElement(Notification, { ...item, key: item.id })).reverse()
-        ];
+        return notifications.map(item => React.createElement(Notification, { ...item, key: item.id })).reverse();
       }
       NotificationsWrapper.displayName = 'XenoLibNotifications';
       const DOMElement = document.createElement('div');
-      DOMElement.className = 'xenoLib-notifications';
+      DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
       ReactDOM.render(React.createElement(NotificationsWrapper, {}), DOMElement);
       document.querySelector('#app-mount').appendChild(DOMElement);
     } catch (e) {
@@ -1066,36 +1232,124 @@ var XenoLib = (() => {
     }
 
     XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
-    /*
+
+    const notifLocations = ['topLeft', 'topMiddle', 'topRight', 'bottomLeft', 'bottomMiddle', 'bottomRight'];
+    const notifLocationClasses = ['topLeft-3buHIc option-n0icdO', 'topMiddle-xenoLib option-n0icdO', 'topRight-3GKDeL option-n0icdO', 'bottomLeft-39-xss option-n0icdO', 'bottomMiddle-xenoLib option-n0icdO', 'bottomRight-1T56wW option-n0icdO'];
+    const PositionSelectorWrapperClassname = XenoLib.getClass('topLeft wrapper');
+    const PositionSelectorSelectedClassname = XenoLib.getClass('topLeft selected');
+    const PositionSelectorHiddenInputClassname = XenoLib.getClass('topLeft hiddenInput');
+    const FormText = WebpackModules.getByDisplayName('FormText');
     class NotificationPosition extends React.PureComponent {
-      render() {
-        return React.createElement('div', {},
-        React.createElement('div', {
-          className: XenoLib.joinClassNames()
-        })
-        )
+      constructor(props) {
+        super(props);
+        this.state = {
+          position: props.position
+        };
       }
-    } */
+      componentDidMount() {
+        this._notificationId = XenoLib.Notifications.show('Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur lacinia justo eget libero ultrices mollis.', { timeout: 0 });
+      }
+      componentWillUnmount() {
+        XenoLib.Notifications.remove(this._notificationId);
+      }
+      getSelected() {
+        switch (this.state.position) {
+          case 'topLeft':
+            return 'Top Left';
+          case 'topMiddle':
+            return 'Top Middle';
+          case 'topRight':
+            return 'Top Right';
+          case 'bottomLeft':
+            return 'Bottom Left';
+          case 'bottomMiddle':
+            return 'Bottom Middle';
+          case 'bottomRight':
+            return 'Bottom Right';
+          default:
+            return 'Unknown';
+        }
+      }
+      render() {
+        return React.createElement(
+          'div',
+          {},
+          React.createElement(
+            'div',
+            {
+              className: PositionSelectorWrapperClassname
+            },
+            notifLocations.map((e, i) => {
+              return React.createElement(
+                'label',
+                {
+                  className: XenoLib.joinClassNames(notifLocationClasses[i], { [PositionSelectorSelectedClassname]: this.state.position === e })
+                },
+                React.createElement('input', {
+                  type: 'radio',
+                  name: 'xenolib-notif-position-selector',
+                  value: e,
+                  onChange: () => {
+                    this.props.onChange(e);
+                    this.setState({ position: e });
+                  },
+                  className: PositionSelectorHiddenInputClassname
+                })
+              );
+            })
+          ),
+          React.createElement(
+            FormText,
+            {
+              type: FormText.Types.DESCRIPTION,
+              className: DiscordClasses.Margins.marginTop8
+            },
+            this.getSelected()
+          )
+        );
+      }
+    }
 
     class NotificationPositionField extends Settings.SettingField {
-      constructor(name, note, onChange) {
-        super(name, note, onChange, WebpackModules.getByDisplayName('NotificationSettings'), {
-          position: 'topRight',
-          onChange: (a, b) => console.log(a, b)
+      constructor(name, note, onChange, value) {
+        super(name, note, onChange, NotificationPosition, {
+          position: value,
+          onChange: reactElement => position => {
+            this.onChange(position);
+          }
         });
       }
     }
 
-    return class XenoLib extends Plugin {
-      /*       buildSetting(data) {
+    return class CXenoLib extends Plugin {
+      constructor() {
+        super();
+        this.settings = LibrarySettings;
+      }
+      buildSetting(data) {
         if (data.type === 'position') {
-          return new NotificationPositionField(data.name, data.note, console.log);
+          const setting = new NotificationPositionField(data.name, data.note, data.onChange, data.value);
+          if (data.id) setting.id = data.id;
+          return setting;
         }
         return super.buildSetting(data);
       }
       getSettingsPanel() {
         return this.buildSettingsPanel().getElement();
-      } */
+      }
+      saveSettings(category, setting, value) {
+        LibrarySettings[category][setting] = value;
+        PluginUtilities.saveSettings(this.name, LibrarySettings);
+        if (category === 'notifications') {
+          if (setting === 'position') {
+            const DOMElement = document.querySelector('.xenoLib-notifications');
+            if (DOMElement) {
+              DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
+              Dispatcher.dispatch({ type: 'XL_NOTIFS_ANIMATED' });
+            }
+          }
+        }
+      }
       get name() {
         return config.info.name;
       }
