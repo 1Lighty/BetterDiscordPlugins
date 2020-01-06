@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.2',
+      version: '1.3.3',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['User, Channel and Guild context menus now have a state object, setState and forceUpdate functions.', 'Notifications system has been implemented but is still WIP.', 'Now able to stop the context menu from closing when clicking on a context menu item, by passing noClose prop in the third argument of XenoLib.createContextMenuItem.']
+        items: ['Optimized User Action notification.', 'Fixed odd behavior with notifications when updating them.', 'Added settings to change where the notifications should show.', 'Changed notification show animation to be duration based instead of physics based.', 'Fixed notifications sometimes getting stuck if you tried to close them.', 'Actually increment the version and push the changelog smh kms']
       }
     ],
     defaultConfig: [
@@ -1047,6 +1047,7 @@ var XenoLib = (() => {
           }
         }
         closeNow() {
+          if (this.state.closeFast) return;
           this._animationCancel();
           this.setState({ closeFast: true });
         }
@@ -1138,12 +1139,12 @@ var XenoLib = (() => {
                     className: 'xenoLib-notification-content-wrapper',
                     ref: e => e && (this._contentRef = e),
                     onMouseEnter: e => {
-                      if (this.state.leaving || !this.props.timeout) return;
+                      if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
                       this._animationCancel();
                       this.setState({ hovered: true });
                     },
                     onMouseLeave: e => {
-                      if (this.state.leaving || !this.props.timeout) return;
+                      if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
                       this._animationCancel();
                       this.setState({ hovered: false });
                     },
@@ -1338,6 +1339,7 @@ var XenoLib = (() => {
         return this.buildSettingsPanel().getElement();
       }
       saveSettings(category, setting, value) {
+        this.settings[category][setting] = value;
         LibrarySettings[category][setting] = value;
         PluginUtilities.saveSettings(this.name, LibrarySettings);
         if (category === 'notifications') {
