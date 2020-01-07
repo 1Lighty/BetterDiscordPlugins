@@ -65,7 +65,7 @@ var XenoLib = (() => {
             name: 'Notification position',
             id: 'position',
             type: 'position',
-            value: 'topLeft'
+            value: 'topRight'
           }
         ]
       }
