@@ -1,4 +1,11 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.4
+- Fixed saving things with multiple dots having the wrong extension
+- Fixed steam images, and similar not be saveable
+- Added extension detection for those links as well
+- Added safety features, so it will only download from proxy if the domain is untrusted. Will warn you about it if the only way to download the image is thru a direct link.
+- The file type is now set properly, so Windows users that use Save As.. feature a lot don't have to worry about preserving the extension, as Windows handles that for you, unless you select the file type as All Files (*.*)
+
 ### 2.0.3
 - Saving pictures from steam now works properly
 

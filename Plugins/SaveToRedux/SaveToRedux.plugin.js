@@ -41,7 +41,7 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.3',
+      version: '2.0.4',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -50,7 +50,7 @@ var SaveToRedux = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Saving pictures from steam now works properly']
+        items: ['Fixed saving things with multiple dots having the wrong extension', 'Fixed steam images, and similar not be saveable', 'Added extension detection for those links as well', 'Added safety features, so it will only download from proxy if the domain is untrusted. Will warn you about it if the only way to download the image is thru a direct link.', "The file type is now set properly, so Windows users that use Save As.. feature a lot don't have to worry about preserving the extension, as Windows handles that for you, unless you select the file type as All Files (*.*)"]
       }
     ],
     defaultConfig: [
@@ -106,6 +106,7 @@ var SaveToRedux = (() => {
     const ContextMenuSubMenuItem = WebpackModules.getByDisplayName('FluxContainer(SubMenuItem)');
     const TextComponent = WebpackModules.getByDisplayName('Text');
     const getEmojiURL = WebpackModules.getByProps('getEmojiURL').getEmojiURL;
+    const showAlertModal = WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/)).show;
 
     const dialog = require('electron').remote.dialog;
     const openSaveDialog = dialog.showSaveDialogSync || dialog.showSaveDialog;
@@ -114,9 +115,23 @@ var SaveToRedux = (() => {
     const FsModule = require('fs');
     const RequestModule = require('request');
     const PathModule = require('path');
+    const MimeTypesModule = require('mime-types');
     const FormItem = WebpackModules.getByDisplayName('FormItem');
     const Messages = WebpackModules.getByProps('Messages').Messages;
     const TextInput = WebpackModules.getByDisplayName('TextInput');
+
+    const MessageShit = WebpackModules.find(m => m.default && m.getMessage);
+    const TrustStore = WebpackModules.getByProps('isTrustedDomain');
+
+    const isTrustedDomain = url => {
+      for (const domain of isTrustedDomain.domains) if (url.search(domain) !== -1) return true;
+      return TrustStore.isTrustedDomain(url);
+    };
+    isTrustedDomain.domains = [/\/\/steamuserimages-\w\.akamaihd\.net\//, /\/\/steamcdn-\w\.akamaihd\.net\//, /\/\/steamcommunity-\w\.akamaihd\.net\//, '//cdn.discordapp.com/', '//media.discordapp.net/', /\/\/images-ext-\d\.discordapp\.net\//, '//i.ytimg.com/', /\/\/static\d\.e621\.net\//, '//pbs.twimg.com/', '//preview.redd.it/', '//cdn.shopify.com/', '//discordapp.com/', '//i.imgur.com/', '//i.clouds.tf/', '//image.prntscr.com/', '//i.giphy.com/', '//media.tenor.co/'];
+
+    const MessageStrings = {
+      UNTRUSTED_LINK: MessageShit.getMessage("If you see this, SaveToRedux has failed to get a safe proxied version of the image URL **!!{url}!!**. If you do not recognize the domain, it's best you don't download from it as it could potentially be an IP logger.\n\nAre you sure you want to download an image from this domain?", 'en-US')
+    };
 
     class FolderEditor extends React.Component {
       constructor(props) {
@@ -356,30 +371,26 @@ var SaveToRedux = (() => {
         return 'INTERNAL_ERROR';
       }
 
-      formatURL(url, requiresSize, customName) {
-        if (url.indexOf('//steamuserimages') !== -1) url = url.replace(/\/$/, '');
+      formatURL(url, requiresSize, customName, fallbackExtension, proxiedUrl) {
+        // url = url.replace(/\/$/, '');
         if (url.indexOf('/a_') !== -1) url = url.replace('.webp', '.gif').replace('.png', '.gif');
         else url = url.replace('.webp', '.png');
-        let fileName = url.substr(url.lastIndexOf('/') + 1);
         if (requiresSize) url += '?size=2048';
-        const match = fileName.match(/([^\/\.]+)(?:\.([0-9a-zA-Z]+))?([^\/]+)?$/);
+        const match = url.match(/(?:\/)([^\/]+?)(?:(?:\.)([^.\/?:]+)){0,1}(?:[^\w\/\.]+\w+){0,1}(?:(?:\?[^\/]+){0,1}|(?:\/){0,1})$/);
         let name = customName || match[1];
-        let extension = match[2];
+        let extension = match[2] || fallbackExtension;
         if (url.indexOf('//media.tenor.co') !== -1) {
           extension = name;
           name = url.match(/\/\/media.tenor.co\/[^\/]+\/([^\/]+)\//)[1];
         } else if (url.indexOf('//i.giphy.com/media/') !== -1) name = url.match(/\/\/i\.giphy\.com\/media\/([^\/]+)\//)[1];
-        else if (url.indexOf('//steamuserimages') !== -1) {
-          extension = 'png';
-          url += '/'; /* ??? */
-        }
         name = this.formatFilename(name);
-        const ret = { fileName: (extension && `${name}.${extension}`) || name, url: url, name, extension };
+        const isTrusted = isTrustedDomain(url);
+        const ret = { fileName: (extension && `${name}.${extension}`) || name, url: isTrusted ? url : proxiedUrl || url, name, extension, untrusted: !isTrusted && !proxiedUrl };
         // Logger.info(`[formatURL] url \`${url}\` requiresSize \`${requiresSize}\` customName \`${customName}\`, ret ${JSON.stringify(ret, '', 1)}`);
         return ret;
       }
 
-      constructMenu(url, type, customName) {
+      constructMenu(url, type, customName, onNoExtension = () => {}, fallbackExtension, proxiedUrl) {
         const createSubMenu = (name, items, callback) =>
           XenoLib.createContextMenuSubMenu(name, items, {
             action: () => {
@@ -390,9 +401,9 @@ var SaveToRedux = (() => {
           });
         const subItems = [];
         const folderSubMenus = [];
-        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName);
-
-        const download = (path, openOnSave) => {
+        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl);
+        if (!formattedurl.extension) onNoExtension(formattedurl.url);
+        const downloadEx = (path, openOnSave) => {
           const req = RequestModule(formattedurl.url);
           req.on('response', res => {
             if (res.statusCode == 200) {
@@ -400,12 +411,32 @@ var SaveToRedux = (() => {
                 .pipe(FsModule.createWriteStream(path))
                 .on('finish', () => {
                   if (openOnSave) openItem(path);
-                  BdApi.showToast(`Saved to '${path}'`, { type: 'success' });
+                  BdApi.showToast('Saved!', { type: 'success' });
                 })
                 .on('error', e => BdApi.showToast(`Failed to save! ${e}`, { type: 'error', timeout: 10000 }));
             } else if (res.statusCode == 404) BdApi.showToast('Image does not exist!', { type: 'error' });
             else BdApi.showToast(`Unknown error. ${res.statusCode}`, { type: 'error' });
           });
+        };
+
+        const download = (path, openOnSave) => {
+          const onOk = () => downloadEx(path, openOnSave);
+          if (formattedurl.untrusted) {
+            showAlertModal({
+              title: Messages.HOLD_UP,
+              body: MessageStrings.UNTRUSTED_LINK.format({ url: formattedurl.url }),
+              cancelText: Messages.MASKED_LINK_CANCEL,
+              confirmText: Messages.MASKED_LINK_CONFIRM,
+              minorText: Messages.MASKED_LINK_TRUST_THIS_DOMAIN,
+              onConfirm: onOk,
+              onConfirmSecondary: function() {
+                WebpackModules.getByProps('trustDomain').trustDomain(formattedurl.url);
+                onOk();
+              }
+            });
+          } else {
+            onOk();
+          }
         };
 
         const saveFile = (path, basePath, openOnSave, dontWarn) => {
@@ -634,17 +665,24 @@ var SaveToRedux = (() => {
                 onConfirm: saveFolder,
                 size: XenoLib.joinClassNames(Modals.ModalSizes.MEDIUM, 'ST-modal')
               }
-            ); /*
-            WebpackModules.getByProps('openModal').openModal(_ =>
-              React.createElement(NewFolderModal, {
-                ..._,
-                path: path[0],
-                name: folderName
-              })
-            ); */
+            );
           }),
           XenoLib.createContextMenuItem('Save As...', () => {
-            const path = openSaveDialog({ defaultPath: formattedurl.fileName });
+            const path = openSaveDialog({
+              defaultPath: formattedurl.fileName,
+              filters: formattedurl.extension
+                ? [
+                    {
+                      name: 'Images',
+                      extensions: [formattedurl.extension]
+                    },
+                    {
+                      name: 'All Files',
+                      extensions: ['*']
+                    }
+                  ]
+                : undefined
+            });
             if (!path) return BdApi.showToast('Maybe next time.');
             saveFile(path, undefined, false, true);
           })
@@ -663,10 +701,21 @@ var SaveToRedux = (() => {
         const type = _this.props.type;
         let saveType = 'File';
         let url = '';
+        let proxiedUrl = '';
         let customName = '';
         // image has no type property
         if (type === 'NATIVE_IMAGE' || type === 'MESSAGE_MAIN') {
-          let src = (type === 'NATIVE_IMAGE' && ((typeof Utilities.getNestedProp(ret, 'props.children.props.href') === 'string' && ret.props.children.props.href.indexOf('discordapp.com/channels') === -1 && ret.props.children.props.href) || Utilities.getNestedProp(ret, 'props.children.props.src'))) || Utilities.getNestedProp(_this, 'props.attachment.href') || Utilities.getNestedProp(_this, 'props.attachment.url');
+          let src;
+          if (type === 'NATIVE_IMAGE') {
+            src = Utilities.getNestedProp(ret, 'props.children.props.href');
+            proxiedUrl = Utilities.getNestedProp(ret, 'props.children.props.src');
+            if (typeof proxiedUrl === 'string') proxiedUrl = proxiedUrl.split('?')[0];
+            if (typeof src !== 'string' || src.indexOf('discordapp.com/channels') !== -1) {
+              src = proxiedUrl;
+              proxiedUrl = '';
+            }
+          }
+          if (!src) src = Utilities.getNestedProp(_this, 'props.attachment.href') || Utilities.getNestedProp(_this, 'props.attachment.url');
           /* is that enough specific cases? */
           if (typeof src === 'string') {
             src = src.split('?')[0];
@@ -678,22 +727,35 @@ var SaveToRedux = (() => {
               src = src.replace('preview', 'i');
             } else if (src.indexOf('twimg.com/') !== -1) saveType = 'Image';
           }
+          const isImage = e => /\.{0,1}(png|jpe?g|webp|gif|svg)$/i.test(e);
+          const isVideo = e => /\.{0,1}(mp4|webm|mov)$/i.test(e);
+          const isAudio = e => /\.{0,1}(mp3|ogg|wav|flac)$/i.test(e);
           if (!src) {
             let C = _this.props.target;
-            let t;
-            let e;
+            let proxiedsauce;
+            let sauce;
             while (null != C) {
-              C instanceof HTMLImageElement && null != C.src && (t = C.src), C instanceof HTMLAnchorElement && null != C.href && (e = C.href), (C = C.parentNode);
+              if (C instanceof HTMLImageElement && null != C.src) proxiedsauce = C.src;
+              if (C instanceof HTMLAnchorElement && null != C.href) sauce = C.href;
+              C = C.parentNode;
             }
-            if (!t && !(/\.(png|jpe?g|webp|gif|svg)$/i.test(e) || /\.(mp4|webm|mov)$/i.test(e) || /\.(mp3|ogg|wav|flac)$/i.test(e))) return;
-            src = t || e;
+            if (!proxiedsauce && !sauce) return;
+            if (proxiedsauce) proxiedsauce = proxiedsauce.split('?')[0];
+            if (sauce) sauce = sauce.split('?')[0];
+            if (!(isImage(proxiedsauce) || isVideo(proxiedsauce) || isAudio(proxiedsauce)) && !(isImage(sauce) || isVideo(sauce) || isAudio(sauce))) return;
+            src = sauce;
+            proxiedUrl = proxiedsauce;
+            if (!src) {
+              src = proxiedsauce;
+              proxiedUrl = '';
+            }
             if (!src) return;
           }
           url = src;
           if (!url) return;
-          if (/\.(png|jpe?g|webp|gif|svg)$/i.test(url) || url.indexOf('//steamuserimages') !== -1) saveType = 'Image';
-          else if (/\.(mp4|webm|mov)$/i.test(url)) saveType = 'Video';
-          else if (/\.(mp3|ogg|wav|flac)$/i.test(url)) saveType = 'Audio';
+          if (isImage(url) || url.indexOf('//steamuserimages') !== -1) saveType = 'Image';
+          else if (isVideo(url)) saveType = 'Video';
+          else if (isAudio(url)) saveType = 'Audio';
           else if (url.indexOf('app.com/emojis/') !== -1) {
             saveType = 'Emoji';
             const emojiId = url.split('emojis/')[1].split('.')[0];
@@ -710,6 +772,10 @@ var SaveToRedux = (() => {
                 if (alt) customName = alt.split(':')[1] || alt;
               }
             } else customName = emoji.name;
+          } else if (_this.state.__STR_extension) {
+            if (isImage(_this.state.__STR_extension)) saveType = 'Image';
+            else if (isVideo(_this.state.__STR_extension)) saveType = 'Video';
+            else if (isAudio(_this.state.__STR_extension)) saveType = 'Audio';
           }
           if (!Array.isArray(ret.props.children)) ret.props.children = [ret.props.children];
         } else if (type === 'GUILD_ICON_BAR') {
@@ -725,7 +791,28 @@ var SaveToRedux = (() => {
           /* customName = _this.props.user.username; */
         }
         try {
-          const submenu = this.constructMenu(url.split('?')[0], saveType, customName);
+          const submenu = this.constructMenu(
+            url.split('?')[0],
+            saveType,
+            customName,
+            targetUrl => {
+              if (_this.state.__STR_requesting || _this.state.__STR_requested) return;
+              if (!isTrustedDomain(targetUrl)) return;
+              _this.state.__STR_requesting = true;
+              RequestModule.head(targetUrl, (err, res) => {
+                if (err) return _this.setState({ __STR_requesting: false, __STR_requested: true });
+                const extension = MimeTypesModule.extension(res.headers['content-type']);
+                _this.setState({
+                  __STR_requesting: false,
+                  __STR_requested: true,
+                  __STR_extension: extension
+                });
+              });
+              targetUrl;
+            },
+            _this.state.__STR_extension,
+            proxiedUrl
+          );
           const group = XenoLib.createContextMenuGroup([submenu]);
           const targetGroup = ret.props.children;
 
