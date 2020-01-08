@@ -41,7 +41,7 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.4',
+      version: '2.0.5',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -51,6 +51,11 @@ var SaveToRedux = (() => {
         title: 'Fixed',
         type: 'fixed',
         items: ['Fixed saving things with multiple dots having the wrong extension', 'Fixed steam images, and similar not be saveable', 'Added extension detection for those links as well', 'Added safety features, so it will only download from proxy if the domain is untrusted. Will warn you about it if the only way to download the image is thru a direct link.', "The file type is now set properly, so Windows users that use Save As.. feature a lot don't have to worry about preserving the extension, as Windows handles that for you, unless you select the file type as All Files (*.*)"]
+      },
+      {
+        title: 'v2.0.5 fixes',
+        type: 'fixed',
+        items: ['Fixed steam image links and similar, failing silently']
       }
     ],
     defaultConfig: [
@@ -715,6 +720,7 @@ var SaveToRedux = (() => {
               proxiedUrl = '';
             }
           }
+          // console.log('src', src, 'proxiedUrl', proxiedUrl, _this, ret);
           if (!src) src = Utilities.getNestedProp(_this, 'props.attachment.href') || Utilities.getNestedProp(_this, 'props.attachment.url');
           /* is that enough specific cases? */
           if (typeof src === 'string') {
@@ -742,7 +748,11 @@ var SaveToRedux = (() => {
             if (!proxiedsauce && !sauce) return;
             if (proxiedsauce) proxiedsauce = proxiedsauce.split('?')[0];
             if (sauce) sauce = sauce.split('?')[0];
-            if (!(isImage(proxiedsauce) || isVideo(proxiedsauce) || isAudio(proxiedsauce)) && !(isImage(sauce) || isVideo(sauce) || isAudio(sauce))) return;
+            // console.log('sauce', sauce, 'proxiedsauce', proxiedsauce);
+            /* do not check if proxiedsauce is an image video or audio, it will always be video or image!
+               an anchor element however is just a link which could be anything! so best we check it
+             */
+            if (!proxiedsauce && !(isImage(sauce) || isVideo(sauce) || isAudio(sauce))) return;
             src = sauce;
             proxiedUrl = proxiedsauce;
             if (!src) {
