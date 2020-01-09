@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.3',
+      version: '1.3.4',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['Optimized User Action notification.', 'Fixed odd behavior with notifications when updating them.', 'Added settings to change where the notifications should show.', 'Changed notification show animation to be duration based instead of physics based.', 'Fixed notifications sometimes getting stuck if you tried to close them.', 'Actually increment the version and push the changelog smh kms']
+        items: ['Added group DM context menu to context menu patches', 'Fixed notification grouping not working on certain conditions']
       }
     ],
     defaultConfig: [
@@ -537,6 +537,15 @@ var XenoLib = (() => {
         if (!module) return Logger.warn(`Failed to find ContextMenu type`, type);
         Patcher.after(module.prototype, 'render', (_this, _, ret) => handleContextMenu(_this, ret));
       });
+      const GroupDMContextMenu = WebpackModules.getByDisplayName('FluxContainer(GroupDMContextMenu)');
+      if (GroupDMContextMenu) {
+        try {
+          const type = new GroupDMContextMenu({}).render().type;
+          Patcher.after(type.prototype, 'render', (_this, _, ret) => handleContextMenu(_this, ret));
+        } catch (e) {
+          Logger.stacktrace('Failed patching GroupDMContextMenu', e);
+        }
+      }
       function getModule(regex) {
         const modules = WebpackModules.getAllModules();
         for (const index in modules) {
@@ -901,7 +910,7 @@ var XenoLib = (() => {
         warning(content, options = {}) {
           return this.show(content, Object.assign({ color: '#ffa600' }, options));
         },
-        danger(content, options = { n }) {
+        danger(content, options = {}) {
           return this.show(content, Object.assign({ color: '#f04747' }, options));
         },
         error(content, options = {}) {
@@ -920,6 +929,7 @@ var XenoLib = (() => {
          */
         show(content, options = {}) {
           let id = null;
+          options = Object.assign(Utilities.deepclone(defaultOptions), options);
           api.setState(state => {
             if (!options.allowDuplicates) {
               const notif = state.data.find(n => n.content === content && n.timeout === options.timeout);
@@ -933,7 +943,7 @@ var XenoLib = (() => {
             do {
               id = Math.floor(4294967296 * Math.random());
             } while (state.data.findIndex(n => n.id === id) !== -1);
-            return { data: [].concat(state.data, [{ content, ...Object.assign(Utilities.deepclone(defaultOptions), options), id }]) };
+            return { data: [].concat(state.data, [{ content, ...options, id }]) };
           });
           return id;
         },
