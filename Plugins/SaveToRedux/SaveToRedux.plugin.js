@@ -23,7 +23,7 @@
 
 @else@*/
 /*
- * Copyright© 2019-2020, _Lighty_
+ * Copyright © 2019-2020, _Lighty_
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
@@ -50,12 +50,7 @@ var SaveToRedux = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed saving things with multiple dots having the wrong extension', 'Fixed steam images, and similar not be saveable', 'Added extension detection for those links as well', 'Added safety features, so it will only download from proxy if the domain is untrusted. Will warn you about it if the only way to download the image is thru a direct link.', "The file type is now set properly, so Windows users that use Save As.. feature a lot don't have to worry about preserving the extension, as Windows handles that for you, unless you select the file type as All Files (*.*)"]
-      },
-      {
-        title: 'v2.0.5 fixes',
-        type: 'fixed',
-        items: ['Fixed steam image links and similar, failing silently']
+        items: ['Updated image detection', 'Fixed emotes not saving as their name', 'Added support of saving group DM icons (needs XenoLib v1.3.4)', 'Added option to save server and user icons by their respective names instead of randomized (on by default)']
       }
     ],
     defaultConfig: [
@@ -96,7 +91,8 @@ var SaveToRedux = (() => {
               { name: 'Append number: (1)', value: 2 },
               { name: 'Append random', value: 3 }
             ]
-          }
+          },
+          { name: 'User and Server icons get saved by the users or servers name, instead of randomized', id: 'saveByName', type: 'switch', value: true }
         ]
       },
       { type: 'category', id: 'misc', name: 'Misc', collapsible: true, shown: false, settings: [{ name: 'Context menu option at the bottom instead of top', id: 'contextMenuOnBottom', type: 'switch', value: true }] }
@@ -124,6 +120,7 @@ var SaveToRedux = (() => {
     const FormItem = WebpackModules.getByDisplayName('FormItem');
     const Messages = WebpackModules.getByProps('Messages').Messages;
     const TextInput = WebpackModules.getByDisplayName('TextInput');
+    const AvatarModule = WebpackModules.getByProps('getChannelIconURL');
 
     const MessageShit = WebpackModules.find(m => m.default && m.getMessage);
     const TrustStore = WebpackModules.getByProps('isTrustedDomain');
@@ -703,24 +700,28 @@ var SaveToRedux = (() => {
 
       handleContextMenu(_this, ret) {
         if (!ret) return ret;
+        // Logger.info(_this, ret);
         const type = _this.props.type;
         let saveType = 'File';
         let url = '';
         let proxiedUrl = '';
         let customName = '';
-        // image has no type property
+        const isImage = e => /\.{0,1}(png|jpe?g|webp|gif|svg)$/i.test(e);
+        const isVideo = e => /\.{0,1}(mp4|webm|mov)$/i.test(e);
+        const isAudio = e => /\.{0,1}(mp3|ogg|wav|flac)$/i.test(e);
         if (type === 'NATIVE_IMAGE' || type === 'MESSAGE_MAIN') {
           let src;
           if (type === 'NATIVE_IMAGE') {
-            src = Utilities.getNestedProp(ret, 'props.children.props.href');
-            proxiedUrl = Utilities.getNestedProp(ret, 'props.children.props.src');
+            src = Utilities.getNestedProp(ret, 'props.children.props.href') || Utilities.getNestedProp(_this, 'props.href');
+            proxiedUrl = Utilities.getNestedProp(ret, 'props.children.props.src') || Utilities.getNestedProp(_this, 'props.src');
             if (typeof proxiedUrl === 'string') proxiedUrl = proxiedUrl.split('?')[0];
-            if (typeof src !== 'string' || src.indexOf('discordapp.com/channels') !== -1) {
+            /* if src does not have an extension but the proxied URL does, use the proxied URL instead */
+            if (typeof src !== 'string' || src.indexOf('discordapp.com/channels') !== -1 || (!(isImage(src) || isVideo(src) || isAudio(src)) && (isImage(proxiedUrl) || isVideo(proxiedUrl) || isAudio(proxiedUrl)))) {
               src = proxiedUrl;
               proxiedUrl = '';
             }
           }
-          // console.log('src', src, 'proxiedUrl', proxiedUrl, _this, ret);
+          // Logger.info('src', src, 'proxiedUrl', proxiedUrl, _this, ret);
           if (!src) src = Utilities.getNestedProp(_this, 'props.attachment.href') || Utilities.getNestedProp(_this, 'props.attachment.url');
           /* is that enough specific cases? */
           if (typeof src === 'string') {
@@ -733,9 +734,6 @@ var SaveToRedux = (() => {
               src = src.replace('preview', 'i');
             } else if (src.indexOf('twimg.com/') !== -1) saveType = 'Image';
           }
-          const isImage = e => /\.{0,1}(png|jpe?g|webp|gif|svg)$/i.test(e);
-          const isVideo = e => /\.{0,1}(mp4|webm|mov)$/i.test(e);
-          const isAudio = e => /\.{0,1}(mp3|ogg|wav|flac)$/i.test(e);
           if (!src) {
             let C = _this.props.target;
             let proxiedsauce;
@@ -748,14 +746,15 @@ var SaveToRedux = (() => {
             if (!proxiedsauce && !sauce) return;
             if (proxiedsauce) proxiedsauce = proxiedsauce.split('?')[0];
             if (sauce) sauce = sauce.split('?')[0];
-            // console.log('sauce', sauce, 'proxiedsauce', proxiedsauce);
+            // Logger.info('sauce', sauce, 'proxiedsauce', proxiedsauce);
             /* do not check if proxiedsauce is an image video or audio, it will always be video or image!
                an anchor element however is just a link which could be anything! so best we check it
              */
             if (!proxiedsauce && !(isImage(sauce) || isVideo(sauce) || isAudio(sauce))) return;
             src = sauce;
             proxiedUrl = proxiedsauce;
-            if (!src) {
+            /* if src does not have an extension but the proxied URL does, use the proxied URL instead */
+            if (!src || (!(isImage(sauce) || isVideo(sauce) || isAudio(sauce)) && (isImage(proxiedsauce) || isVideo(proxiedsauce) || isAudio(proxiedsauce)))) {
               src = proxiedsauce;
               proxiedUrl = '';
             }
@@ -766,7 +765,7 @@ var SaveToRedux = (() => {
           if (isImage(url) || url.indexOf('//steamuserimages') !== -1) saveType = 'Image';
           else if (isVideo(url)) saveType = 'Video';
           else if (isAudio(url)) saveType = 'Audio';
-          else if (url.indexOf('app.com/emojis/') !== -1) {
+          if (url.indexOf('app.com/emojis/') !== -1) {
             saveType = 'Emoji';
             const emojiId = url.split('emojis/')[1].split('.')[0];
             const emoji = EmojiUtils.getDisambiguatedEmojiContext().getById(emojiId);
@@ -786,19 +785,26 @@ var SaveToRedux = (() => {
             if (isImage(_this.state.__STR_extension)) saveType = 'Image';
             else if (isVideo(_this.state.__STR_extension)) saveType = 'Video';
             else if (isAudio(_this.state.__STR_extension)) saveType = 'Audio';
+          } else if (url.indexOf('//discordapp.com/assets/') !== -1 && _this.props.target && _this.props.target.className.indexOf('emoji') !== -1) {
+            const alt = _this.props.target.alt;
+            if (alt) customName = alt.split(':')[1] || alt;
           }
           if (!Array.isArray(ret.props.children)) ret.props.children = [ret.props.children];
         } else if (type === 'GUILD_ICON_BAR') {
           saveType = 'Icon';
           url = _this.props.guild.getIconURL();
           if (!url) return;
-          /* customName = _this.props.guild.name; */
+          if (this.settings.saveOptions.saveByName) customName = _this.props.guild.name;
         } else {
-          saveType = 'Avatar';
-          if (!_this.props.user || !_this.props.user.getAvatarURL) return /* ZLibrary.Logger.warn(this.getName(), `Something went wrong, user or avatar URL === undefined, unknown context menu type "${type}" ?`); */;
-          url = _this.props.user.getAvatarURL();
+          if (_this.props.user && _this.props.user.getAvatarURL) {
+            saveType = 'Avatar';
+            url = _this.props.user.getAvatarURL();
+            if (this.settings.saveOptions.saveByName) customName = _this.props.user.username;
+          } else if (_this.props.channel && _this.props.channel.type === 3 /* group DM */) {
+            url = AvatarModule.getChannelIconURL(_this.props.channel);
+            saveType = 'Icon';
+          } else return /* hurr durr? */;
           if (url.startsWith('/assets/')) url = 'https://discordapp.com' + url;
-          /* customName = _this.props.user.username; */
         }
         try {
           const submenu = this.constructMenu(

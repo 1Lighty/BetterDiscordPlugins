@@ -1,4 +1,10 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.5
+- Updated image detection
+- Fixed emotes not saving as their name
+- Added support of saving group DM icons (needs XenoLib v1.3.4)
+- Added option to save server and user icons by their respective names instead of randomized (on by default)
+
 ### 2.0.4
 - Fixed saving things with multiple dots having the wrong extension
 - Fixed steam images, and similar not be saveable
