@@ -41,16 +41,16 @@ var CrashRecovery = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.1.0',
+      version: '0.1.1',
       description: 'THIS IS AN EXPERIMENTAL PLUGIN! In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
     },
     changelog: [
       {
-        title: 'Initial release',
-        type: 'added',
-        items: ['Initial release', 'Should handle most crashes on its own.']
+        title: 'fixed',
+        type: 'fixed',
+        items: ['Fixed failing to recover from a crash if a plugin is preventing it.']
       }
     ]
   };
@@ -194,6 +194,7 @@ var CrashRecovery = (() => {
             pluginModule.disablePlugin(responsiblePlugins[0]);
           } catch (e) {}
           XenoLib.Notifications.update(this.notificationId, { content: `Failed, suspecting ${responsiblePlugins[0]} for recovery failure` });
+          if (!this.disabledPlugins) this.disabledPlugins = [];
           this.disabledPlugins.push(responsiblePlugins[0]);
         }
         this.setStateTimeout = setTimeout(() => {
