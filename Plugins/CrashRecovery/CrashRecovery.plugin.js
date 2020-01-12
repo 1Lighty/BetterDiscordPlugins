@@ -41,7 +41,7 @@ var CrashRecovery = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.1.1',
+      version: '0.1.2',
       description: 'THIS IS AN EXPERIMENTAL PLUGIN! In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
@@ -50,7 +50,7 @@ var CrashRecovery = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed failing to recover from a crash if a plugin is preventing it.']
+        items: ['Fixed crash screen being blank if a plugin failed to stop properly.', 'Now closes all modals, including the special types that are not stored inside ModalStack.']
       }
     ]
   };
@@ -151,11 +151,17 @@ var CrashRecovery = (() => {
           DiscordModules.LayerManager.popAllLayers();
           DiscordModules.PopoutStack.closeAll();
           DiscordModules.NavigationUtils.transitionTo('/channels/@me');
+          WebpackModules.getByProps('openModal').modalsApi.setState(() => ({ default: [] })); /* slow? unsafe? async? */
         });
       }
 
       handleCrash(_this, stack, isRender) {
         this.onCrashRecoveredDelayedCall.cancel();
+        if (!isRender) {
+          _this.setState({
+            error: { stack }
+          });
+        }
         if (!this.notificationId) {
           this.notificationId = XenoLib.Notifications.danger('Crash detected, attempting recovery', { timeout: 0, loading: true });
         }
@@ -177,11 +183,6 @@ var CrashRecovery = (() => {
             this.suspectedPlugin2 = this.autoDisabledPlugins.shift().name;
             global.bdpluginErrors = [];
           }, 750);
-        }
-        if (!isRender) {
-          _this.setState({
-            error: { stack }
-          });
         }
         if (this.setStateTimeout) return;
         if (this.attempts >= 10 || (this.attempts >= 2 && (!responsiblePlugins || !responsiblePlugins[0]))) {
