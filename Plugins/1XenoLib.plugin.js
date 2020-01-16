@@ -1228,7 +1228,7 @@ var XenoLib = (() => {
       document.querySelector('#app-mount').appendChild(DOMElement);
     } catch (e) {
       Logger.stacktrace('There has been an error loading the Notifications system, fallback object has been put in place to prevent errors', e);
-      XenoLib.notifications = {
+      XenoLib.Notifications = {
         success(content, options = {}) {},
         info(content, options = {}) {},
         warning(content, options = {}) {},
