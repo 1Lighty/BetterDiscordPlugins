@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.4',
+      version: '1.3.5',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['Added group DM context menu to context menu patches', 'Fixed notification grouping not working on certain conditions']
+        items: ['Fixed notifications system not loading properly.']
       }
     ],
     defaultConfig: [
@@ -891,7 +891,7 @@ var XenoLib = (() => {
 
     /* NOTIFICATIONS START */
     try {
-      const zustand = WebpackModules.getByString('console.warn("Zustand: the 2nd arg');
+      const zustand = WebpackModules.getByRegex(/\w\(function\(\){return \w\(\w\)},\[\]\),\w\?\w:\w\.currentSlice},\w\]}/);
       const [useStore, api] = zustand(e => ({ data: [] }));
       const defaultOptions = {
         loading: false,
@@ -1227,7 +1227,17 @@ var XenoLib = (() => {
       ReactDOM.render(React.createElement(NotificationsWrapper, {}), DOMElement);
       document.querySelector('#app-mount').appendChild(DOMElement);
     } catch (e) {
-      Logger.stacktrace('There has been an error loading the Notifications system', e);
+      Logger.stacktrace('There has been an error loading the Notifications system, fallback object has been put in place to prevent errors', e);
+      XenoLib.notifications = {
+        success(content, options = {}) {},
+        info(content, options = {}) {},
+        warning(content, options = {}) {},
+        danger(content, options = {}) {},
+        error(content, options = {}) {},
+        show(content, options = {}) {},
+        remove(id) {},
+        update(id, options) {}
+      };
     }
     /* NOTIFICATIONS END */
 
