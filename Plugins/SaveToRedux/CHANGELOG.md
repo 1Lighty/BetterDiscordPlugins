@@ -1,4 +1,9 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.7
+- Fixed "Disable this warning and save this option" not saving the option when a file was conflicting
+- Corrected "Save As..." showing "Images" as file type even if it wasn't an image
+- Added option to append server or DM recipients name to downloaded images/files. Also as a custom option named `name` (how creative)
+
 ### 2.0.6
 - Updated image detection
 - Fixed emotes not saving as their name

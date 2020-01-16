@@ -41,7 +41,7 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.6',
+      version: '2.0.7',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -50,7 +50,7 @@ var SaveToRedux = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Updated image detection', 'Fixed emotes not saving as their name', 'Added support of saving group DM icons (needs XenoLib v1.3.4)', 'Added option to save server and user icons by their respective names instead of randomized (on by default)']
+        items: ['Fixed "Disable this warning and save this option" not saving the option when a file was conflicting', 'Corrected "Save As..." showing "Images" as file type even if it wasn\'t an image', 'Added option to append server or DM recipients name to downloaded images/files. Also as a custom option named `name` (how creative)']
       }
     ],
     defaultConfig: [
@@ -78,7 +78,7 @@ var SaveToRedux = (() => {
               { label: 'Custom', value: 4 }
             ]
           },
-          { name: 'Custom file name save', note: 'Available options: file rand date time day month year hours minutes seconds. options must be wrapped in ${<OPTION>}!', id: 'customFileName', type: 'textbox', value: '${file}_${date}_${time}' },
+          { name: 'Custom file name save', note: 'Available options: file rand date time day month year hours minutes seconds name. options must be wrapped in ${<OPTION>}!', id: 'customFileName', type: 'textbox', value: '${file}_${date}_${time}' },
           { name: 'Random string length', id: 'randLength', type: 'textbox', value: 7 },
           {
             name: 'Conflicting filename mode',
@@ -92,7 +92,8 @@ var SaveToRedux = (() => {
               { name: 'Append random', value: 3 }
             ]
           },
-          { name: 'User and Server icons get saved by the users or servers name, instead of randomized', id: 'saveByName', type: 'switch', value: true }
+          { name: 'User and Server icons get saved by the users or servers name, instead of randomized', id: 'saveByName', type: 'switch', value: true },
+          { name: 'Append server name or DM name to image/file name', id: 'appendCurrentName', type: 'switch', value: false }
         ]
       },
       { type: 'category', id: 'misc', name: 'Misc', collapsible: true, shown: false, settings: [{ name: 'Context menu option at the bottom instead of top', id: 'contextMenuOnBottom', type: 'switch', value: true }] }
@@ -337,23 +338,36 @@ var SaveToRedux = (() => {
         return result;
       }
 
+      getLocationName() {
+        if (DiscordAPI.currentGuild) return DiscordAPI.currentGuild.name;
+        if (!DiscordAPI.currentChannel) return '';
+        if (DiscordAPI.currentChannel.recipient) return DiscordAPI.currentChannel.recipient.username;
+        if (DiscordAPI.currentChannel.name) return DiscordAPI.currentChannel.name;
+        return DiscordAPI.currentChannel.members.reduce((p, c) => (p ? `${p}, ${c.username}` : c.username), '');
+      }
+
       formatFilename(name, previewDate, previewRand) {
         const date = previewDate || new Date();
         const rand = previewRand || this.rand();
+        let ret = 'INTERNAL_ERROR';
         switch (this.settings.saveOptions.fileNameType) {
           case 0: // original
-            return name;
+            ret = name;
+            break;
           case 1: // date
-            return `${date
+            ret = `${date
               .toLocaleDateString()
               .split('/')
               .join('-')} ${date.getHours()}-${date.getMinutes()}-${date.getSeconds()}`;
+            break;
           case 2: // random
-            return rand;
+            ret = rand;
+            break;
           case 3: // original + random
-            return `${name}-${rand}`;
+            ret = `${name}-${rand}`;
+            break;
           case 4: // custom
-            // options file rand date time day month year hours minutes seconds
+            // options file rand date time day month year hours minutes seconds name
             return Utilities.formatTString(this.settings.saveOptions.customFileName, {
               rand,
               file: name,
@@ -367,10 +381,15 @@ var SaveToRedux = (() => {
               year: date.getFullYear(),
               hours: date.getHours(),
               minutes: date.getMinutes(),
-              seconds: date.getSeconds()
+              seconds: date.getSeconds(),
+              name: this.getLocationName()
             });
         }
-        return 'INTERNAL_ERROR';
+        if (this.settings.saveOptions.appendCurrentName && (DiscordAPI.currentGuild || DiscordAPI.currentChannel)) {
+          const name = this.getLocationName();
+          if (name) ret += `-${name}`;
+        }
+        return ret;
       }
 
       formatURL(url, requiresSize, customName, fallbackExtension, proxiedUrl) {
@@ -526,7 +545,10 @@ var SaveToRedux = (() => {
                   size: Modals.ModalSizes.SMALL,
                   red: false,
                   onConfirm: () => {
-                    if (ref2.props.value) this.settings.saveOptions.conflictingFilesHandle = ref1.props.value;
+                    if (ref2.props.value) {
+                      this.settings.saveOptions.conflictingFilesHandle = ref1.props.value;
+                      this.saveSettings();
+                    }
                     handleConflict(ref1.props.value);
                   }
                 }
@@ -675,7 +697,7 @@ var SaveToRedux = (() => {
               filters: formattedurl.extension
                 ? [
                     {
-                      name: 'Images',
+                      name: /\.{0,1}(png|jpe?g|webp|gif|svg)$/i.test(formattedurl.extension) ? 'Images' : /\.{0,1}(mp4|webm|mov)$/i.test(formattedurl.extension) ? 'Videos' : /\.{0,1}(mp3|ogg|wav|flac)$/i.test(formattedurl.extension) ? 'Audio' : 'Files',
                       extensions: [formattedurl.extension]
                     },
                     {
