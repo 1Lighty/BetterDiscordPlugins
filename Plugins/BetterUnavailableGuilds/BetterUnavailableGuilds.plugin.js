@@ -41,7 +41,7 @@ var BetterUnavailableGuilds = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.2.0',
+      version: '0.2.1',
       description: 'Makes unavailable guilds (servers) still show in the list, and be able to drag it around.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
@@ -51,6 +51,11 @@ var BetterUnavailableGuilds = (() => {
         title: 'QOL changes',
         type: 'added',
         items: ['Now supports multiple users at once, and multiple clients at once, also multiple release channels at once', 'Reinserts missing servers even when logging out or when websocket dies', 'Added a method of adding missing servers and a way to share them to others that need it', 'Added BetterDiscord and BetterDiscord2 servers as pre cached servers for convenience sake']
+      },
+      {
+        title: '0.2.1 changes',
+        type: 'fixed',
+        items: ['Fixed plugin completely failing to load if no config is present']
       }
     ],
     defaultConfig: [
@@ -87,7 +92,7 @@ var BetterUnavailableGuilds = (() => {
     const loadData = (key, defaults) => {
       try {
         if (FsModule.existsSync(pluginConfigFile)) {
-          return JSON.parse(FsModule.readFileSync(pluginConfigFile))[key];
+          return Object.assign(XenoLib.DiscordUtils.cloneDeep(defaults), JSON.parse(FsModule.readFileSync(pluginConfigFile))[key]);
         } else {
           return XenoLib.DiscordUtils.cloneDeep(defaults);
         }
