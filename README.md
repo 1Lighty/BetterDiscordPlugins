@@ -21,3 +21,6 @@ This is also a complete rewrite of Save To by Metalloriff.
 Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.
 ## [UnreadBadgesRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/UnreadBadgesRedux "UnreadBadgesRedux")
 Shows an unread badge on folders, server icons and channels, all toggleable with the count adjustable.
+
+## [BetterUnavailableGuilds](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/BetterUnavailableGuilds "BetterUnavailableGuilds")
+Makes unavailable guilds (servers) still show in the list, and be able to drag it around/interact with it.
