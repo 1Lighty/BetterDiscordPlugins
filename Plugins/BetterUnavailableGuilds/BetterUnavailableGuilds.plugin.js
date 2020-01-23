@@ -41,21 +41,16 @@ var BetterUnavailableGuilds = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.2.1',
+      version: '0.2.2',
       description: 'Makes unavailable guilds (servers) still show in the list, and be able to drag it around.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
     },
     changelog: [
       {
-        title: 'QOL changes',
+        title: 'ED is bad',
         type: 'added',
-        items: ['Now supports multiple users at once, and multiple clients at once, also multiple release channels at once', 'Reinserts missing servers even when logging out or when websocket dies', 'Added a method of adding missing servers and a way to share them to others that need it', 'Added BetterDiscord and BetterDiscord2 servers as pre cached servers for convenience sake']
-      },
-      {
-        title: '0.2.1 changes',
-        type: 'fixed',
-        items: ['Fixed plugin completely failing to load if no config is present']
+        items: ['Fixed plugin not working AT ALL in ED', 'Fixed a specific error where plugin loaded, but you are not logged in yet']
       }
     ],
     defaultConfig: [
@@ -87,17 +82,23 @@ var BetterUnavailableGuilds = (() => {
     const GuildAvailabilityStore = WebpackModules.getByProps('unavailableGuilds');
 
     const FsModule = require('fs');
-    const pluginConfigFile = DataStore.getPluginFile(config.info.name);
+    // fuck ED
+    const pluginConfigFile = global.DataStore && !global.ED && DataStore.getPluginFile(config.info.name);
 
     const loadData = (key, defaults) => {
+      const cloned = XenoLib.DiscordUtils.cloneDeep(defaults);
       try {
-        if (FsModule.existsSync(pluginConfigFile)) {
-          return Object.assign(XenoLib.DiscordUtils.cloneDeep(defaults), JSON.parse(FsModule.readFileSync(pluginConfigFile))[key]);
+        if (pluginConfigFile) {
+          if (FsModule.existsSync(pluginConfigFile)) {
+            return Object.assign(cloned, JSON.parse(FsModule.readFileSync(pluginConfigFile))[key]);
+          } else {
+            return cloned;
+          }
         } else {
-          return XenoLib.DiscordUtils.cloneDeep(defaults);
+          return Object.assign(cloned, BdApi.loadData(config.info.name, key));
         }
       } catch (e) {
-        return XenoLib.DiscordUtils.cloneDeep(defaults);
+        return cloned;
       }
     };
 
@@ -172,7 +173,7 @@ var BetterUnavailableGuilds = (() => {
             this.props.onEnterPressed(parsed);
             this.props.onChange('');
           } catch (err) {
-            (global.fuck = err), Toasts.error(`Failed to parse: ${err.message || err}`);
+            Toasts.error(`Failed to parse: ${err.message || err}`);
           }
         };
         return ret;
@@ -208,20 +209,7 @@ var BetterUnavailableGuilds = (() => {
         this.handleGuildStoreChange = XenoLib.DiscordUtils.throttle(this.handleGuildStoreChange, 15000 + (GLOBAL_ENV.RELEASE_CHANNEL === 'ptb' ? 2500 : GLOBAL_ENV.RELEASE_CHANNEL === 'canary' ? 5000 : 0));
       }
       onStart() {
-        this._guildRecord = loadData('data', {
-          data: {}
-        }).data;
-        const ids = Object.keys(this._guildRecord);
-        if (ids.length) {
-          /* old config, transfer it */
-          if (this._guildRecord[ids[0]] && this._guildRecord[ids[0]].owner_id) {
-            const guilds = XenoLib.DiscordUtils.cloneDeep(this._guildRecord);
-            this._guildRecord = {};
-            this.guildRecord = guilds;
-          }
-        }
-        this.guildRecord['86004744966914048'] = { id: '86004744966914048', icon: '292e7f6bfff2b71dfd13e508a859aedd', name: 'BetterDiscord', owner_id: '81388395867156480', joined_at: Date.now(), default_message_notifications: 1 };
-        this.guildRecord['280806472928198656'] = { id: '280806472928198656', icon: 'cbdda04c041699d80689b99c4e5e89dc', name: 'BetterDiscord2', owner_id: '81388395867156480', joined_at: Date.now(), default_message_notifications: 1 };
+        this._guildRecord = loadData('data', { data: {} }).data;
         this.verifyAllServersCachedInClient();
         GuildStore.addChangeListener(this.handleGuildStoreChange);
         this.handleGuildStoreChange();
@@ -275,6 +263,7 @@ var BetterUnavailableGuilds = (() => {
       verifyAllServersCachedInClient() {
         if (!DiscordAPI.currentUser) return; /* hhhhhhhh */
         Dispatcher.wait(() => {
+          this.ensureBDGuildsPreCached();
           this._verifying = true;
           const unavailable = XenoLib.DiscordUtils.cloneDeep(GuildAvailabilityStore.unavailableGuilds);
           unavailable.forEach(guildId => {
@@ -308,6 +297,11 @@ var BetterUnavailableGuilds = (() => {
         this.verifyAllServersCachedInClient();
       }
 
+      ensureBDGuildsPreCached() {
+        this.guildRecord['86004744966914048'] = { id: '86004744966914048', icon: '292e7f6bfff2b71dfd13e508a859aedd', name: 'BetterDiscord', owner_id: '81388395867156480', joined_at: Date.now(), default_message_notifications: 1 };
+        this.guildRecord['280806472928198656'] = { id: '280806472928198656', icon: 'cbdda04c041699d80689b99c4e5e89dc', name: 'BetterDiscord2', owner_id: '81388395867156480', joined_at: Date.now(), default_message_notifications: 1 };
+      }
+
       ensureDataSettable() {
         if (!this._guildRecord[DiscordAPI.currentUser.id]) this._guildRecord[DiscordAPI.currentUser.id] = {};
         if (!this._guildRecord[DiscordAPI.currentUser.id][GLOBAL_ENV.RELEASE_CHANNEL]) {
@@ -322,7 +316,8 @@ var BetterUnavailableGuilds = (() => {
 
       get guildRecord() {
         this.ensureDataSettable();
-        return this._guildRecord[DiscordAPI.currentUser.id][GLOBAL_ENV.RELEASE_CHANNEL];
+        const ret = this._guildRecord[DiscordAPI.currentUser.id][GLOBAL_ENV.RELEASE_CHANNEL];
+        return ret;
       }
       set guildRecord(val) {
         this.ensureDataSettable();
