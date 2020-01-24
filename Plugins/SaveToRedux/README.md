@@ -1,4 +1,4 @@
-# [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux")
+# SaveToRedux [![download](https://i.imgur.com/OAHgjZu.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux&dl=1 "SaveToRedux")
 Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.
 ### Features
 Right click on an image, video, file, user, guild icon or emote to be able to set folders and save to folders, under the Save * To context menu submenu.  

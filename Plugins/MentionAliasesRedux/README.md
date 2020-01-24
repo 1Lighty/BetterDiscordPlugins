@@ -1,4 +1,4 @@
-# [MentionAliasesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=MentionAliasesRedux "MentionAliasesRedux")
+# MentionAliasesRedux [![download](https://i.imgur.com/OAHgjZu.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=MentionAliasesRedux&dl=1 "MentionAliasesRedux")
 Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.
 ### Features
 Right click on a user or DM to set an alias, or create a group or add them to a group.  

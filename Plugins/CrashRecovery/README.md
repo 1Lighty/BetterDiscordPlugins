@@ -1,4 +1,4 @@
-# [CrashRecovery](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery "CrashRecovery")
+# CrashRecovery [![download](https://i.imgur.com/OAHgjZu.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery&dl=1 "CrashRecovery")
 THIS IS AN EXPERIMENTAL PLUGIN! In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.
 ### Features
 If your Discord crashes when you open it, it'll attempt to "uncrash" it, and disable any plugin that is preventing recovery.  

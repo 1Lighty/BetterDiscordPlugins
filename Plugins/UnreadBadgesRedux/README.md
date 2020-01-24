@@ -1,4 +1,4 @@
-# [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux")
+# UnreadBadgesRedux [![download](https://i.imgur.com/OAHgjZu.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux&dl=1 "UnreadBadgesRedux")
 Adds a number badge to server icons and channels.
 ### Features
 Shows an unread badge on folders, server icons and channels, all toggleable with the count adjustable.
