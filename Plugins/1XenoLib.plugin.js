@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.5',
+      version: '1.3.6',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['Fixed notifications system not loading properly.']
+        items: ['Nudged notifications downwards a bit', 'Fixed conditional error related to notifications']
       }
     ],
     defaultConfig: [
@@ -125,6 +125,12 @@ var XenoLib = (() => {
       }
     };
 
+    XenoLib.getClass = arg => {
+      const args = arg.split(' ');
+      return WebpackModules.getByProps(...args)[args[args.length - 1]];
+    };
+    XenoLib.getSingleClass = arg => XenoLib.getClass(arg).split(' ')[0];
+
     const LibrarySettings = XenoLib.loadData(config.info.name, 'settings', DefaultLibrarySettings);
 
     PluginUtilities.addStyle(
@@ -137,11 +143,11 @@ var XenoLib = (() => {
       .xenoLib-color-picker .xenoLib-button:hover {
         width: 128px;
       }
-      .xenoLib-color-picker .xenoLib-button .text-2sI5Sd {
+      .xenoLib-color-picker .xenoLib-button .${XenoLib.getSingleClass('recording text')} {
         opacity: 0;
         transform: translate3d(200%,0,0);
       }
-      .xenoLib-color-picker .xenoLib-button:hover .text-2sI5Sd {
+      .xenoLib-color-picker .xenoLib-button:hover .${XenoLib.getSingleClass('recording text')} {
         opacity: 1;
         transform: translateZ(0);
       }
@@ -184,7 +190,7 @@ var XenoLib = (() => {
         overflow: hidden;
       }
       .xenoLib-notification-content-wrapper {
-        padding: 20px 20px 0 20px;
+        padding: 22px 20px 0 20px;
       }
       .xenoLib-centering-bottomLeft .xenoLib-notification-content-wrapper:first-of-type, .xenoLib-centering-bottomMiddle .xenoLib-notification-content-wrapper:first-of-type, .xenoLib-centering-bottomRight .xenoLib-notification-content-wrapper:first-of-type {
         padding: 0 20px 20px 20px;
@@ -282,12 +288,6 @@ var XenoLib = (() => {
     );
 
     XenoLib.getUser = WebpackModules.getByProps('getUser', 'acceptAgreements').getUser;
-
-    XenoLib.getClass = arg => {
-      const args = arg.split(' ');
-      return WebpackModules.getByProps(...args)[args[args.length - 1]];
-    };
-    XenoLib.getSingleClass = arg => XenoLib.getClass(arg).split(' ')[0];
     XenoLib.joinClassNames = WebpackModules.getModule(e => e.default && e.default.default);
 
     XenoLib.authorId = '239513071272329217';
@@ -560,22 +560,9 @@ var XenoLib = (() => {
       somemoremenus.forEach(menu => {
         if (!menu) return Logger.warn('Special context menu is undefined!');
         const origDef = menu.exports.default;
-        const originalFunc = Utilities.getNestedProp(menu, 'exports.BDFDBpatch.default.originalMethod') || menu.exports.default;
         Patcher.after(menu.exports, 'default', (_, [props], ret) => handleContextMenu({ props }, ret, true));
-        /* make it friendly to other plugins and libraries that search by string
-           note: removing this makes BDFDB shit itself
-         */
-        Patcher.instead(menu.exports.default, 'toString', (_, args, __) => originalFunc.toString(...args));
-        /* if BDFDB already patched it, patch the function BDFDB is storing in case it decides to unaptch
-           this is to prevent BDFDB from removing our patch
-           this function is never called in BDFDB, it's only stored for restore
-        */
         if (origDef.isBDFDBpatched && menu.exports.BDFDBpatch && typeof menu.exports.BDFDBpatch.default.originalMethod === 'function') {
           Patcher.after(menu.exports.BDFDBpatch.default, 'originalMethod', (_, [props], ret) => handleContextMenu({ props }, ret, true));
-          /* make it friendly to other plugins and libraries that search by string
-           note: removing this makes BDFDB shit itself
-          */
-          Patcher.instead(menu.exports.BDFDBpatch.default.originalMethod, 'toString', (_, args, __) => originalFunc.toString(...args));
         }
       });
       XenoLib.__contextPatches.__contextPatched = true;
@@ -617,7 +604,7 @@ var XenoLib = (() => {
         ...options
       });
     XenoLib.createContextMenuGroup = (children, options) => React.createElement(ContextMenuItemsGroup, { children, ...options });
-    XenoLib.DiscordUtils = WebpackModules.getByProps('bindAll', 'debounce');
+    XenoLib._ = XenoLib.DiscordUtils = WebpackModules.getByProps('bindAll', 'debounce');
 
     const dialog = require('electron').remote.dialog;
     const showSaveDialog = dialog.showSaveDialogSync || dialog.showSaveDialog;
@@ -651,7 +638,7 @@ var XenoLib = (() => {
           path: props.path,
           error: null
         };
-        XenoLib.DiscordUtils.bindAll(this, ['handleOnBrowse', 'handleChange']);
+        XenoLib._.bindAll(this, ['handleOnBrowse', 'handleChange']);
         this.delayedCallVerifyPath = new DelayedCall(500, () =>
           FsModule.access(this.state.path, FsModule.constants.W_OK, error => {
             const invalid = (error && error.message.match(/.*: (.*), access '/)[1]) || null;
@@ -717,7 +704,7 @@ var XenoLib = (() => {
       constructor(props) {
         super(props);
         this.state = { value: props.value };
-        XenoLib.DiscordUtils.bindAll(this, ['handleChange']);
+        XenoLib._.bindAll(this, ['handleChange']);
       }
       handleChange(value) {
         this.setState({ value });
@@ -753,7 +740,7 @@ var XenoLib = (() => {
           value: props.value,
           multiInputFocused: false
         };
-        XenoLib.DiscordUtils.bindAll(this, ['handleChange', 'handleColorPicker', 'handleReset']);
+        XenoLib._.bindAll(this, ['handleChange', 'handleColorPicker', 'handleReset']);
       }
       handleChange(value) {
         if (!value.length) {
@@ -935,7 +922,7 @@ var XenoLib = (() => {
               const notif = state.data.find(n => n.content === content && n.timeout === options.timeout);
               if (notif) {
                 id = notif.id;
-                Dispatcher.dispatch({ type: 'XL_NOTIFS_DUPLICATE', id: notif.id });
+                Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_DUPLICATE', id: notif.id });
                 return state;
               }
             }
@@ -948,7 +935,7 @@ var XenoLib = (() => {
           return id;
         },
         remove(id) {
-          Dispatcher.dispatch({ type: 'XL_NOTIFS_REMOVE', id });
+          Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_REMOVE', id });
         },
         /**
          * @param {Number} id Notification ID
@@ -966,7 +953,7 @@ var XenoLib = (() => {
             state.data[idx] = Object.assign(state.data[idx], options);
             return state;
           });
-          Dispatcher.dispatch({ type: 'XL_NOTIFS_UPDATE', id, ...options });
+          Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_UPDATE', id, ...options });
         }
       };
       XenoLib.Notifications = utils;
@@ -997,7 +984,7 @@ var XenoLib = (() => {
           this._animationCancel = () => {};
           this._oldOffsetHeight = 0;
           this._initialProgress = !this.props.timeout ? (this.state.loading && this.state.progress !== -1 ? this.state.progress : 100) : 0;
-          XenoLib.DiscordUtils.bindAll(this, ['closeNow', 'handleResizeEvent', 'handleDispatch']);
+          XenoLib._.bindAll(this, ['closeNow', 'handleResizeEvent', 'handleDispatch']);
         }
         componentDidMount() {
           this._unsubscribe = api.subscribe(_ => this.checkOffScreen());
@@ -1099,7 +1086,7 @@ var XenoLib = (() => {
                 }
                 const isSettingHeight = this._ref.offsetHeight !== this._contentRef.offsetHeight;
                 await next({ opacity: 1, height: this._contentRef.offsetHeight });
-                if (isSettingHeight) Dispatcher.dispatch({ type: 'XL_NOTIFS_ANIMATED' });
+                if (isSettingHeight) Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
                 if (this.state.resetBar || this.state.hovered) {
                   await next({ progress: 0 }); /* shit gets reset */
                   this.state.resetBar = false;
@@ -1165,6 +1152,7 @@ var XenoLib = (() => {
                     },
                     onClick: e => {
                       if (!this.props.onClick) return;
+                      if (e.target && e.target.getAttribute('role') === 'button') return;
                       this.props.onClick();
                       this.closeNow();
                     },
@@ -1367,7 +1355,7 @@ var XenoLib = (() => {
             const DOMElement = document.querySelector('.xenoLib-notifications');
             if (DOMElement) {
               DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
-              Dispatcher.dispatch({ type: 'XL_NOTIFS_ANIMATED' });
+              Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
             }
           }
         }
