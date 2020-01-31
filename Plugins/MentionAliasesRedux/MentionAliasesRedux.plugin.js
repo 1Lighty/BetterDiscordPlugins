@@ -41,7 +41,7 @@ var MentionAliasesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.3',
+      version: '2.0.4',
       description: 'Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MentionAliasesRedux/MentionAliasesRedux.plugin.js'
@@ -50,7 +50,7 @@ var MentionAliasesRedux = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed clicking items in the menu not working', 'Fixed tagging groups not working well', 'Fixed unfriendly patch']
+        items: ['Fixed tags in chat not showing but throwing an error instead in canary', 'Fixed tags not showing in new friends list']
       }
     ],
     defaultConfig: [
@@ -151,7 +151,7 @@ var MentionAliasesRedux = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, TextElement, FlexChild, PopoutOpener, Textbox, UserSettingsStore } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, TextElement, FlexChild, PopoutOpener, Textbox, UserSettingsStore, MessageStore } = DiscordModules;
 
     const UserStatusStore = WebpackModules.getByProps('getStatus');
 
@@ -659,7 +659,7 @@ var MentionAliasesRedux = (() => {
         Utilities.suppressErrors(this.patchUserModals.bind(this), 'UserProfileBody patch')(this.promises.state);
         Utilities.suppressErrors(this.patchMemberListItem.bind(this), 'MemberListItem patch')(this.promises.state);
         Utilities.suppressErrors(this.patchPrivateChannel.bind(this), 'PrivateChannel patch')(this.promises.state);
-        Utilities.suppressErrors(this.patchFriendRow.bind(this), 'FriendRow patch')(this.promises.state);
+        Utilities.suppressErrors(this.patchPeopleListItem.bind(this), 'FriendRow patch')(this.promises.state);
         Utilities.suppressErrors(this.patchMutualFriends.bind(this), 'MutualFriends patch')(this.promises.state);
         Utilities.suppressErrors(this.patchChannelTextArea.bind(this), 'ChannelTextArea patch')(this.promises.state);
         Utilities.suppressErrors(this.patchMessageUsername.bind(this), 'MessageUsername patch')(this.promises.state);
@@ -696,22 +696,66 @@ var MentionAliasesRedux = (() => {
 
       patchMessageUsername() {
         const MessageModule = WebpackModules.getByProps('MessageUsername', 'Message');
-        Patcher.after(MessageModule.MessageUsername.prototype, 'render', (_this, args, ret) => {
-          if (!_this.props.message.author || !this.settings.display.displayMessageTags) return;
-          const alias = this.getUserAlias(_this.props.message.author.id);
-          if (!alias) return;
-          const oChildren = ret.props.children;
-          ret.props.children = e => {
-            const ret2 = oChildren(e);
-            if (DiscordAPI.UserSettings.displayCompact && !this.settings.display.displayRightCompact) ret2.props.children.unshift(this.createAlias(alias, MessageCompactTagClassname));
-            else ret2.props.children.push(this.createAlias(alias, MessageCozyTagClassname));
-            return ret2;
-          };
-        });
-        /* reason for div:not is so it doesn't match anything that is not an actual message, like pins */
-        const Message = new ReactComponents.ReactComponent('Message', MessageModule.Message, `.${XenoLib.getSingleClass('messageEditorCompact container')} > div:not(.${XenoLib.getSingleClass('marginCompactIndent content')})`);
-        this.patchedModules.push(Message);
-        Message.forceUpdateAll();
+        if (MessageModule) {
+          Patcher.after(MessageModule.MessageUsername.prototype, 'render', (_this, _, ret) => {
+            if (!_this.props.message.author || !this.settings.display.displayMessageTags) return;
+            const alias = this.getUserAlias(_this.props.message.author.id);
+            if (!alias) return;
+            const oChildren = ret.props.children;
+            ret.props.children = e => {
+              const ret2 = oChildren(e);
+              if (DiscordAPI.UserSettings.displayCompact && !this.settings.display.displayRightCompact) ret2.props.children.unshift(this.createAlias(alias, MessageCompactTagClassname));
+              else ret2.props.children.push(this.createAlias(alias, MessageCozyTagClassname));
+              return ret2;
+            };
+          });
+          /* reason for div:not is so it doesn't match anything that is not an actual message, like pins */
+          const Message = new ReactComponents.ReactComponent('Message', MessageModule.Message, `.${XenoLib.getSingleClass('messageEditorCompact container')} > div:not(.${XenoLib.getSingleClass('marginCompactIndent content')})`);
+          this.patchedModules.push(Message);
+          Message.forceUpdateAll();
+        } else {
+          const MessageHeader = WebpackModules.getByIndex(WebpackModules.getIndex(e => e.displayName === 'MessageHeader'));
+          Patcher.after(MessageHeader, 'default', (_, [props], ret) => {
+            const forceUpdate = React.useState()[1];
+            React.useEffect(
+              function() {
+                const e = function() {
+                  forceUpdate({});
+                };
+                Dispatcher.subscribe('MAR_FORCE_UPDATE', e); /* this will make it easier to update the message later */
+                return function() {
+                  Dispatcher.unsubscribe('MAR_FORCE_UPDATE', e);
+                };
+              },
+              [props.message.id, forceUpdate]
+            );
+            if (!props.message.author || !this.settings.display.displayMessageTags) return;
+            const alias = this.getUserAlias(props.message.author.id);
+            if (!alias) return;
+            const username = Utilities.getNestedProp(
+              Utilities.findInReactTree(ret.props.children, e => e && e.props && Array.isArray(e.props.children) && e.props.children.findIndex(m => m && m.type && m.type.displayName === 'Popout') !== -1),
+              'props.children'
+            );
+            if (!username) return; /* eh? */
+            if (DiscordAPI.UserSettings.displayCompact && !this.settings.display.displayRightCompact) username.unshift(this.createAlias(alias, MessageCompactTagClassname));
+            else username.push(this.createAlias(alias, MessageCozyTagClassname));
+          });
+          if (!DiscordAPI.currentChannel) return;
+          const ChannelCache = WebpackModules.getByProps('_channelMessages');
+          const CachedChannel = ChannelCache.get(DiscordAPI.currentChannel.id);
+          ChannelCache.commit(
+            CachedChannel.mutate(e => {
+              e._array.forEach((message, index) => {
+                const cloned = XenoLib._.clone(message);
+                /* we change the reference, nothing else */
+                /* this is to force React.memo to render once more */
+                e._array[index] = cloned;
+                e._map[message.id] = cloned;
+              });
+            })
+          );
+          MessageStore._changeCallbacks.forEach(e => e());
+        }
       }
 
       async patchMemberListItem(promiseState) {
@@ -749,20 +793,36 @@ var MentionAliasesRedux = (() => {
         PrivateChannel.forceUpdateAll();
       }
       /* friends list */
-      async patchFriendRow(promiseState) {
-        const FriendRow = await ReactComponents.getComponentByName('FriendRow', `.${XenoLib.getSingleClass('friendsColumn friendsRow')}`);
+      async patchPeopleListItem(promiseState) {
+        const PeopleListItem = await ReactComponents.getComponentByName('PeopleListItem', `.${XenoLib.getSingleClass('noBorder peopleListItem')}`);
         if (promiseState.cancelled) return;
-        const TypePatch2 = function(e) {
+        const TypePatch3 = function(e) {
           try {
-            const ret = new e.__oldType2MA(e);
+            const ret = new e.__oldType3MA(e);
             ret.props.children.splice(1, 0, this.createAlias(e.__aliasMA, MemberTagClassname));
             return ret;
           } catch (err) {
-            Logger.stacktrace('Error in TypePatch2 for FriendRow patch', err);
+            Logger.stacktrace('Error in TypePatch3 for PeopleListItem patch', err);
+            try {
+              return new e.__oldType3MA(e);
+            } catch (err2) {
+              Logger.stacktrace('Error 2 in TypePatch3 for PeopleListItem patch', err2);
+              return null;
+            }
+          }
+        }.bind(this);
+        const TypePatch2 = function(e) {
+          try {
+            const ret = new e.__oldType2MA(e);
+            ret.props.__oldType3MA = ret.type;
+            ret.type = TypePatch3;
+            return ret;
+          } catch (err) {
+            Logger.stacktrace('Error in TypePatch2 for PeopleListItem patch', err);
             try {
               return new e.__oldType2MA(e);
             } catch (err2) {
-              Logger.stacktrace('Error 2 in TypePatch2 for FriendRow patch', err2);
+              Logger.stacktrace('Error 2 in TypePatch2 for PeopleListItem patch', err2);
               return null;
             }
           }
@@ -771,31 +831,37 @@ var MentionAliasesRedux = (() => {
           try {
             const ret = new e.__oldType1MA(e);
             ret.props.__oldType2MA = ret.type;
-            ret.type = TypePatch2;
+            const DiscordTag = Utilities.getNestedProp(ret, 'props.children.1.props.children.0');
+            if (DiscordTag) {
+              DiscordTag.props.__aliasMA = e.__aliasMA;
+              DiscordTag.props.__oldType2MA = DiscordTag.type;
+              DiscordTag.type = TypePatch2;
+            }
             return ret;
           } catch (err) {
-            Logger.stacktrace('Error in TypePatch1 for FriendRow patch', err);
+            Logger.stacktrace('Error in TypePatch1 for PeopleListItem patch', err);
             try {
               return new e.__oldType1MA(e);
             } catch (err2) {
-              Logger.stacktrace('Error 2 in TypePatch1 for FriendRow patch', err2);
+              Logger.stacktrace('Error 2 in TypePatch1 for PeopleListItem patch', err2);
               return null;
             }
           }
         }.bind(this);
-        TypePatch1.displayName = 'DiscordTag';
-        TypePatch2.displayName = 'NameTag';
-        Patcher.after(FriendRow.component.prototype, 'render', (_this, _, ret) => {
+        TypePatch2.displayName = 'DiscordTag';
+        TypePatch3.displayName = 'NameTag';
+        Patcher.after(PeopleListItem.component.prototype, 'render', (_this, _, ret) => {
           if (!this.settings.display.displayFriendsListTags) return;
           const alias = this.getUserAlias(_this.props.user.id);
           if (!alias) return;
-          const DiscordTag = Utilities.getNestedProp(ret, 'props.children.0.props.children.1');
-          DiscordTag.props.__aliasMA = alias;
-          DiscordTag.props.__oldType1MA = DiscordTag.type;
-          DiscordTag.type = TypePatch1;
+          const UserInfo = Utilities.getNestedProp(ret, 'props.children.props.children.0');
+          if (!UserInfo) return;
+          UserInfo.props.__aliasMA = alias;
+          UserInfo.props.__oldType1MA = UserInfo.type;
+          UserInfo.type = TypePatch1;
         });
-        this.patchedModules.push(FriendRow);
-        FriendRow.forceUpdateAll();
+        this.patchedModules.push(PeopleListItem);
+        PeopleListItem.forceUpdateAll();
       }
       /* mutual friends */
       async patchMutualFriends(promiseState) {
@@ -1037,6 +1103,7 @@ var MentionAliasesRedux = (() => {
 
       forceUpdateAll() {
         this.patchedModules.forEach(module => module.forceUpdateAll());
+        Dispatcher.dirtyDispatch({ type: 'MAR_FORCE_UPDATE' });
       }
 
       getSettingsPanel() {

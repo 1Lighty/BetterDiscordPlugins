@@ -1,4 +1,8 @@
 # [MentionAliasesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=MentionAliasesRedux "MentionAliasesRedux") Changelog
+### 2.0.4
+- Fixed tags in chat not showing but throwing an error instead in canary
+- Fixed tags not showing in new friends list
+
 ### 2.0.3
 - Fixed clicking items in the menu not working
 - Fixed tagging groups not working well
