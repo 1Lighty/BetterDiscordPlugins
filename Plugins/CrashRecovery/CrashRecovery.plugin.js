@@ -41,16 +41,16 @@ var CrashRecovery = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.1.2',
+      version: '0.1.3',
       description: 'THIS IS AN EXPERIMENTAL PLUGIN! In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
+        title: 'sad',
         type: 'fixed',
-        items: ['Fixed crash screen being blank if a plugin failed to stop properly.', 'Now closes all modals, including the special types that are not stored inside ModalStack.']
+        items: ['Fixed crash if XenoLib or ZeresPluginLib were missing']
       }
     ]
   };
@@ -351,7 +351,7 @@ var CrashRecovery = (() => {
               Object.assign(
                 {
                   header,
-                  children: [TextElement({ color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
+                  children: [BdApi.React.createElement(TextElement, { color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
                   red: false,
                   confirmText: 'Download Now',
                   cancelText: 'Cancel',

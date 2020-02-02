@@ -41,16 +41,16 @@ var UnreadBadgesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.0',
+      version: '1.0.1',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'Redux has been released!',
-        type: 'added',
-        items: ["That is all. I don't think much else needs to be said here, does it? It Just Works(tm).", 'Oh yeah, I added a ton of options so have fun with that.']
+        title: 'sad',
+        type: 'fixed',
+        items: ['Fixed crash if XenoLib or ZeresPluginLib were missing']
       }
     ],
     defaultConfig: [
@@ -561,7 +561,7 @@ var UnreadBadgesRedux = (() => {
               Object.assign(
                 {
                   header,
-                  children: [TextElement({ color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
+                  children: [BdApi.React.createElement(TextElement, { color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
                   red: false,
                   confirmText: 'Download Now',
                   cancelText: 'Cancel',

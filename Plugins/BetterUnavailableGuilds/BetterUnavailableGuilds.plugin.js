@@ -41,16 +41,16 @@ var BetterUnavailableGuilds = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.2.2',
+      version: '0.2.3',
       description: 'Makes unavailable guilds (servers) still show in the list, and be able to drag it around.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
     },
     changelog: [
       {
-        title: 'ED is bad',
+        title: 'sad',
         type: 'added',
-        items: ['Fixed plugin not working AT ALL in ED', 'Fixed a specific error where plugin loaded, but you are not logged in yet']
+        items: ['Fixed crash if XenoLib or ZeresPluginLib were missing']
       }
     ],
     defaultConfig: [
@@ -435,7 +435,7 @@ var BetterUnavailableGuilds = (() => {
               Object.assign(
                 {
                   header,
-                  children: [TextElement({ color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
+                  children: [BdApi.React.createElement(TextElement, { color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
                   red: false,
                   confirmText: 'Download Now',
                   cancelText: 'Cancel',

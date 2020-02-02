@@ -41,16 +41,16 @@ var MentionAliasesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.4',
+      version: '2.0.5',
       description: 'Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MentionAliasesRedux/MentionAliasesRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
+        title: 'sad',
         type: 'fixed',
-        items: ['Fixed tags in chat not showing but throwing an error instead in canary', 'Fixed tags not showing in new friends list']
+        items: ['Fixed crash if XenoLib or ZeresPluginLib were missing']
       }
     ],
     defaultConfig: [
@@ -1175,7 +1175,7 @@ var MentionAliasesRedux = (() => {
               Object.assign(
                 {
                   header,
-                  children: [TextElement({ color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
+                  children: [BdApi.React.createElement(TextElement, { color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
                   red: false,
                   confirmText: 'Download Now',
                   cancelText: 'Cancel',

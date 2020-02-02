@@ -41,16 +41,16 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.7',
+      version: '2.0.8',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'Fixed',
+        title: 'sad',
         type: 'fixed',
-        items: ['Fixed "Disable this warning and save this option" not saving the option when a file was conflicting', 'Corrected "Save As..." showing "Images" as file type even if it wasn\'t an image', 'Added option to append server or DM recipients name to downloaded images/files. Also as a custom option named `name` (how creative)']
+        items: ['Fixed crash if XenoLib or ZeresPluginLib were missing']
       }
     ],
     defaultConfig: [
@@ -930,7 +930,7 @@ var SaveToRedux = (() => {
               Object.assign(
                 {
                   header,
-                  children: [TextElement({ color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
+                  children: [BdApi.React.createElement(TextElement, { color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
                   red: false,
                   confirmText: 'Download Now',
                   cancelText: 'Cancel',

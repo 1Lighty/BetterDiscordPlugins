@@ -1,4 +1,7 @@
 # [BetterUnavailableGuilds](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterUnavailableGuilds "BetterUnavailableGuilds") Changelog
+### 0.2.3
+- Fixed crash if XenoLib or ZeresPluginLib were missing
+
 ### 0.2.2
 - Fixed plugin not working AT ALL in ED
 - Fixed a specific error where plugin loaded, but you are not logged in yet

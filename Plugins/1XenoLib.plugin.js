@@ -1422,7 +1422,7 @@ var XenoLib = (() => {
                 {
                   header,
                   children: [
-                    TextElement({
+                    BdApi.React.createElement(TextElement, {
                       color: TextElement.Colors.PRIMARY,
                       children: [`${content} Please click Download Now to install it.`]
                     })

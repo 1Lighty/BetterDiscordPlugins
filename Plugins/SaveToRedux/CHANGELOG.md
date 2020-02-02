@@ -1,4 +1,7 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.8
+- Fixed crash if XenoLib or ZeresPluginLib were missing
+
 ### 2.0.7
 - Fixed "Disable this warning and save this option" not saving the option when a file was conflicting
 - Corrected "Save As..." showing "Images" as file type even if it wasn't an image

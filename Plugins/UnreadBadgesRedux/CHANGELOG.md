@@ -1,4 +1,7 @@
 # [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux") Changelog
+### 1.0.1
+- Fixed crash if XenoLib or ZeresPluginLib were missing
+
 ### 1.0.0
 - Initial release
 - Redux has been released!
