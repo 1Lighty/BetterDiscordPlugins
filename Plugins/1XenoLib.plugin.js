@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.6',
+      version: '1.3.7',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['Nudged notifications downwards a bit', 'Fixed conditional error related to notifications']
+        items: ['Fixed crash if you deleted Zeres lib']
       }
     ],
     defaultConfig: [
