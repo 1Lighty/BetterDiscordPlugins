@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.8',
+      version: '1.3.9',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -123,11 +123,12 @@ var XenoLib = (() => {
       }
     };
 
-    XenoLib.getClass = arg => {
+    XenoLib.getClass = (arg, thrw) => {
       try {
         const args = arg.split(' ');
         return WebpackModules.getByProps(...args)[args[args.length - 1]];
       } catch (e) {
+        if (thrw) throw e;
         if (!XenoLib.getClass.__warns[arg] || Date.now() - XenoLib.getClass.__warns[arg] > 1000 * 60) {
           Logger.stacktrace(`Failed to get class with props ${arg}`, e);
           XenoLib.getClass.__warns[arg] = Date.now();
@@ -135,10 +136,11 @@ var XenoLib = (() => {
         return '';
       }
     };
-    XenoLib.getSingleClass = arg => {
+    XenoLib.getSingleClass = (arg, thrw) => {
       try {
         return XenoLib.getClass(arg).split(' ')[0];
       } catch (e) {
+        if (thrw) throw e;
         if (!XenoLib.getSingleClass.__warns[arg] || Date.now() - XenoLib.getSingleClass.__warns[arg] > 1000 * 60) {
           Logger.stacktrace(`Failed to get class with props ${arg}`, e);
           XenoLib.getSingleClass.__warns[arg] = Date.now();
