@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.7',
+      version: '1.3.8',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['Fixed crash if you deleted Zeres lib']
+        items: ['Fixed error loading, if BDFDB exists. This is so sad, can we pat Lighty?', 'Should no longer throw "Cannot read property \'toString\' of undefined", nor fail to load under most circumstances.', 'Improved missing lib warning. It is no longer is possible for it to crash Discord, if another plugin loads Zeres lib, XenoLib auto closes its own modal and reload itself, so it can start functioning. This will cause a chain reaction of plugins starting to function, so you don\'t get spammed with "Missing library" modals.']
       }
     ],
     defaultConfig: [
@@ -92,8 +92,6 @@ var XenoLib = (() => {
       }
     }
 
-    const ContextMenuSubMenuItem = WebpackModules.getByDisplayName('FluxContainer(SubMenuItem)');
-
     if (global.XenoLib) global.XenoLib.shutdown();
     const XenoLib = {};
     XenoLib.shutdown = () => {
@@ -126,10 +124,30 @@ var XenoLib = (() => {
     };
 
     XenoLib.getClass = arg => {
-      const args = arg.split(' ');
-      return WebpackModules.getByProps(...args)[args[args.length - 1]];
+      try {
+        const args = arg.split(' ');
+        return WebpackModules.getByProps(...args)[args[args.length - 1]];
+      } catch (e) {
+        if (!XenoLib.getClass.__warns[arg] || Date.now() - XenoLib.getClass.__warns[arg] > 1000 * 60) {
+          Logger.stacktrace(`Failed to get class with props ${arg}`, e);
+          XenoLib.getClass.__warns[arg] = Date.now();
+        }
+        return '';
+      }
     };
-    XenoLib.getSingleClass = arg => XenoLib.getClass(arg).split(' ')[0];
+    XenoLib.getSingleClass = arg => {
+      try {
+        return XenoLib.getClass(arg).split(' ')[0];
+      } catch (e) {
+        if (!XenoLib.getSingleClass.__warns[arg] || Date.now() - XenoLib.getSingleClass.__warns[arg] > 1000 * 60) {
+          Logger.stacktrace(`Failed to get class with props ${arg}`, e);
+          XenoLib.getSingleClass.__warns[arg] = Date.now();
+        }
+        return '';
+      }
+    };
+    XenoLib.getClass.__warns = {};
+    XenoLib.getSingleClass.__warns = {};
 
     const LibrarySettings = XenoLib.loadData(config.info.name, 'settings', DefaultLibrarySettings);
 
@@ -286,18 +304,21 @@ var XenoLib = (() => {
       }
       `
     );
-
-    XenoLib.getUser = WebpackModules.getByProps('getUser', 'acceptAgreements').getUser;
     XenoLib.joinClassNames = WebpackModules.getModule(e => e.default && e.default.default);
-
     XenoLib.authorId = '239513071272329217';
-    const requestUser = () =>
-      XenoLib.getUser(XenoLib.authorId)
-        .then(user => (XenoLib.author = user))
-        .catch(() => setTimeout(requestUser, 1 * 60 * 1000));
-    if (UserStore.getUser(XenoLib.authorId)) XenoLib.author = UserStore.getUser(XenoLib.authorId);
-    else requestUser();
     XenoLib.supportServerId = '389049952732446731';
+
+    try {
+      const getUserAsync = WebpackModules.getByProps('getUser', 'acceptAgreements').getUser;
+      const requestUser = () =>
+        getUserAsync(XenoLib.authorId)
+          .then(user => (XenoLib.author = user))
+          .catch(() => setTimeout(requestUser, 1 * 60 * 1000));
+      if (UserStore.getUser(XenoLib.authorId)) XenoLib.author = UserStore.getUser(XenoLib.authorId);
+      else requestUser();
+    } catch (e) {
+      Logger.stacktrace('Failed to grab author object', e);
+    }
 
     try {
       /* const pluginAuthors = [
@@ -492,33 +513,51 @@ var XenoLib = (() => {
         Patcher.after(V2C_PluginCard.prototype, 'render', handlePatch);
         Patcher.after(V2C_ThemeCard.prototype, 'render', handlePatch);
       }
-    } catch (e) {}
+    } catch (e) {
+      Logger.stacktrace('Failed to patch V2C_*Card', e);
+    }
+    XenoLib.ReactComponents = {};
+
+    XenoLib.ReactComponents.ErrorBoundary = class XLErrorBoundary extends React.PureComponent {
+      constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+      }
+      componentDidCatch(err, inf) {
+        Logger.err(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`);
+        this.setState({ hasError: true });
+        if (typeof this.props.onError === 'function') this.props.onError(err);
+      }
+      render() {
+        if (this.state.hasError) return null;
+        return this.props.children;
+      }
+    };
 
     XenoLib.__contextPatches = [];
-    XenoLib.__contextPatches.__contextPatched = false;
-    const existingContextMenus = ['NativeContextMenu', 'GuildRoleContextMenu', 'MessageContextMenu', 'DeveloperContextMenu', 'ScreenshareContextMenu'];
-    const ContextMenuClassname = XenoLib.getSingleClass('subMenuContext contextMenu');
-    const getContextMenuChild = val => {
-      if (!val) return;
-      const isValid = obj => obj.type === 'div' && obj.props && typeof obj.props.className === 'string' && obj.props.className.indexOf(ContextMenuClassname) !== -1 && Array.isArray(Utilities.getNestedProp(obj, 'props.children.props.children'));
-      if (isValid(val)) return val.props.children;
-      const children = Utilities.getNestedProp(val, 'props.children');
-      if (!children) return;
-      if (Array.isArray(children)) {
-        for (let i = 0; i < children.length; i++) {
-          const ret = getContextMenuChild(children[i]);
-          if (ret) return ret.props.children;
-        }
-      } else if (isValid(children)) return children.props.children;
-    };
-    function patchAllContextMenus() {
+    try {
+      if (global.XenoLib) if (global.XenoLib.__contextPatches && global.XenoLib.__contextPatches.length) XenoLib.__contextPatches.push(...global.XenoLib.__contextPatches);
+      const ContextMenuClassname = XenoLib.getSingleClass('subMenuContext contextMenu'); /* I AM *SPEED* */
+      const getContextMenuChild = val => {
+        if (!val) return;
+        const isValid = obj => obj.type === 'div' && obj.props && typeof obj.props.className === 'string' && obj.props.className.indexOf(ContextMenuClassname) !== -1 && Array.isArray(Utilities.getNestedProp(obj, 'props.children.props.children'));
+        if (isValid(val)) return val.props.children;
+        const children = Utilities.getNestedProp(val, 'props.children');
+        if (!children) return;
+        if (Array.isArray(children)) {
+          for (let i = 0; i < children.length; i++) {
+            const ret = getContextMenuChild(children[i]);
+            if (ret) return ret.props.children;
+          }
+        } else if (isValid(children)) return children.props.children;
+      };
       const handleContextMenu = (_this, ret, noRender) => {
         const menuGroups = getContextMenuChild(ret) || ret;
-        if (!menuGroups) return Logger.warn('Failed to get context menu groups!', _this, ret);
-        let [value, set] = noRender ? React.useState(false) : [];
-        let [state, setState] = noRender ? React.useState({}) : [];
-        /* emulate a react component */
+        if (!menuGroups) return /* Logger.warn('Failed to get context menu groups!', _this, ret) */;
+        /* emulate a react class component */
         if (noRender) {
+          let [value, set] = React.useState(false);
+          let [state, setState] = React.useState({});
           _this.forceUpdate = () => set(!value);
           _this.state = state;
           _this.setState = setState;
@@ -532,11 +571,36 @@ var XenoLib = (() => {
           }
         });
       };
-      existingContextMenus.forEach(type => {
+      const getModule = regex => {
+        try {
+          const modules = WebpackModules.getAllModules();
+          for (const index in modules) {
+            if (!modules.hasOwnProperty(index)) continue;
+            const module = modules[index];
+            if (!module.exports || !module.exports.__esModule || !module.exports.default) continue;
+            /* if BDFDB was inited before us, patch the already patched function */
+            if (module.exports.default.toString().search(regex) !== -1 || (module.exports.default.isBDFDBpatched && module.exports.default.__originalMethod.toString().search(regex) !== -1)) return module;
+          }
+        } catch (e) {
+          Logger.stacktrace(`Failed to getModule by regex ${regex}`, e);
+          return null;
+        }
+      };
+      const renderContextMenus = ['NativeContextMenu', 'GuildRoleContextMenu', 'MessageContextMenu', 'DeveloperContextMenu', 'ScreenshareContextMenu'];
+      const hookContextMenus = [getModule(/case \w.ContextMenuTypes.CHANNEL_LIST_TEXT/), getModule(/case \w.ContextMenuTypes.GUILD_CHANNEL_LIST/), getModule(/case \w.ContextMenuTypes.USER_CHANNEL_MEMBERS/)];
+      for (const type of renderContextMenus) {
         const module = WebpackModules.getByDisplayName(type);
         if (!module) return Logger.warn(`Failed to find ContextMenu type`, type);
         Patcher.after(module.prototype, 'render', (_this, _, ret) => handleContextMenu(_this, ret));
-      });
+      }
+      for (const menu of hookContextMenus) {
+        if (!menu) continue;
+        const origDef = menu.exports.default;
+        Patcher.after(menu.exports, 'default', (_, [props], ret) => handleContextMenu({ props }, ret, true));
+        if (origDef.isBDFDBpatched && menu.exports.BDFDBpatch && typeof menu.exports.BDFDBpatch.default.originalMethod === 'function') {
+          Patcher.after(menu.exports.BDFDBpatch.default, 'originalMethod', (_, [props], ret) => handleContextMenu({ props }, ret, true));
+        }
+      }
       const GroupDMContextMenu = WebpackModules.getByDisplayName('FluxContainer(GroupDMContextMenu)');
       if (GroupDMContextMenu) {
         try {
@@ -546,30 +610,13 @@ var XenoLib = (() => {
           Logger.stacktrace('Failed patching GroupDMContextMenu', e);
         }
       }
-      function getModule(regex) {
-        const modules = WebpackModules.getAllModules();
-        for (const index in modules) {
-          if (!modules.hasOwnProperty(index)) continue;
-          const module = modules[index];
-          if (!module.exports || !module.exports.__esModule || !module.exports.default) continue;
-          /* if BDFDB was inited before us, patch the already patched function */
-          if (module.exports.default.toString().search(regex) !== -1 || (module.exports.default.isBDFDBpatched && module.exports.default.originalsource.toString().search(regex) !== -1)) return module;
-        }
-      }
-      const somemoremenus = [getModule(/case \w.ContextMenuTypes.CHANNEL_LIST_TEXT/), getModule(/case \w.ContextMenuTypes.GUILD_CHANNEL_LIST/), getModule(/case \w.ContextMenuTypes.USER_CHANNEL_MEMBERS/)];
-      somemoremenus.forEach(menu => {
-        if (!menu) return Logger.warn('Special context menu is undefined!');
-        const origDef = menu.exports.default;
-        Patcher.after(menu.exports, 'default', (_, [props], ret) => handleContextMenu({ props }, ret, true));
-        if (origDef.isBDFDBpatched && menu.exports.BDFDBpatch && typeof menu.exports.BDFDBpatch.default.originalMethod === 'function') {
-          Patcher.after(menu.exports.BDFDBpatch.default, 'originalMethod', (_, [props], ret) => handleContextMenu({ props }, ret, true));
-        }
-      });
-      XenoLib.__contextPatches.__contextPatched = true;
+    } catch (e) {
+      Logger.stacktrace('Failed to patch context menus', e);
     }
     XenoLib.patchContext = callback => {
       XenoLib.__contextPatches.push(callback);
     };
+
     class ContextMenuWrapper extends React.PureComponent {
       render() {
         return React.createElement('div', { className: DiscordClasses.ContextMenu.contextMenu }, this.props.menu);
@@ -581,269 +628,266 @@ var XenoLib = (() => {
       } else {
         props.__XenoLib_ContextMenus = [menuCreation];
         const oOnContextMenu = props.onContextMenu;
-        props.onContextMenu = e => (typeof oOnContextMenu === 'function' && oOnContextMenu(e), ContextMenuActions.openContextMenu(e, e => React.createElement(ContextMenuWrapper, { menu: props.__XenoLib_ContextMenus.map(m => m()), type })));
+        props.onContextMenu = e => (typeof oOnContextMenu === 'function' && oOnContextMenu(e), ContextMenuActions.openContextMenu(e, _ => React.createElement(ContextMenuWrapper, { menu: props.__XenoLib_ContextMenus.map(m => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'shared context menu' }, m())), type })));
       }
     };
 
-    if (global.XenoLib) if (global.XenoLib.__contextPatches && global.XenoLib.__contextPatches.length) XenoLib.__contextPatches.push(...global.XenoLib.__contextPatches);
+    const ContextMenuSubMenuItem = WebpackModules.getByDisplayName('FluxContainer(SubMenuItem)');
     XenoLib.unpatchContext = callback => XenoLib.__contextPatches.splice(XenoLib.__contextPatches.indexOf(callback), 1);
-    patchAllContextMenus(); /* prevent BDFDB from being a gay piece of crap by patching it first */
-    XenoLib.createContextMenuItem = (label, action, options = {}) =>
-      React.createElement(ContextMenuItem, {
-        label,
-        action: () => {
-          if (!options.noClose) ContextMenuActions.closeContextMenu();
-          action();
-        },
-        ...options
-      });
-    XenoLib.createContextMenuSubMenu = (label, items, options = {}) =>
-      React.createElement(ContextMenuSubMenuItem, {
-        label,
-        render: items,
-        ...options
-      });
+    XenoLib.createContextMenuItem = (label, action, options = {}) => React.createElement(ContextMenuItem, { label, action: () => (!options.noClose && ContextMenuActions.closeContextMenu(), action()), ...options });
+    XenoLib.createContextMenuSubMenu = (label, items, options = {}) => React.createElement(ContextMenuSubMenuItem, { label, render: items, ...options });
     XenoLib.createContextMenuGroup = (children, options) => React.createElement(ContextMenuItemsGroup, { children, ...options });
     XenoLib._ = XenoLib.DiscordUtils = WebpackModules.getByProps('bindAll', 'debounce');
 
-    const dialog = require('electron').remote.dialog;
-    const showSaveDialog = dialog.showSaveDialogSync || dialog.showSaveDialog;
-    const showOpenDialog = dialog.showOpenDialogSync || dialog.showOpenDialog;
-    XenoLib.ReactComponents = {};
+    try {
+      XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('ButtonLink');
+      XenoLib.ReactComponents.Button = XenoLib.ReactComponents.ButtonOptions.default;
+    } catch (e) {
+      Logger.stacktrace('Error getting Button component', e);
+    }
 
-    XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('ButtonLink');
-    XenoLib.ReactComponents.Button = XenoLib.ReactComponents.ButtonOptions.default;
-
+    /* shared between FilePicker and ColorPicker */
     const MultiInputClassname = XenoLib.joinClassNames(DiscordClasses.BasicInputs.input.value, XenoLib.getClass('multiInput'));
     const MultiInputFirstClassname = XenoLib.getClass('multiInputFirst');
     const MultiInputFieldClassname = XenoLib.getClass('multiInputField');
     const ErrorMessageClassname = XenoLib.getClass('input errorMessage');
     const ErrorClassname = XenoLib.getClass('input error');
-    const DelayedCall = WebpackModules.getByProps('DelayedCall').DelayedCall;
-    const FsModule = require('fs');
-    /**
-     * @interface
-     * @name module:FilePicker
-     * @property {string} path
-     * @property {string} placeholder
-     * @property {Function} onChange
-     * @property {object} properties
-     * @property {bool} nullOnInvalid
-     */
-    XenoLib.ReactComponents.FilePicker = class FilePicker extends React.PureComponent {
-      constructor(props) {
-        super(props);
-        this.state = {
-          multiInputFocused: false,
-          path: props.path,
-          error: null
-        };
-        XenoLib._.bindAll(this, ['handleOnBrowse', 'handleChange']);
-        this.delayedCallVerifyPath = new DelayedCall(500, () =>
-          FsModule.access(this.state.path, FsModule.constants.W_OK, error => {
-            const invalid = (error && error.message.match(/.*: (.*), access '/)[1]) || null;
-            this.setState({ error: invalid });
-            if (invalid && this.props.nullOnInvalid) this.props.onChange(null);
-          })
-        );
-      }
-      handleOnBrowse() {
-        const path = showOpenDialog({ title: this.props.title, properties: this.props.properties });
-        if (Array.isArray(path) && path.length) this.handleChange(path[0]);
-      }
-      handleChange(path) {
-        this.props.onChange(path);
-        this.setState({ path });
-        this.delayedCallVerifyPath.delay();
-      }
-      render() {
-        const n = {};
-        n[DiscordClasses.BasicInputs.focused] = this.state.multiInputFocused;
-        n[ErrorClassname] = !!this.state.error;
-        return React.createElement(
-          'div',
-          { className: DiscordClasses.BasicInputs.inputWrapper, style: { width: '100%' } },
-          React.createElement(
+
+    try {
+      const dialog = require('electron').remote.dialog;
+      const showOpenDialog = dialog.showOpenDialogSync || dialog.showOpenDialog;
+      const DelayedCall = WebpackModules.getByProps('DelayedCall').DelayedCall;
+      const FsModule = require('fs');
+      /**
+       * @interface
+       * @name module:FilePicker
+       * @property {string} path
+       * @property {string} placeholder
+       * @property {Function} onChange
+       * @property {object} properties
+       * @property {bool} nullOnInvalid
+       */
+      XenoLib.ReactComponents.FilePicker = class FilePicker extends React.PureComponent {
+        constructor(props) {
+          super(props);
+          this.state = {
+            multiInputFocused: false,
+            path: props.path,
+            error: null
+          };
+          XenoLib._.bindAll(this, ['handleOnBrowse', 'handleChange']);
+          this.delayedCallVerifyPath = new DelayedCall(500, () =>
+            FsModule.access(this.state.path, FsModule.constants.W_OK, error => {
+              const invalid = (error && error.message.match(/.*: (.*), access '/)[1]) || null;
+              this.setState({ error: invalid });
+              if (invalid && this.props.nullOnInvalid) this.props.onChange(null);
+            })
+          );
+        }
+        handleOnBrowse() {
+          const path = showOpenDialog({ title: this.props.title, properties: this.props.properties });
+          if (Array.isArray(path) && path.length) this.handleChange(path[0]);
+        }
+        handleChange(path) {
+          this.props.onChange(path);
+          this.setState({ path });
+          this.delayedCallVerifyPath.delay();
+        }
+        render() {
+          const n = {};
+          n[DiscordClasses.BasicInputs.focused] = this.state.multiInputFocused;
+          n[ErrorClassname] = !!this.state.error;
+          return React.createElement(
             'div',
-            { className: XenoLib.joinClassNames(MultiInputClassname, n) },
-            React.createElement(DiscordModules.Textbox, {
-              value: this.state.path,
-              placeholder: this.props.placeholder,
-              onChange: this.handleChange,
-              onFocus: () => this.setState({ multiInputFocused: true }),
-              onBlur: () => this.setState({ multiInputFocused: false }),
-              autoFocus: false,
-              className: MultiInputFirstClassname,
-              inputClassName: MultiInputFieldClassname
-            }),
-            React.createElement(XenoLib.ReactComponents.Button, { onClick: this.handleOnBrowse, color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY, look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST, size: XenoLib.ReactComponents.Button.Sizes.MEDIUM }, 'Browse')
-          ),
-          !!this.state.error && React.createElement('div', { className: ErrorMessageClassname }, 'Error: ', this.state.error)
-        );
-      }
-    };
-
-    /**
-     * @param {string} name - name label of the setting
-     * @param {string} note - help/note to show underneath or above the setting
-     * @param {string} value - current hex color
-     * @param {callable} onChange - callback to perform on setting change, callback receives hex string
-     * @param {object} [options] - object of options to give to the setting
-     * @param {boolean} [options.disabled=false] - should the setting be disabled
-     * @param {Array<number>} [options.colors=presetColors] - preset list of colors
-     * @author Zerebos, from his library ZLibrary
-     */
-    const FormItem = WebpackModules.getByDisplayName('FormItem');
-    const DeprecatedModal = WebpackModules.getByDisplayName('DeprecatedModal');
-    const ModalContainerClassname = XenoLib.getClass('mobile container');
-    const ModalContentClassname = XenoLib.getClass('mobile container content');
-
-    const Icon = WebpackModules.getByDisplayName('Icon');
-
-    class ColorPickerModal extends React.PureComponent {
-      constructor(props) {
-        super(props);
-        this.state = { value: props.value };
-        XenoLib._.bindAll(this, ['handleChange']);
-      }
-      handleChange(value) {
-        this.setState({ value });
-        this.props.onChange(ColorConverter.int2hex(value));
-      }
-      render() {
-        return React.createElement(
-          DeprecatedModal,
-          { className: ModalContainerClassname, tag: 'form', onSubmit: this.handleSubmit, size: '' },
-          React.createElement(
-            DeprecatedModal.Content,
-            { className: ModalContentClassname },
+            { className: DiscordClasses.BasicInputs.inputWrapper, style: { width: '100%' } },
             React.createElement(
-              FormItem,
-              { className: DiscordClasses.Margins.marginTop20 },
-              React.createElement(WebpackModules.getByDisplayName('ColorPicker'), {
-                defaultColor: this.props.defaultColor,
-                colors: [16711680, 16746496, 16763904, 13434624, 65314, 65484, 61183, 43775, 26367, 8913151, 16711918, 16711782, 11730944, 11755264, 11767552, 9417472, 45848, 45967, 42931, 30643, 18355, 6226099, 11731111, 11731015],
-                value: this.state.value,
-                onChange: this.handleChange
-              })
-            )
-          )
-        );
-      }
+              'div',
+              { className: XenoLib.joinClassNames(MultiInputClassname, n) },
+              React.createElement(DiscordModules.Textbox, {
+                value: this.state.path,
+                placeholder: this.props.placeholder,
+                onChange: this.handleChange,
+                onFocus: () => this.setState({ multiInputFocused: true }),
+                onBlur: () => this.setState({ multiInputFocused: false }),
+                autoFocus: false,
+                className: MultiInputFirstClassname,
+                inputClassName: MultiInputFieldClassname
+              }),
+              React.createElement(XenoLib.ReactComponents.Button, { onClick: this.handleOnBrowse, color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY, look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST, size: XenoLib.ReactComponents.Button.Sizes.MEDIUM }, 'Browse')
+            ),
+            !!this.state.error && React.createElement('div', { className: ErrorMessageClassname }, 'Error: ', this.state.error)
+          );
+        }
+      };
+    } catch (e) {
+      Logger.stacktrace('Failed to create FilePicker component', e);
     }
 
-    class ColorPicker extends React.PureComponent {
-      constructor(props) {
-        super(props);
-        this.state = {
-          error: null,
-          value: props.value,
-          multiInputFocused: false
-        };
-        XenoLib._.bindAll(this, ['handleChange', 'handleColorPicker', 'handleReset']);
-      }
-      handleChange(value) {
-        if (!value.length) {
-          this.state.error = 'You must input a hex string';
-        } else if (!ColorConverter.isValidHex(value)) {
-          this.state.error = 'Invalid hex string';
-        } else {
-          this.state.error = null;
+    try {
+      /**
+       * @param {string} name - name label of the setting
+       * @param {string} note - help/note to show underneath or above the setting
+       * @param {string} value - current hex color
+       * @param {callable} onChange - callback to perform on setting change, callback receives hex string
+       * @param {object} [options] - object of options to give to the setting
+       * @param {boolean} [options.disabled=false] - should the setting be disabled
+       * @param {Array<number>} [options.colors=presetColors] - preset list of colors
+       * @author Zerebos, from his library ZLibrary
+       */
+      const FormItem = WebpackModules.getByDisplayName('FormItem');
+      const DeprecatedModal = WebpackModules.getByDisplayName('DeprecatedModal');
+      const ModalContainerClassname = XenoLib.getClass('mobile container');
+      const ModalContentClassname = XenoLib.getClass('mobile container content');
+
+      const Icon = WebpackModules.getByDisplayName('Icon');
+
+      class ColorPickerModal extends React.PureComponent {
+        constructor(props) {
+          super(props);
+          this.state = { value: props.value };
+          XenoLib._.bindAll(this, ['handleChange']);
         }
-        this.setState({ value });
-        this.props.onChange(!value.length || !ColorConverter.isValidHex(value) ? this.props.defaultColor : value);
-      }
-      handleColorPicker() {
-        ModalStack.push(e => React.createElement(ColorPickerModal, { ...e, defaultColor: ColorConverter.hex2int(this.props.defaultColor), value: ColorConverter.hex2int(this.props.value), onChange: this.handleChange }));
-      }
-      handleReset() {
-        this.handleChange(this.props.defaultColor);
-      }
-      render() {
-        const n = {};
-        n[DiscordClasses.BasicInputs.focused] = this.state.multiInputFocused;
-        n[ErrorClassname] = !!this.state.error;
-        return React.createElement(
-          'div',
-          { className: XenoLib.joinClassNames(DiscordClasses.BasicInputs.inputWrapper.value, 'xenoLib-color-picker'), style: { width: '100%' } },
-          React.createElement(
-            'div',
-            { className: XenoLib.joinClassNames(MultiInputClassname, n) },
-            React.createElement('div', {
-              className: XenoLib.ReactComponents.Button.Sizes.SMALL,
-              style: {
-                backgroundColor: this.state.value,
-                height: 38
-              }
-            }),
-            React.createElement(DiscordModules.Textbox, {
-              value: this.state.value,
-              placeholder: 'Hex color',
-              onChange: this.handleChange,
-              onFocus: () => this.setState({ multiInputFocused: true }),
-              onBlur: () => this.setState({ multiInputFocused: false }),
-              autoFocus: false,
-              className: MultiInputFirstClassname,
-              inputClassName: MultiInputFieldClassname
-            }),
+        handleChange(value) {
+          this.setState({ value });
+          this.props.onChange(ColorConverter.int2hex(value));
+        }
+        render() {
+          return React.createElement(
+            DeprecatedModal,
+            { className: ModalContainerClassname, tag: 'form', onSubmit: this.handleSubmit, size: '' },
             React.createElement(
-              XenoLib.ReactComponents.Button,
-              {
-                onClick: this.handleColorPicker,
-                color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY,
-                look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST,
-                size: XenoLib.ReactComponents.Button.Sizes.MIN,
-                className: 'xenoLib-button button-34kXw5 button-3tQuzi'
-              },
-              React.createElement('span', { className: 'text-2sI5Sd' }, 'Color picker'),
+              DeprecatedModal.Content,
+              { className: ModalContentClassname },
               React.createElement(
-                'span',
-                {
-                  className: 'xenoLib-button-icon'
-                },
-                React.createElement(Icon, {
-                  name: 'Dropper'
+                FormItem,
+                { className: DiscordClasses.Margins.marginTop20 },
+                React.createElement(WebpackModules.getByDisplayName('ColorPicker'), {
+                  defaultColor: this.props.defaultColor,
+                  colors: [16711680, 16746496, 16763904, 13434624, 65314, 65484, 61183, 43775, 26367, 8913151, 16711918, 16711782, 11730944, 11755264, 11767552, 9417472, 45848, 45967, 42931, 30643, 18355, 6226099, 11731111, 11731015],
+                  value: this.state.value,
+                  onChange: this.handleChange
                 })
+              )
+            )
+          );
+        }
+      }
+
+      class ColorPicker extends React.PureComponent {
+        constructor(props) {
+          super(props);
+          this.state = {
+            error: null,
+            value: props.value,
+            multiInputFocused: false
+          };
+          XenoLib._.bindAll(this, ['handleChange', 'handleColorPicker', 'handleReset']);
+        }
+        handleChange(value) {
+          if (!value.length) {
+            this.state.error = 'You must input a hex string';
+          } else if (!ColorConverter.isValidHex(value)) {
+            this.state.error = 'Invalid hex string';
+          } else {
+            this.state.error = null;
+          }
+          this.setState({ value });
+          this.props.onChange(!value.length || !ColorConverter.isValidHex(value) ? this.props.defaultColor : value);
+        }
+        handleColorPicker() {
+          const modalId = ModalStack.push(e => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'color picker modal', onError: () => ModalStack.popWithKey(modalId) }, React.createElement(ColorPickerModal, { ...e, defaultColor: ColorConverter.hex2int(this.props.defaultColor), value: ColorConverter.hex2int(this.props.value), onChange: this.handleChange })));
+        }
+        handleReset() {
+          this.handleChange(this.props.defaultColor);
+        }
+        render() {
+          const n = {};
+          n[DiscordClasses.BasicInputs.focused] = this.state.multiInputFocused;
+          n[ErrorClassname] = !!this.state.error;
+          return React.createElement(
+            'div',
+            { className: XenoLib.joinClassNames(DiscordClasses.BasicInputs.inputWrapper.value, 'xenoLib-color-picker'), style: { width: '100%' } },
+            React.createElement(
+              'div',
+              { className: XenoLib.joinClassNames(MultiInputClassname, n) },
+              React.createElement('div', {
+                className: XenoLib.ReactComponents.Button.Sizes.SMALL,
+                style: {
+                  backgroundColor: this.state.value,
+                  height: 38
+                }
+              }),
+              React.createElement(DiscordModules.Textbox, {
+                value: this.state.value,
+                placeholder: 'Hex color',
+                onChange: this.handleChange,
+                onFocus: () => this.setState({ multiInputFocused: true }),
+                onBlur: () => this.setState({ multiInputFocused: false }),
+                autoFocus: false,
+                className: MultiInputFirstClassname,
+                inputClassName: MultiInputFieldClassname
+              }),
+              React.createElement(
+                XenoLib.ReactComponents.Button,
+                {
+                  onClick: this.handleColorPicker,
+                  color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY,
+                  look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST,
+                  size: XenoLib.ReactComponents.Button.Sizes.MIN,
+                  className: 'xenoLib-button button-34kXw5 button-3tQuzi'
+                },
+                React.createElement('span', { className: 'text-2sI5Sd' }, 'Color picker'),
+                React.createElement(
+                  'span',
+                  {
+                    className: 'xenoLib-button-icon'
+                  },
+                  React.createElement(Icon, {
+                    name: 'Dropper'
+                  })
+                )
+              ),
+              React.createElement(
+                XenoLib.ReactComponents.Button,
+                {
+                  onClick: this.handleReset,
+                  color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY,
+                  look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST,
+                  size: XenoLib.ReactComponents.Button.Sizes.MIN,
+                  className: 'xenoLib-button button-34kXw5 button-3tQuzi'
+                },
+                React.createElement('span', { className: 'text-2sI5Sd' }, 'Reset'),
+                React.createElement(
+                  'span',
+                  {
+                    className: 'xenoLib-button-icon xenoLib-revert'
+                  },
+                  React.createElement(Icon, {
+                    name: 'ClockReverse'
+                  })
+                )
               )
             ),
-            React.createElement(
-              XenoLib.ReactComponents.Button,
-              {
-                onClick: this.handleReset,
-                color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY,
-                look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST,
-                size: XenoLib.ReactComponents.Button.Sizes.MIN,
-                className: 'xenoLib-button button-34kXw5 button-3tQuzi'
-              },
-              React.createElement('span', { className: 'text-2sI5Sd' }, 'Reset'),
-              React.createElement(
-                'span',
-                {
-                  className: 'xenoLib-button-icon xenoLib-revert'
-                },
-                React.createElement(Icon, {
-                  name: 'ClockReverse'
-                })
-              )
-            )
-          ),
-          !!this.state.error && React.createElement('div', { className: ErrorMessageClassname }, 'Error: ', this.state.error)
-        );
+            !!this.state.error && React.createElement('div', { className: ErrorMessageClassname }, 'Error: ', this.state.error)
+          );
+        }
       }
+      XenoLib.Settings = {};
+      XenoLib.Settings.ColorPicker = class ColorPickerSettingField extends Settings.SettingField {
+        constructor(name, note, value, onChange, options = {}) {
+          super(name, note, onChange, ColorPicker, {
+            disabled: options.disabled ? true : false,
+            onChange: reactElement => color => {
+              this.onChange(color);
+            },
+            defaultColor: typeof options.defaultColor !== 'undefined' ? options.defaultColor : ColorConverter.int2hex(DiscordConstants.DEFAULT_ROLE_COLOR),
+            value
+          });
+        }
+      };
+    } catch (e) {
+      Logger.stacktrace('Failed to create ColorPicker settings component', e);
     }
-    XenoLib.Settings = {};
-    XenoLib.Settings.ColorPicker = class ColorPickerSettingField extends Settings.SettingField {
-      constructor(name, note, value, onChange, options = {}) {
-        super(name, note, onChange, ColorPicker, {
-          disabled: options.disabled ? true : false,
-          onChange: reactElement => color => {
-            this.onChange(color);
-          },
-          defaultColor: typeof options.defaultColor !== 'undefined' ? options.defaultColor : ColorConverter.int2hex(DiscordConstants.DEFAULT_ROLE_COLOR),
-          value
-        });
-      }
-    };
 
     XenoLib.changeName = (currentName, newName) => {
       const path = require('path');
@@ -1141,7 +1185,7 @@ var XenoLib = (() => {
                       this.setState({ hovered: true });
                     },
                     onMouseLeave: e => {
-                      if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
+                      if (!this.state.hovered && (this.state.leaving || !this.props.timeout || this.state.closeFast)) return;
                       this._animationCancel();
                       this.setState({ hovered: false });
                     },
@@ -1195,7 +1239,6 @@ var XenoLib = (() => {
                     }),
                     this.state.counter > 1 && BadgesModule.NumberBadge({ count: this.state.counter, className: 'xenLib-notification-counter', color: '#2196f3' }),
                     this.state.contentParsed
-                    /* React.createElement('a', { onClick: this.closeNow }, 'close') */
                   )
                 )
               );
@@ -1243,7 +1286,7 @@ var XenoLib = (() => {
     XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
 
     const notifLocations = ['topLeft', 'topMiddle', 'topRight', 'bottomLeft', 'bottomMiddle', 'bottomRight'];
-    const notifLocationClasses = ['topLeft-3buHIc option-n0icdO', 'topMiddle-xenoLib option-n0icdO', 'topRight-3GKDeL option-n0icdO', 'bottomLeft-39-xss option-n0icdO', 'bottomMiddle-xenoLib option-n0icdO', 'bottomRight-1T56wW option-n0icdO'];
+    const notifLocationClasses = [`${XenoLib.getClass('selected topLeft')} ${XenoLib.getClass('topLeft option')}`, `topMiddle-xenoLib ${XenoLib.getClass('topLeft option')}`, `${XenoLib.getClass('selected topRight')} ${XenoLib.getClass('topLeft option')}`, `${XenoLib.getClass('selected bottomLeft')} ${XenoLib.getClass('topLeft option')}`, `bottomMiddle-xenoLib ${XenoLib.getClass('topLeft option')}`, `${XenoLib.getClass('selected bottomRight')} ${XenoLib.getClass('topLeft option')}`];
     const PositionSelectorWrapperClassname = XenoLib.getClass('topLeft wrapper');
     const PositionSelectorSelectedClassname = XenoLib.getClass('topLeft selected');
     const PositionSelectorHiddenInputClassname = XenoLib.getClass('topLeft hiddenInput');
@@ -1415,49 +1458,85 @@ var XenoLib = (() => {
           const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
           const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the library yourself. After opening the link, do CTRL + S to download the library.<br/><br/><a href="https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>`);
           if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
-          ModalStack.push(props => {
+          let modalId;
+          const onHeckWouldYouLookAtThat = (() => {
+            if (!global.pluginModule || !global.BDEvents) return;
+            const onLoaded = e => {
+              if (e !== 'ZeresPluginLibrary') return;
+              BDEvents.off('plugin-loaded', onLoaded);
+              ModalStack.popWithKey(modalId); /* make it easier on the user */
+              pluginModule.reloadPlugin(this.name);
+            };
+            BDEvents.on('plugin-loaded', onLoaded);
+            return () => BDEvents.off('plugin-loaded', onLoaded);
+          })();
+          class TempErrorBoundary extends BdApi.React.PureComponent {
+            constructor(props) {
+              super(props);
+              this.state = { hasError: false };
+            }
+            componentDidCatch(err, inf) {
+              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`);
+              this.setState({ hasError: true });
+              if (typeof this.props.onError === 'function') this.props.onError(err);
+            }
+            render() {
+              if (this.state.hasError) return null;
+              return this.props.children;
+            }
+          }
+          modalId = ModalStack.push(props => {
             return BdApi.React.createElement(
-              ConfirmationModal,
-              Object.assign(
-                {
-                  header,
-                  children: [
-                    BdApi.React.createElement(TextElement, {
-                      color: TextElement.Colors.PRIMARY,
-                      children: [`${content} Please click Download Now to install it.`]
-                    })
-                  ],
-                  red: false,
-                  confirmText: 'Download Now',
-                  cancelText: 'Cancel',
-                  onConfirm: () => {
-                    const request = require('request');
-                    const fs = require('fs');
-                    const path = require('path');
-                    const onDone = () => {
-                      if (!global.pluginModule || !global.BDEvents) return;
-                      const onLoaded = e => {
-                        if (e !== 'ZeresPluginLibrary') return;
-                        BDEvents.off('plugin-loaded', onLoaded);
-                        pluginModule.reloadPlugin(this.name);
+              TempErrorBoundary,
+              {
+                label: 'missing dependency modal',
+                onError: () => {
+                  ModalStack.popWithKey(modalId); /* smh... */
+                  onFail();
+                }
+              },
+              BdApi.React.createElement(
+                ConfirmationModal,
+                Object.assign(
+                  {
+                    header,
+                    children: [
+                      BdApi.React.createElement(TextElement, {
+                        color: TextElement.Colors.PRIMARY,
+                        children: [`${content} Please click Download Now to install it.`]
+                      })
+                    ],
+                    red: false,
+                    confirmText: 'Download Now',
+                    cancelText: 'Cancel',
+                    onConfirm: () => {
+                      onHeckWouldYouLookAtThat();
+                      const request = require('request');
+                      const fs = require('fs');
+                      const path = require('path');
+                      const onDone = () => {
+                        if (!global.pluginModule || !global.BDEvents) return;
+                        const onLoaded = e => {
+                          if (e !== 'ZeresPluginLibrary') return;
+                          BDEvents.off('plugin-loaded', onLoaded);
+                          pluginModule.reloadPlugin(this.name);
+                        };
+                        BDEvents.on('plugin-loaded', onLoaded);
                       };
-                      BDEvents.on('plugin-loaded', onLoaded);
-                    };
-                    request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
-                      if (error) return onFail();
-                      onDone();
-                      fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
-                    });
-                  }
-                },
-                props
+                      request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
+                        if (error) return onFail();
+                        onDone();
+                        fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
+                      });
+                    }
+                  },
+                  props
+                )
               )
             );
           });
         }
-
         start() {}
-
         get name() {
           return config.info.name;
         }
