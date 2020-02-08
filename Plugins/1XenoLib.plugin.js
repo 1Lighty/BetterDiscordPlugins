@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.9',
+      version: '1.3.10',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -138,7 +138,7 @@ var XenoLib = (() => {
     };
     XenoLib.getSingleClass = (arg, thrw) => {
       try {
-        return XenoLib.getClass(arg).split(' ')[0];
+        return XenoLib.getClass(arg, thrw).split(' ')[0];
       } catch (e) {
         if (thrw) throw e;
         if (!XenoLib.getSingleClass.__warns[arg] || Date.now() - XenoLib.getSingleClass.__warns[arg] > 1000 * 60) {
@@ -589,10 +589,13 @@ var XenoLib = (() => {
         }
       };
       const renderContextMenus = ['NativeContextMenu', 'GuildRoleContextMenu', 'MessageContextMenu', 'DeveloperContextMenu', 'ScreenshareContextMenu'];
-      const hookContextMenus = [getModule(/case \w.ContextMenuTypes.CHANNEL_LIST_TEXT/), getModule(/case \w.ContextMenuTypes.GUILD_CHANNEL_LIST/), getModule(/case \w.ContextMenuTypes.USER_CHANNEL_MEMBERS/)];
+      const hookContextMenus = [getModule(/case \w.ContextMenuTypes.CHANNEL_LIST_TEXT/), getModule(/case \w.ContextMenuTypes.GUILD_CHANNEL_LIST/), getModule(/case \w.ContextMenuTypes.USER_CHANNEL_MEMBERS/), getModule(/case \w\.ContextMenuTypes\.MESSAGE_MAIN/)];
       for (const type of renderContextMenus) {
         const module = WebpackModules.getByDisplayName(type);
-        if (!module) return Logger.warn(`Failed to find ContextMenu type`, type);
+        if (!module) {
+			Logger.warn(`Failed to find ContextMenu type`, type);
+			continue;
+		}
         Patcher.after(module.prototype, 'render', (_this, _, ret) => handleContextMenu(_this, ret));
       }
       for (const menu of hookContextMenus) {
