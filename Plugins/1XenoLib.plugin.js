@@ -593,9 +593,9 @@ var XenoLib = (() => {
       for (const type of renderContextMenus) {
         const module = WebpackModules.getByDisplayName(type);
         if (!module) {
-			Logger.warn(`Failed to find ContextMenu type`, type);
-			continue;
-		}
+          Logger.warn(`Failed to find ContextMenu type`, type);
+          continue;
+        }
         Patcher.after(module.prototype, 'render', (_this, _, ret) => handleContextMenu(_this, ret));
       }
       for (const menu of hookContextMenus) {
@@ -655,7 +655,7 @@ var XenoLib = (() => {
     const MultiInputClassname = XenoLib.joinClassNames(DiscordClasses.BasicInputs.input.value, XenoLib.getClass('multiInput'));
     const MultiInputFirstClassname = XenoLib.getClass('multiInputFirst');
     const MultiInputFieldClassname = XenoLib.getClass('multiInputField');
-    const ErrorMessageClassname = XenoLib.getClass('input errorMessage');
+    const ErrorMessageClassname = XenoLib.getClass('errorMessage');
     const ErrorClassname = XenoLib.getClass('input error');
 
     try {
