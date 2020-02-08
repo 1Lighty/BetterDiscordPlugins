@@ -41,7 +41,7 @@ var BetterUnavailableGuilds = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.2.3',
+      version: '0.2.4',
       description: 'Makes unavailable guilds (servers) still show in the list, and be able to drag it around.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
@@ -50,7 +50,7 @@ var BetterUnavailableGuilds = (() => {
       {
         title: 'sad',
         type: 'added',
-        items: ['Fixed crash if XenoLib or ZeresPluginLib were missing']
+        items: ['Fixed plugin failing to transfer data from canary to other release channels.']
       }
     ],
     defaultConfig: [
@@ -309,7 +309,7 @@ var BetterUnavailableGuilds = (() => {
           /* transfer the data */
           if (curUserShit['stable']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = XenoLib.DiscordUtils.cloneDeep(curUserShit['stable']);
           else if (curUserShit['ptb']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = XenoLib.DiscordUtils.cloneDeep(curUserShit['ptb']);
-          else if (curUserShit['canary']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = XenoLib.DiscordUtils.cloneDeep(curUserShit['ptb']);
+          else if (curUserShit['canary']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = XenoLib.DiscordUtils.cloneDeep(curUserShit['canary']);
           else curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = {};
         }
       }

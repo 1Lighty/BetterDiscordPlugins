@@ -1,4 +1,7 @@
 # [BetterUnavailableGuilds](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterUnavailableGuilds "BetterUnavailableGuilds") Changelog
+### 0.2.4
+- Fixed plugin failing to transfer data from canary to other release channels
+
 ### 0.2.3
 - Fixed crash if XenoLib or ZeresPluginLib were missing
 
