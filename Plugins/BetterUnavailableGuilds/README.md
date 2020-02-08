@@ -6,3 +6,5 @@ This plugin simply fixes that, so the server stays in the sidebar and you can mo
 BetterDiscord and BetterDiscord2 servers are precached for convenience sake.
 ### Settings
 N/A
+### Preview
+![preview](https://i.imgur.com/C2z5Bj5.png)

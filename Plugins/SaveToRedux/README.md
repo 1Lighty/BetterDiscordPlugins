@@ -22,3 +22,6 @@ Append random
 #### Misc
 ##### Context menu option at the bottom instead of top
 Force the Save * To option to stay at the bottom at all times
+### Preview
+Right click on nearly any image, video or file
+![preview](https://i.imgur.com/htOuqtw.png)

@@ -41,16 +41,16 @@ var MentionAliasesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.5',
+      version: '2.0.6',
       description: 'Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MentionAliasesRedux/MentionAliasesRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'sad',
+        title: "bug b' gone",
         type: 'fixed',
-        items: ['Fixed crash if XenoLib or ZeresPluginLib were missing']
+        items: ['Fixed menu button not showing', 'Fixed misc error spam']
       }
     ],
     defaultConfig: [
@@ -184,7 +184,7 @@ var MentionAliasesRedux = (() => {
     const PopoutTagClassname = XenoLib.joinClassNames('mentionAlias', XenoLib.getClass('botTagRegular'), XenoLib.getClass('nameTag bot'));
 
     const roughlyMatches = WebpackModules.getByRegex(/{var \w=\w\.length,\w=\w\.length;if\(\w>\w\)return!1;if\(\w===\w\)return \w===\w;\w:/);
-    const AnimatedAvatar = WebpackModules.getByProps('AnimatedAvatar').AnimatedAvatar;
+    const AnimatedAvatar = (WebpackModules.getByProps('AnimatedAvatar') || {}).AnimatedAvatar;
     const renderAvatar = user => React.createElement(AnimatedAvatar, { size: 'SIZE_32', src: user.getAvatarURL(), status: UserStatusStore.getStatus(user.id), isMobile: UserStatusStore.isMobileOnline(user.id), isTyping: false, statusTooltip: true });
     const renderAlias = (name, description, color, noAt) => React.createElement(FlexChild, { align: FlexChild.Align.CENTER, className: AutocompleteContentClassname }, React.createElement(FlexChild.Child, { grow: 1 }, React.createElement(TextElement.default, { style: { color } }, noAt ? undefined : '@', name)), React.createElement(TextElement.default, { className: AutocompleteDescriptionClassname }, description));
 
@@ -262,7 +262,7 @@ var MentionAliasesRedux = (() => {
       }
     }
 
-    class SetAliasModal extends WebpackModules.getByDisplayName('ChangeNickname') {
+    class SetAliasModal extends (WebpackModules.getByDisplayName('ChangeNickname') || class fuck {}) {
       constructor(props) {
         super(props);
         this.handleSubmit = this.handleSubmitPatch.bind(this);
@@ -290,7 +290,7 @@ var MentionAliasesRedux = (() => {
       }
       render() {
         const m = {};
-        m[WebpackModules.getByProps('autocomplete', 'selector').selectorSelected] = this.state.hovered;
+        m[XenoLib.getClass('autocomplete selector')] = this.state.hovered;
         m[XenoLib.getClass('avatar layout')] = this.props.isUser;
         return React.createElement('div', { className: XenoLib.joinClassNames(WebpackModules.getByProps('autocomplete', 'selector').selector, WebpackModules.getByProps('autocomplete', 'selector').selectable, m), onMouseEnter: () => this.setState({ hovered: true }), onMouseLeave: () => this.setState({ hovered: false }), onContextMenu: this.props.onContextMenu, onClick: this.props.onClick }, this.props.children);
       }
@@ -396,10 +396,11 @@ var MentionAliasesRedux = (() => {
     return class MentionAliasesRedux extends Plugin {
       constructor() {
         super();
-        XenoLib.DiscordUtils.bindAll(this, ['openAliasesPopout', 'queryAliases', 'setAlias', 'setGroup', 'handleSetAliasDispatch', 'handleSetGroupDispatch', 'getUserAlias', 'forceUpdateAll', 'handleContextMenu']);
+        XenoLib._.bindAll(this, ['openAliasesPopout', 'queryAliases', 'setAlias', 'setGroup', 'handleSetAliasDispatch', 'handleSetGroupDispatch', 'getUserAlias', 'forceUpdateAll', 'handleContextMenu']);
         XenoLib.changeName(__filename, 'MentionAliasesRedux');
       }
       onStart() {
+        this.__menuBroken = false;
         this.patchedModules = [];
         /* migrate settings */
         if (typeof this.settings.aliases !== 'undefined') {
@@ -710,7 +711,7 @@ var MentionAliasesRedux = (() => {
             };
           });
           /* reason for div:not is so it doesn't match anything that is not an actual message, like pins */
-          const Message = new ReactComponents.ReactComponent('Message', MessageModule.Message, `.${XenoLib.getSingleClass('messageEditorCompact container')} > div:not(.${XenoLib.getSingleClass('marginCompactIndent content')})`);
+          const Message = new ReactComponents.ReactComponent('Message', MessageModule.Message, `.${XenoLib.getSingleClass('messageEditorCompact container', true)} > div:not(.${XenoLib.getSingleClass('marginCompactIndent content', true)})`);
           this.patchedModules.push(Message);
           Message.forceUpdateAll();
         } else {
@@ -759,7 +760,7 @@ var MentionAliasesRedux = (() => {
       }
 
       async patchMemberListItem(promiseState) {
-        const MemberListItem = await ReactComponents.getComponentByName('MemberListItem', `.${XenoLib.getSingleClass('offline member')}`);
+        const MemberListItem = await ReactComponents.getComponentByName('MemberListItem', `.${XenoLib.getSingleClass('offline member', true)}`);
         if (promiseState.cancelled) return;
         Patcher.after(MemberListItem.component.prototype, 'render', (_this, _, ret) => {
           if (!_this.props.user || !this.settings.display.displayMemberTags) return;
@@ -772,7 +773,7 @@ var MentionAliasesRedux = (() => {
       }
 
       async patchPrivateChannel(promiseState) {
-        const PrivateChannel = await ReactComponents.getComponentByName('PrivateChannel', `.${XenoLib.getSingleClass('closeButton channel')}`);
+        const PrivateChannel = await ReactComponents.getComponentByName('PrivateChannel', `.${XenoLib.getSingleClass('closeButton channel', true)}`);
         if (promiseState.cancelled) return;
         const TypePatch = function(e) {
           const ret = e.__oldTypeMA(e);
@@ -794,7 +795,7 @@ var MentionAliasesRedux = (() => {
       }
       /* friends list */
       async patchPeopleListItem(promiseState) {
-        const PeopleListItem = await ReactComponents.getComponentByName('PeopleListItem', `.${XenoLib.getSingleClass('noBorder peopleListItem')}`);
+        const PeopleListItem = await ReactComponents.getComponentByName('PeopleListItem', `.${XenoLib.getSingleClass('peopleListItem', true)}`);
         if (promiseState.cancelled) return;
         const TypePatch3 = function(e) {
           try {
@@ -865,7 +866,7 @@ var MentionAliasesRedux = (() => {
       }
       /* mutual friends */
       async patchMutualFriends(promiseState) {
-        const MutualFriends = await ReactComponents.getComponentByName('MutualFriends', `.${XenoLib.getSingleClass('scroller themeGhostHairline')}`);
+        const MutualFriends = await ReactComponents.getComponentByName('MutualFriends', `.${XenoLib.getSingleClass('scroller themeGhostHairline', true)}`);
         if (promiseState.cancelled) return;
         const TypePatch3 = function(e) {
           try {
@@ -937,11 +938,9 @@ var MentionAliasesRedux = (() => {
       }
       /* add mentions popout button */
       async patchChannelTextArea(promiseState) {
-        const ChannelTextArea = await ReactComponents.getComponentByName('ChannelTextAreaForm', `.${XenoLib.getSingleClass('channelTextArea')}`);
-        if (promiseState.cancelled) return;
-        const ChannelTextAreaContainer = WebpackModules.find(m => m.render && m.render.displayName === 'ChannelTextAreaContainer');
-        const original = ChannelTextAreaContainer.render;
-        Patcher.after(ChannelTextAreaContainer, 'render', (_this, _, ret) => {
+        const ChannelTextAreaContainer = WebpackModules.find(m => m.type && m.type.render && m.type.render.displayName === 'ChannelTextAreaContainer');
+        Patcher.after(ChannelTextAreaContainer.type, 'render', (_this, _, ret) => {
+          if (this.__menuBroken) return;
           const ChannelEditorContainer = Utilities.getNestedProp(ret, 'props.children.0.props.children.props.children.1');
           if (!ChannelEditorContainer || ChannelEditorContainer.props.disabled || !this.settings.display.displayButton) return;
           const buttons = Utilities.getNestedProp(ret, 'props.children.0.props.children.props.children.2.props.children');
@@ -952,14 +951,10 @@ var MentionAliasesRedux = (() => {
               iconName: 'Nova_At',
               label: 'Open Aliases',
               className: ChannelTextAreaButtonClassname,
-              onClick: e => this.openAliasesPopout(e, { _editorRef })
+              onClick: e => !this.__menuBroken && this.openAliasesPopout(e, { _editorRef })
             })
           );
         });
-        /* transfer displayName and such, to be friendly to other plugins */
-        Object.keys(original).forEach(name => (ChannelTextAreaContainer.render[name] = original[name]));
-        this.patchedModules.push(ChannelTextArea);
-        ChannelTextArea.forceUpdateAll();
       }
 
       openAliasesPopout({ target }, ref) {
@@ -969,33 +964,49 @@ var MentionAliasesRedux = (() => {
             showArrow: true,
             position: 'top',
             zIndexBoost: 1,
-            render: () => {
-              return React.createElement(
-                'div',
-                {
-                  className: ZLibrary.WebpackModules.getByProps('header', 'messagesPopoutWrap').messagesPopoutWrap + ' ' + ZLibrary.WebpackModules.getByProps('themedPopout').themedPopout,
-                  style: { maxHeight: Structs.Screen.height - 43 - 25 - 40 }
-                },
-                WebpackModules.getByProps('Header', 'EmptyStateBottom').Header({
-                  title: 'Defined User Aliases'
-                }),
-                React.createElement(
-                  WebpackModules.getByDisplayName('VerticalScroller'),
+            render: _ => {
+              try {
+                return React.createElement(
+                  XenoLib.ReactComponents.ErrorBoundary,
                   {
-                    className: XenoLib.getClass('messagesPopoutWrap messagesPopout')
+                    label: 'Popout',
+                    onError: () => _.onClose()
                   },
-                  React.createElement(AliasesPopout, {
-                    getUserAlias: this.getUserAlias,
-                    getGroup: id => this.groups.find(m => m.id === id),
-                    getMentions: this.queryAliases,
-                    getGroupUsers: this.getGroupUsers,
-                    setAlias: this.setAlias,
-                    setGroup: this.setGroup,
-                    channelTextAreaRef: ref
-                  })
-                ),
-                false
-              );
+                  React.createElement(
+                    'div',
+                    {
+                      className: WebpackModules.getByProps('header', 'messagesPopoutWrap').messagesPopoutWrap,
+                      style: { maxHeight: Structs.Screen.height - 43 - 25 - 40 }
+                    },
+                    WebpackModules.getByProps('Header', 'EmptyStateBottom').Header({
+                      title: 'Defined User Aliases'
+                    }),
+                    React.createElement(
+                      WebpackModules.getByDisplayName('VerticalScroller'),
+                      {
+                        className: XenoLib.getClass('messagesPopoutWrap messagesPopout')
+                      },
+                      React.createElement(AliasesPopout, {
+                        getUserAlias: this.getUserAlias,
+                        getGroup: id => this.groups.find(m => m.id === id),
+                        getMentions: this.queryAliases,
+                        getGroupUsers: this.getGroupUsers,
+                        setAlias: this.setAlias,
+                        setGroup: this.setGroup,
+                        channelTextAreaRef: ref
+                      })
+                    ),
+                    false
+                  )
+                );
+              } catch (e) {
+                Logger.stacktrace('There has been an issue loading the menu', e);
+                XenoLib.Notifications.error('There has been an issue loading the menu. Open up the console using CTRL + SHIFT + I, click console, and show any errors to Lighty in the support server. Menu button has been disabled.', { timeout: 0 });
+                this.__menuBroken = true;
+                this.forceUpdateAll();
+                _.onClose();
+                return null;
+              }
             }
           },
           'MentionAliasesRedux'

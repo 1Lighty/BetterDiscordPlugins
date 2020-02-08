@@ -1,4 +1,8 @@
 # [MentionAliasesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=MentionAliasesRedux "MentionAliasesRedux") Changelog
+### 2.0.6
+- Fixed menu button not showing
+- Fixed misc error spam
+
 ### 2.0.5
 - Fixed crash if XenoLib or ZeresPluginLib were missing
 

@@ -107,8 +107,8 @@ var SaveToRedux = (() => {
 
     const ContextMenuSubMenuItem = WebpackModules.getByDisplayName('FluxContainer(SubMenuItem)');
     const TextComponent = WebpackModules.getByDisplayName('Text');
-    const getEmojiURL = WebpackModules.getByProps('getEmojiURL').getEmojiURL;
-    const showAlertModal = WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/)).show;
+    const getEmojiURL = (WebpackModules.getByProps('getEmojiURL') || {}).getEmojiURL;
+    const showAlertModal = (WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/)) || {}).show;
 
     const dialog = require('electron').remote.dialog;
     const openSaveDialog = dialog.showSaveDialogSync || dialog.showSaveDialog;
@@ -119,7 +119,7 @@ var SaveToRedux = (() => {
     const PathModule = require('path');
     const MimeTypesModule = require('mime-types');
     const FormItem = WebpackModules.getByDisplayName('FormItem');
-    const Messages = WebpackModules.getByProps('Messages').Messages;
+    const Messages = (WebpackModules.getByProps('Messages') || {}).Messages;
     const TextInput = WebpackModules.getByDisplayName('TextInput');
     const AvatarModule = WebpackModules.getByProps('getChannelIconURL');
 
