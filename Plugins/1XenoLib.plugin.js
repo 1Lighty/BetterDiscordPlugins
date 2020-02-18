@@ -1278,17 +1278,7 @@ var XenoLib = (() => {
     /* NOTIFICATIONS END */
 
     global.XenoLib = XenoLib;
-    const listener = e => {
-      if (e !== 'XenoLib') return;
-      XenoLib.shutdown();
-      BDEvents.off('plugin-unloaded', listener);
-    };
-    if (global.BDEvents) {
-      BDEvents.dispatch('xenolib-loaded');
-      BDEvents.on('plugin-unloaded', listener);
-    }
-
-    XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
+    let listener = DiscordConstants.NOOP;
 
     const notifLocations = ['topLeft', 'topMiddle', 'topRight', 'bottomLeft', 'bottomMiddle', 'bottomRight'];
     const notifLocationClasses = [`${XenoLib.getClass('selected topLeft')} ${XenoLib.getClass('topLeft option')}`, `topMiddle-xenoLib ${XenoLib.getClass('topLeft option')}`, `${XenoLib.getClass('selected topRight')} ${XenoLib.getClass('topLeft option')}`, `${XenoLib.getClass('selected bottomLeft')} ${XenoLib.getClass('topLeft option')}`, `bottomMiddle-xenoLib ${XenoLib.getClass('topLeft option')}`, `${XenoLib.getClass('selected bottomRight')} ${XenoLib.getClass('topLeft option')}`];
@@ -1382,6 +1372,18 @@ var XenoLib = (() => {
       constructor() {
         super();
         this.settings = LibrarySettings;
+        listener = e => {
+          if (e !== 'XenoLib') return;
+          XenoLib.shutdown();
+          BDEvents.off('plugin-unloaded', listener);
+        };
+        XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
+      }
+      load() {
+        if (global.BDEvents) {
+          BDEvents.dispatch('xenolib-loaded');
+          BDEvents.on('plugin-unloaded', listener);
+        }
       }
       buildSetting(data) {
         if (data.type === 'position') {
