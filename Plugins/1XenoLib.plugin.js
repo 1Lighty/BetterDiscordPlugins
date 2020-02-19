@@ -1380,6 +1380,7 @@ var XenoLib = (() => {
         XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
       }
       load() {
+        super.load();
         if (global.BDEvents) {
           BDEvents.dispatch('xenolib-loaded');
           BDEvents.on('plugin-unloaded', listener);
