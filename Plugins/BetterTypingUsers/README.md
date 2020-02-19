@@ -6,7 +6,7 @@ is changed to
 **user 1**, **user 2**, **user 3** and **user 4** are typing  
 or if it can't fit  
 **user 1**, **user 2**, **user 3** and 3 others are typing  
-It is 100% compatible with [BetterRoleColors](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterTypingUsers&dl=1 "BetterRoleColors") as well.
+It is 100% compatible with [BetterRoleColors](https://github.com/rauenzi/BetterDiscordAddons/tree/master/Plugins/BetterRoleColors) as well.
 ### Settings
 ##### Max visible typing users
 Max number of visible users typing, can be set between 3 and 20. If more people are typing than this is set to, it will show "x others" instead.
