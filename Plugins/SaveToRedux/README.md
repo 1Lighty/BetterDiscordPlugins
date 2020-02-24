@@ -18,7 +18,8 @@ Dynamic options must be wrapped like ${OPTION}
 Warn - Always warn if a file with the same name exists  
 Overwrite  
 Append number - appends a number in paranthesis  
-Append random
+Append random  
+Save As... - lets you enter a custom name instead
 #### Misc
 ##### Context menu option at the bottom instead of top
 Force the Save * To option to stay at the bottom at all times

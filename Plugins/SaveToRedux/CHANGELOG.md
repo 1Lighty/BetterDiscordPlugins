@@ -1,4 +1,9 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.9
+- Added new conflict option. If a file already exists, it can open up the Save As... modal to set a custom name instead.
+- Added a Randomize button to the Save As... modal.
+- Properly sanitizing filenames now.
+
 ### 2.0.8
 - Fixed crash if XenoLib or ZeresPluginLib were missing
 

@@ -41,16 +41,16 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.8',
+      version: '2.0.9',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'sad',
+        title: 'QOL',
         type: 'fixed',
-        items: ['Fixed crash if XenoLib or ZeresPluginLib were missing']
+        items: ['Added new conflict option. If a file already exists, it can open up the Save As... modal to set a custom name instead.', 'Added a Randomize button to the Save As... modal.', 'Properly sanitizing filenames now.']
       }
     ],
     defaultConfig: [
@@ -89,7 +89,8 @@ var SaveToRedux = (() => {
               { name: 'Warn', value: 0 },
               { name: 'Overwrite', value: 1 },
               { name: 'Append number: (1)', value: 2 },
-              { name: 'Append random', value: 3 }
+              { name: 'Append random', value: 3 },
+              { name: 'Save as...', value: 4 }
             ]
           },
           { name: 'User and Server icons get saved by the users or servers name, instead of randomized', id: 'saveByName', type: 'switch', value: true },
@@ -107,19 +108,20 @@ var SaveToRedux = (() => {
 
     const ContextMenuSubMenuItem = WebpackModules.getByDisplayName('FluxContainer(SubMenuItem)');
     const TextComponent = WebpackModules.getByDisplayName('Text');
-    const getEmojiURL = (WebpackModules.getByProps('getEmojiURL') || {}).getEmojiURL;
-    const showAlertModal = (WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/)) || {}).show;
+    const getEmojiURL = WebpackModules.getByProps('getEmojiURL').getEmojiURL;
+    const showAlertModal = WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/)).show;
 
     const dialog = require('electron').remote.dialog;
     const openSaveDialog = dialog.showSaveDialogSync || dialog.showSaveDialog;
     const openOpenDialog = dialog.showOpenDialogSync || dialog.showOpenDialog;
     const openItem = require('electron').shell.openItem;
+    const DelayedCall = WebpackModules.getByProps('DelayedCall').DelayedCall;
     const FsModule = require('fs');
     const RequestModule = require('request');
     const PathModule = require('path');
     const MimeTypesModule = require('mime-types');
     const FormItem = WebpackModules.getByDisplayName('FormItem');
-    const Messages = (WebpackModules.getByProps('Messages') || {}).Messages;
+    const Messages = WebpackModules.getByProps('Messages').Messages;
     const TextInput = WebpackModules.getByDisplayName('TextInput');
     const AvatarModule = WebpackModules.getByProps('getChannelIconURL');
 
@@ -218,6 +220,48 @@ var SaveToRedux = (() => {
       }
     }
 
+    /*
+     * I DO NOT OWN THESE TWO
+     */
+    function sanitizeFileName(r, e) {
+      // https://github.com/parshap/node-sanitize-filename
+      function n(r, n) {
+        function o(r, e, n) {
+          // https://github.com/parshap/truncate-utf8-bytes
+          function t(r) {
+            return r >= 55296 && 56319 >= r;
+          }
+          function u(r) {
+            return r >= 56320 && 57343 >= r;
+          }
+          if ('string' != typeof e) throw new Error('Input must be string');
+          for (var i, f, c = e.length, o = 0, l = 0; c > l; l += 1) {
+            if (((i = e.charCodeAt(l)), (f = e[l]), t(i) && u(e.charCodeAt(l + 1)) && ((l += 1), (f += e[l])), (o += r(f)), o === n)) return e.slice(0, l + 1);
+            if (o > n) return e.slice(0, l - f.length + 1);
+          }
+          return e;
+        }
+        if ('string' != typeof r) throw new Error('Input must be string');
+        var l = Buffer.byteLength.bind(Buffer),
+          a = o.bind(null, l),
+          p = r
+            .replace(t, n)
+            .replace(u, n)
+            .replace(i, n)
+            .replace(f, n)
+            .replace(c, n);
+        return a(p, e.extLength);
+      }
+      var t = /[\/\?<>\\:\*\|"]/g,
+        u = /[\x00-\x1f\x80-\x9f]/g,
+        i = /^\.+$/,
+        f = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i,
+        c = /[\. ]+$/,
+        o = (e && e.replacement) || '',
+        l = n(r, o);
+      return '' === o ? l : n(l, '');
+    }
+
     return class SaveToRedux extends Plugin {
       constructor() {
         super();
@@ -260,6 +304,12 @@ var SaveToRedux = (() => {
           `
         .ST-modal {
             min-height: 320px;
+        }
+        .ST-randomize {
+          justify-content: unset;
+        }
+        .ST-randomize > .${XenoLib.getSingleClass('lookBlank contents')} {
+          margin: 0;
         }
         `
         );
@@ -307,20 +357,26 @@ var SaveToRedux = (() => {
       async patchReactions(promiseState) {
         const Reaction = await ReactComponents.getComponentByName('Reaction', `.${XenoLib.getSingleClass('reactionMe reactions')} > div:not(.${XenoLib.getSingleClass('reactionMe reactionBtn')})`);
         if (promiseState.cancelled) return;
-        Patcher.after(Reaction.component.prototype, 'render', (_this, _, ret) => {
+        const unpatch = Patcher.after(Reaction.component.prototype, 'render', (_this, _, ret) => {
           const oChildren = ret.props.children;
           ret.props.children = e => {
-            const oChRet = oChildren(e);
-            const url = _this.props.emoji.id ? getEmojiURL({ id: _this.props.emoji.id, animated: _this.props.emoji.animated }) : WebpackModules.getByProps('getURL').getURL(_this.props.emoji.name);
-            XenoLib.createSharedContext(
-              () => {
-                const submenu = this.constructMenu(url.split('?')[0], 'Reaction', _this.props.emoji.name);
-                return XenoLib.createContextMenuGroup([submenu]);
-              },
-              oChRet.props,
-              'MESSAGE_REACTIONS'
-            );
-            return oChRet;
+            try {
+              const oChRet = oChildren(e);
+              const url = _this.props.emoji.id ? getEmojiURL({ id: _this.props.emoji.id, animated: _this.props.emoji.animated }) : WebpackModules.getByProps('getURL').getURL(_this.props.emoji.name);
+              XenoLib.createSharedContext(
+                () => {
+                  const submenu = this.constructMenu(url.split('?')[0], 'Reaction', _this.props.emoji.name);
+                  return XenoLib.createContextMenuGroup([submenu]);
+                },
+                oChRet.props,
+                'MESSAGE_REACTIONS'
+              );
+              return oChRet;
+            } catch (e) {
+              Logger.stacktrace('Error in Reaction patch', e);
+              unpatch(); // for the better..
+              return null;
+            }
           };
         });
         Reaction.forceUpdateAll();
@@ -346,7 +402,7 @@ var SaveToRedux = (() => {
         return DiscordAPI.currentChannel.members.reduce((p, c) => (p ? `${p}, ${c.username}` : c.username), '');
       }
 
-      formatFilename(name, previewDate, previewRand) {
+      formatFilename(name, previewDate, previewRand, extension, throwFail) {
         const date = previewDate || new Date();
         const rand = previewRand || this.rand();
         let ret = 'INTERNAL_ERROR';
@@ -368,7 +424,7 @@ var SaveToRedux = (() => {
             break;
           case 4: // custom
             // options file rand date time day month year hours minutes seconds name
-            return Utilities.formatTString(this.settings.saveOptions.customFileName, {
+            ret = Utilities.formatTString(this.settings.saveOptions.customFileName, {
               rand,
               file: name,
               date: date
@@ -376,8 +432,8 @@ var SaveToRedux = (() => {
                 .split('/')
                 .join('-'),
               time: `${date.getMinutes()}-${date.getSeconds()}-${date.getMilliseconds()}`,
-              day: date.getDay(),
-              month: date.getMonth(),
+              day: date.getDate(), // note to self: getDate gives you the day of month
+              month: date.getMonth() + 1, // getMonth gives 0-11
               year: date.getFullYear(),
               hours: date.getHours(),
               minutes: date.getMinutes(),
@@ -385,17 +441,19 @@ var SaveToRedux = (() => {
               name: this.getLocationName()
             });
         }
-        if (this.settings.saveOptions.appendCurrentName && (DiscordAPI.currentGuild || DiscordAPI.currentChannel)) {
-          const name = this.getLocationName();
-          if (name) ret += `-${name}`;
+        if (this.settings.saveOptions.fileNameType !== 4) {
+          if (this.settings.saveOptions.appendCurrentName && (DiscordAPI.currentGuild || DiscordAPI.currentChannel)) {
+            const name = this.getLocationName();
+            if (name) ret += `-${name}`;
+          }
         }
+        ret = sanitizeFileName(ret, { extLength: extension ? 255 - (extension.length + 1) : 255 });
+        if (!ret.length && throwFail) throw 'CUST_ERROR_1';
         return ret;
       }
 
       formatURL(url, requiresSize, customName, fallbackExtension, proxiedUrl) {
         // url = url.replace(/\/$/, '');
-        if (url.indexOf('/a_') !== -1) url = url.replace('.webp', '.gif').replace('.png', '.gif');
-        else url = url.replace('.webp', '.png');
         if (requiresSize) url += '?size=2048';
         const match = url.match(/(?:\/)([^\/]+?)(?:(?:\.)([^.\/?:]+)){0,1}(?:[^\w\/\.]+\w+){0,1}(?:(?:\?[^\/]+){0,1}|(?:\/){0,1})$/);
         let name = customName || match[1];
@@ -404,9 +462,15 @@ var SaveToRedux = (() => {
           extension = name;
           name = url.match(/\/\/media.tenor.co\/[^\/]+\/([^\/]+)\//)[1];
         } else if (url.indexOf('//i.giphy.com/media/') !== -1) name = url.match(/\/\/i\.giphy\.com\/media\/([^\/]+)\//)[1];
-        name = this.formatFilename(name);
+        let forceSaveAs = false;
+        try {
+          name = this.formatFilename(name, undefined, undefined, extension, true);
+        } catch (e) {
+          if (e !== 'CUST_ERROR_1') throw e;
+          forceSaveAs = true;
+        }
         const isTrusted = isTrustedDomain(url);
-        const ret = { fileName: (extension && `${name}.${extension}`) || name, url: isTrusted ? url : proxiedUrl || url, name, extension, untrusted: !isTrusted && !proxiedUrl };
+        const ret = { fileName: (extension && `${name}.${extension}`) || name, url: isTrusted ? url : proxiedUrl || url, name, extension, untrusted: !isTrusted && !proxiedUrl, forceSaveAs };
         // Logger.info(`[formatURL] url \`${url}\` requiresSize \`${requiresSize}\` customName \`${customName}\`, ret ${JSON.stringify(ret, '', 1)}`);
         return ret;
       }
@@ -460,12 +524,83 @@ var SaveToRedux = (() => {
           }
         };
 
-        const saveFile = (path, basePath, openOnSave, dontWarn) => {
+        const saveAs = (folder, onOk) => {
+          let val = formattedurl.name;
+          let inputRef = null;
+          let delayedCall = new DelayedCall(350, () => {
+            inputRef.props.value = val = sanitizeFileName(val, 255 - (formattedurl.extension ? formattedurl.extension.length + 1 : 0));
+            inputRef.forceUpdate();
+          });
+          Modals.showModal(
+            'Save as...',
+            React.createElement(
+              FormItem,
+              {
+                title: 'Name your file'
+              },
+              React.createElement(TextInput, {
+                maxLength: 255 - (formattedurl.extension ? formattedurl.extension.length + 1 : 0),
+                ref: e => (inputRef = e),
+                value: val,
+                onChange: e => {
+                  val = e;
+                  inputRef.props.value = val;
+                  if (val.trim() !== sanitizeFileName(val.trim(), 255 - (formattedurl.extension ? formattedurl.extension.length + 1 : 0))) inputRef.props.error = 'Invalid characters in name';
+                  else inputRef.props.error = undefined;
+                  inputRef.forceUpdate();
+                },
+                placeholder: formattedurl.name,
+                autoFocus: true,
+                error: !folder ? 'Invalid filename, please set a name' : folder === -1 ? 'File already exists, try another name' : undefined
+              }),
+              React.createElement(XenoLib.ReactComponents.Button, {
+                children: 'Randomize',
+                className: XenoLib.joinClassNames(DiscordClasses.Margins.marginBottom20.value, XenoLib.getClass('input reset'), 'ST-randomize'),
+                color: XenoLib.ReactComponents.Button.Colors.PRIMARY,
+                look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.LINK,
+                onClick: () => {
+                  val = this.rand();
+                  inputRef.props.value = val;
+                  inputRef.forceUpdate();
+                }
+              })
+            ),
+            {
+              confirmText: 'Save',
+              onCancel: e => console.log('oof'),
+              onConfirm: () => {
+                const onDoShitOrWhateverFuckThisShitMan = val => {
+                  if (!folder || folder === -1) return onOk(val);
+                  this.lastUsedFolder = this.folders.findIndex(m => m === folder);
+                  if (!val.length) val = formattedurl.name;
+                  else formattedurl.name = val;
+                  saveFile(folder.path + `/${val}${formattedurl.extension ? '.' + formattedurl.extension : ''}`, folder.path, false, false);
+                };
+                const sanitized = sanitizeFileName(val, 255 - (formattedurl.extension ? formattedurl.extension.length + 1 : 0));
+                if (val !== sanitized) {
+                  if (!sanitized.length) return saveAs(undefined, onOk);
+                  return Modals.showConfirmationModal('Invalid characters', `There are invalid characters in the filename. Do you want to strip them? Resulting filename will be ${sanitized}`, {
+                    onConfirm: () => {
+                      onOk(sanitized);
+                      onDoShitOrWhateverFuckThisShitMan(sanitized);
+                    }
+                  });
+                }
+                onDoShitOrWhateverFuckThisShitMan(val);
+              }
+            }
+          );
+        };
+
+        const saveFile = (path, basePath, openOnSave, dontWarn, resolved) => {
           try {
             FsModule.accessSync(PathModule.dirname(path), FsModule.constants.W_OK);
           } catch (err) {
+            Logger.stacktrace('Failed to save to folder', err);
             return BdApi.showToast(`Error saving to folder: ${err.message.match(/.*: (.*), access '/)[1]}`, { type: 'error' });
           }
+          const handleSaveAs = invFilename => saveAs(invFilename ? -1 : undefined, fileName => ((formattedurl.forceSaveAs = false), saveFile(`${basePath}/${fileName}${formattedurl.extension ? '.' + formattedurl.extension : ''}`, basePath, openOnSave, dontWarn, true)));
+          if (formattedurl.forceSaveAs && !resolved) return handleSaveAs();
           if (!dontWarn && FsModule.existsSync(path)) {
             const handleConflict = mode => {
               switch (mode) {
@@ -485,10 +620,12 @@ var SaveToRedux = (() => {
                 case 3: {
                   path = `${basePath}/${formattedurl.name}-${this.rand()}${formattedurl.extension ? '.' + formattedurl.extension : ''}`;
                 }
+                case 4:
+                  return handleSaveAs(true);
               }
               download(path, openOnSave);
             };
-            if (this.settings.saveOptions.conflictingFilesHandle) {
+            if (this.settings.saveOptions.conflictingFilesHandle && !formattedurl.forceSaveAs) {
               handleConflict(this.settings.saveOptions.conflictingFilesHandle);
             } else {
               let ref1, ref2;
@@ -518,6 +655,10 @@ var SaveToRedux = (() => {
                       {
                         name: 'Append random',
                         value: 3
+                      },
+                      {
+                        name: 'Save as...',
+                        value: 4
                       }
                     ],
                     value: 1,
@@ -578,44 +719,7 @@ var SaveToRedux = (() => {
                 const path = folder.path + `/${formattedurl.fileName}`;
                 saveFile(path, folder.path);
               }),
-              XenoLib.createContextMenuItem('Save As...', () => {
-                let val = '';
-                let inputRef = null;
-                Modals.showModal(
-                  'Save as...',
-                  React.createElement(
-                    FormItem,
-                    {
-                      className: DiscordClasses.Margins.marginBottom20,
-                      title: 'Name your file'
-                    },
-                    React.createElement(TextInput, {
-                      maxLength: DiscordConstants.MAX_GUILD_FOLDER_NAME_LENGTH,
-                      ref: e => (inputRef = e),
-                      value: val,
-                      onChange: e => {
-                        val = e;
-                        inputRef.props.value = e;
-                        inputRef.forceUpdate();
-                      },
-                      placeholder: formattedurl.name,
-                      autoFocus: true
-                    })
-                  ),
-                  {
-                    confirmText: 'Save',
-                    onConfirm: () => {
-                      this.lastUsedFolder = this.folders.findIndex(m => m === folder);
-                      if (!val.length) val = formattedurl.name;
-                      else formattedurl.name = val;
-                      saveFile(folder.path + `/${val}${formattedurl.extension ? '.' + formattedurl.extension : ''}`, folder.path, false, false);
-                    }
-                  }
-                );
-                /* const path = this.openSaveDialog({ defaultPath: folder.path + `/${formattedurl.fileName}` });
-                if (!path) return BdApi.showToast('Maybe next time.');
-                saveFile(path, undefined, false, true); */
-              }),
+              XenoLib.createContextMenuItem('Save As...', () => saveAs(folder)),
               XenoLib.createContextMenuItem('Save And Open', () => {
                 this.lastUsedFolder = this.folders.findIndex(m => m === folder);
                 const path = folder.path + `/${formattedurl.fileName}`;
@@ -731,6 +835,10 @@ var SaveToRedux = (() => {
         const isImage = e => /\.{0,1}(png|jpe?g|webp|gif|svg)$/i.test(e);
         const isVideo = e => /\.{0,1}(mp4|webm|mov)$/i.test(e);
         const isAudio = e => /\.{0,1}(mp3|ogg|wav|flac)$/i.test(e);
+        const useCorrectShit = () => {
+          if (url.indexOf('/a_') !== -1) url = url.replace('.webp', '.gif').replace('.png', '.gif');
+          else url = url.replace('.webp', '.png');
+        };
         if (type === 'NATIVE_IMAGE' || type === 'MESSAGE_MAIN') {
           let src;
           if (type === 'NATIVE_IMAGE') {
@@ -817,6 +925,7 @@ var SaveToRedux = (() => {
           url = _this.props.guild.getIconURL();
           if (!url) return;
           if (this.settings.saveOptions.saveByName) customName = _this.props.guild.name;
+          useCorrectShit();
         } else {
           if (_this.props.user && _this.props.user.getAvatarURL) {
             saveType = 'Avatar';
@@ -826,6 +935,7 @@ var SaveToRedux = (() => {
             url = AvatarModule.getChannelIconURL(_this.props.channel);
             saveType = 'Icon';
           } else return /* hurr durr? */;
+          useCorrectShit();
           if (url.startsWith('/assets/')) url = 'https://discordapp.com' + url;
         }
         try {
@@ -914,116 +1024,68 @@ var SaveToRedux = (() => {
         }
         stop() {}
         load() {
-          const XenoLibMissing = !global.XenoLib;
+          const ezlibMissing = !global.XenoLib;
           const zlibMissing = !global.ZeresPluginLibrary;
-          const bothLibsMissing = XenoLibMissing && zlibMissing;
+          const bothLibsMissing = ezlibMissing && zlibMissing;
           const header = `Missing ${(bothLibsMissing && 'Libraries') || 'Library'}`;
-          const content = `The ${(bothLibsMissing && 'Libraries') || 'Library'} ${(zlibMissing && 'ZeresPluginLibrary') || ''} ${(XenoLibMissing && (zlibMissing ? 'and XenoLib' : 'XenoLib')) || ''} required for ${this.name} ${(bothLibsMissing && 'are') || 'is'} missing.`;
+          const content = `The ${(bothLibsMissing && 'Libraries') || 'Library'} ${(zlibMissing && 'ZeresPluginLibrary') || ''} ${(ezlibMissing && (zlibMissing ? 'and XenoLib' : 'XenoLib')) || ''} required for ${this.name} ${(bothLibsMissing && 'are') || 'is'} missing.`;
           const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
           const TextElement = BdApi.findModuleByProps('Sizes', 'Weights');
           const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
           const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${(zlibMissing && '<br/><a href="https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>') || ''}${(zlibMissing && '<br/><a href="http://localhost:7474/XenoLib.js"target="_blank">Click here to download XenoLib</a>') || ''}`);
           if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
-          class TempErrorBoundary extends BdApi.React.PureComponent {
-            constructor(props) {
-              super(props);
-              this.state = { hasError: false };
-            }
-            componentDidCatch(err, inf) {
-              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`);
-              this.setState({ hasError: true });
-              if (typeof this.props.onError === 'function') this.props.onError(err);
-            }
-            render() {
-              if (this.state.hasError) return null;
-              return this.props.children;
-            }
-          }
-          let modalId;
-          const onHeckWouldYouLookAtThat = (() => {
-            if (!global.pluginModule || !global.BDEvents) return;
-            if (XenoLibMissing) {
-              const listener = () => {
-                BDEvents.off('xenolib-loaded', listener);
-                ModalStack.popWithKey(modalId); /* make it easier on the user */
-                pluginModule.reloadPlugin(this.name);
-              };
-              BDEvents.on('xenolib-loaded', listener);
-              return () => BDEvents.off('xenolib-loaded', listener);
-            } else {
-              const onLoaded = e => {
-                if (e !== 'ZeresPluginLibrary') return;
-                BDEvents.off('plugin-loaded', onLoaded);
-                ModalStack.popWithKey(modalId); /* make it easier on the user */
-                pluginModule.reloadPlugin(this.name);
-              };
-              BDEvents.on('plugin-loaded', onLoaded);
-              return () => BDEvents.off('plugin-loaded', onLoaded);
-            }
-          })();
-          modalId = ModalStack.push(props => {
+          ModalStack.push(props => {
             return BdApi.React.createElement(
-              TempErrorBoundary,
-              {
-                label: 'missing dependency modal',
-                onError: () => {
-                  ModalStack.popWithKey(modalId); /* smh... */
-                  onFail();
-                }
-              },
-              BdApi.React.createElement(
-                ConfirmationModal,
-                Object.assign(
-                  {
-                    header,
-                    children: [BdApi.React.createElement(TextElement, { color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
-                    red: false,
-                    confirmText: 'Download Now',
-                    cancelText: 'Cancel',
-                    onConfirm: () => {
-                      onHeckWouldYouLookAtThat();
-                      const request = require('request');
-                      const fs = require('fs');
-                      const path = require('path');
-                      const waitForLibLoad = callback => {
-                        if (!global.BDEvents) return callback();
-                        const onLoaded = e => {
-                          if (e !== 'ZeresPluginLibrary') return;
-                          BDEvents.off('plugin-loaded', onLoaded);
-                          callback();
+              ConfirmationModal,
+              Object.assign(
+                {
+                  header,
+                  children: [BdApi.React.createElement(TextElement, { color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
+                  red: false,
+                  confirmText: 'Download Now',
+                  cancelText: 'Cancel',
+                  onConfirm: () => {
+                    const request = require('request');
+                    const fs = require('fs');
+                    const path = require('path');
+                    const waitForLibLoad = callback => {
+                      if (!global.BDEvents) return callback();
+                      const onLoaded = e => {
+                        if (e !== 'ZeresPluginLibrary') return;
+                        BDEvents.off('plugin-loaded', onLoaded);
+                        callback();
+                      };
+                      BDEvents.on('plugin-loaded', onLoaded);
+                    };
+                    const onDone = () => {
+                      if (!global.pluginModule || (!global.BDEvents && !global.XenoLib)) return;
+                      if (!global.BDEvents || global.XenoLib) pluginModule.reloadPlugin(this.name);
+                      else {
+                        const listener = () => {
+                          pluginModule.reloadPlugin(this.name);
+                          BDEvents.off('xenolib-loaded', listener);
                         };
-                        BDEvents.on('plugin-loaded', onLoaded);
-                      };
-                      const onDone = () => {
-                        if (!global.pluginModule || (!global.BDEvents && !global.XenoLib)) return;
-                        if (!global.BDEvents || global.XenoLib) pluginModule.reloadPlugin(this.name);
-                        else {
-                          const listener = () => {
-                            BDEvents.off('xenolib-loaded', listener);
-                            pluginModule.reloadPlugin(this.name);
-                          };
-                          BDEvents.on('xenolib-loaded', listener);
-                        }
-                      };
-                      const downloadXenoLib = () => {
-                        if (global.XenoLib) return onDone();
-                        request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (error, response, body) => {
-                          if (error) return onFail();
-                          onDone();
-                          fs.writeFile(path.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), body, () => {});
-                        });
-                      };
-                      if (!global.ZeresPluginLibrary) {
-                        request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
-                          if (error) return onFail();
-                          waitForLibLoad(downloadXenoLib);
-                          fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
-                        });
-                      } else downloadXenoLib();
-                    }
-                  },
-                  props
-                )
+                        BDEvents.on('xenolib-loaded', listener);
+                      }
+                    };
+                    const downloadXenoLib = () => {
+                      if (global.XenoLib) return onDone();
+                      request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (error, response, body) => {
+                        if (error) return onFail();
+                        onDone();
+                        fs.writeFile(path.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), body, () => {});
+                      });
+                    };
+                    if (!global.ZeresPluginLibrary) {
+                      request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
+                        if (error) return onFail();
+                        waitForLibLoad(downloadXenoLib);
+                        fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
+                      });
+                    } else downloadXenoLib();
+                  }
+                },
+                props
               )
             );
           });
