@@ -1368,6 +1368,7 @@ var XenoLib = (() => {
       }
     }
 
+    const wasRenamed = !XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
     return class CXenoLib extends Plugin {
       constructor() {
         super();
@@ -1377,9 +1378,9 @@ var XenoLib = (() => {
           XenoLib.shutdown();
           BDEvents.off('plugin-unloaded', listener);
         };
-        XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
       }
       load() {
+	if (wasRenamed) return;
         super.load();
         if (global.BDEvents) {
           BDEvents.dispatch('xenolib-loaded');
