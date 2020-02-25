@@ -13,7 +13,7 @@ Show the < and > buttons
 ##### Show image scale
 Left is % of original resolution, where right is % downscaled.
 ##### Show image size
-#### UI settings
+#### Behavior settings
 ##### Use search API
 Without this, you'll only be able to view images currently cached in Discord.
 ##### Trigger search when hovering over navigation buttons when needed
