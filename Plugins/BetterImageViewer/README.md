@@ -3,7 +3,7 @@ Telegram image viewer ported to Discord. Adds ability to go between images in th
 ### Features
 Adds left and right arrows when you open an image, shows you who sent the image and when, the images resolution, scaling and size, as well as number of cached images (and estimated in channel total).  
 Can switch between images in the entire channel using the on screen buttons, or arrow keys.  
-Click the users name to jump to the message containing the image.
+Click the users name to jump to the message containing the image.  
 Right click the navigation buttons to quick jump to the last (or first) image.
 ### Settings
 #### UI settings
