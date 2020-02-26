@@ -2,6 +2,10 @@
 Adds a number badge to server icons and channels.
 ### Features
 Shows an unread badge on folders, server icons and channels, all toggleable with the count adjustable.
+### Preview
+![folders](https://i.imgur.com/v4kHabL.png)
+![servers](https://i.imgur.com/MJHKjuT.png)
+![channels](https://i.imgur.com/dhFgSrL.png)
 ### Settings
 #### Display settings
 ##### Display badge on folders
@@ -18,7 +22,3 @@ Note: If you use BetterNsfwTags, it will always display to the right of it sadly
 ##### Background color
 ##### Text color
 ##### Muted channel badge darkness
-### Preview
-![folders](https://i.imgur.com/v4kHabL.png)
-![servers](https://i.imgur.com/MJHKjuT.png)
-![channels](https://i.imgur.com/dhFgSrL.png)

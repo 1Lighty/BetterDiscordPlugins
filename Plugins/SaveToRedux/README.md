@@ -3,6 +3,9 @@ Allows you to save images, videos, profile icons, server icons, reactions, emote
 ### Features
 Right click on an image, video, file, user, guild icon or emote to be able to set folders and save to folders, under the Save * To context menu submenu.  
 With * being what you're saving, eg Image, Video, Emoji, File
+### Preview
+Right click on nearly any image, video or file
+![preview](https://i.imgur.com/htOuqtw.png)
 ### Settings
 #### File Save Settings
 ##### File name
@@ -23,6 +26,3 @@ Save As... - lets you enter a custom name instead
 #### Misc
 ##### Context menu option at the bottom instead of top
 Force the Save * To option to stay at the bottom at all times
-### Preview
-Right click on nearly any image, video or file
-![preview](https://i.imgur.com/htOuqtw.png)

@@ -4,6 +4,8 @@ Set custom @mention aliases, that can also appear next to their name (nearly) an
 Right click on a user or DM to set an alias, or create a group or add them to a group.
 This alias will show next to their name, like a BOT tag, but only you see it.
 You can tag them with this alias, just as if they had that very alias as their name.
+### Preview
+![preview](https://i.imgur.com/fCEhgQN.png)
 ### Settings
 #### Display Settings
 ##### Display *
@@ -21,5 +23,3 @@ tag in friends list
 Custom text color if your theme doesn't do it, or don't want to use custom CSS
 ##### Tag Background Color
 Set the background color of the tag next to their name
-### Preview
-![preview](https://i.imgur.com/fCEhgQN.png)
