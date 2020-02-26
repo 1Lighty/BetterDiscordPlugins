@@ -37,16 +37,16 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.0',
+      version: '1.0.1',
       description: 'Telegram image viewer ported to Discord. Adds ability to go between images in the current channel with arrow keys, or on screen buttons. Also provides info about the image, who posted it and when.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'Huzzah!',
-        type: 'added',
-        items: ['Plugin exists. That is all.']
+        title: "Now you're thinking with portals!",
+        type: 'fixed',
+        items: ['Nav buttons and info are now an overlay which means, fixed an issue from a certain trash plugin from a certain bad developer of who we do not speak of.']
       }
     ],
     defaultConfig: [
@@ -120,9 +120,10 @@ var BetterImageViewer = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, Patcher, PluginUtilities, PluginUpdater } = Api;
-    const { React, ModalStack, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, TextElement, MessageStore, APIModule, NavigationUtils } = DiscordModules;
+    const { React, ReactDOM, ModalStack, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, TextElement, MessageStore, APIModule, NavigationUtils } = DiscordModules;
 
     let PluginBrokenFatal = false;
+    let overlayDOMNode;
 
     const { ARROW_LEFT, ARROW_RIGHT } = DiscordConstants.KeyboardKeys;
     const Icon = WebpackModules.getByDisplayName('Icon');
@@ -658,225 +659,230 @@ var BetterImageViewer = (() => {
         ret.props.children[0].props.id = message.id + currentImage;
         const iMember = DiscordAPI.currentGuild && GuildMemberStore.getMember(DiscordAPI.currentGuild.id, message.author.id);
         ret.props.children.push(
-          this.props.settings.ui.navButtons
-            ? [
-                React.createElement(
-                  Clickable,
-                  {
-                    className: XenoLib.joinClassNames('BIV-left', { 'BIV-disabled': currentImage === this._maxImages && (this._searchCache.noBefore || this.state.rateLimited), 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsHidden }),
-                    onClick: this.handlePrevious,
-                    onContextMenu: () => this.handleFastJump(),
-                    onMouseEnter: () => this.handleMouseEnter(),
-                    onMouseLeave: this.handleMouseLeave
-                  },
-                  React.createElement(Icon, { name: 'LeftCaret' })
-                ),
-                React.createElement(
-                  Clickable,
-                  {
-                    className: XenoLib.joinClassNames('BIV-right', { 'BIV-disabled': currentImage === 1, 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsHidden }),
-                    onClick: this.handleNext,
-                    onContextMenu: () => this.handleFastJump(true),
-                    onMouseEnter: () => this.handleMouseEnter(true),
-                    onMouseLeave: this.handleMouseLeave
-                  },
-                  React.createElement(Icon, { name: 'RightCaret' })
-                )
-              ]
-            : null,
-          React.createElement(
-            'div',
-            {
-              className: XenoLib.joinClassNames('BIV-info', { 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsHidden })
-            },
-            this.props.settings.ui.imageIndex
-              ? React.createElement(
-                  TextElement.default,
-                  {
-                    color: TextElement.Colors.PRIMARY,
-                    weight: TextElement.Weights.SEMIBOLD
-                  },
-                  'Image ',
-                  currentImage,
-                  ' of ',
-                  this._maxImages,
-                  this._searchCache._totalResults
-                    ? React.createElement(
-                        Tooltip,
-                        {
-                          text: `Estimated ${this._maxImages + this._searchCache._totalResults} images in current channel`,
-                          position: 'top'
-                        },
-                        e => React.createElement('span', e, ' (~', this._maxImages + this._searchCache._totalResults, ')')
-                      )
-                    : undefined
-                )
-              : null,
-            React.createElement(
-              'div',
-              {
-                className: 'BIV-info-wrapper'
-              },
+          ReactDOM.createPortal(
+            [
+              this.props.settings.ui.navButtons
+                ? [
+                    React.createElement(
+                      Clickable,
+                      {
+                        className: XenoLib.joinClassNames('BIV-left', { 'BIV-disabled': currentImage === this._maxImages && (this._searchCache.noBefore || this.state.rateLimited), 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsHidden }),
+                        onClick: this.handlePrevious,
+                        onContextMenu: () => this.handleFastJump(),
+                        onMouseEnter: () => this.handleMouseEnter(),
+                        onMouseLeave: this.handleMouseLeave
+                      },
+                      React.createElement(Icon, { name: 'LeftCaret' })
+                    ),
+                    React.createElement(
+                      Clickable,
+                      {
+                        className: XenoLib.joinClassNames('BIV-right', { 'BIV-disabled': currentImage === 1, 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsHidden }),
+                        onClick: this.handleNext,
+                        onContextMenu: () => this.handleFastJump(true),
+                        onMouseEnter: () => this.handleMouseEnter(true),
+                        onMouseLeave: this.handleMouseLeave
+                      },
+                      React.createElement(Icon, { name: 'RightCaret' })
+                    )
+                  ]
+                : null,
               React.createElement(
-                TextElement.default,
+                'div',
                 {
-                  color: TextElement.Colors.PRIMARY,
-                  className: ClickableHeaderClassname
+                  className: XenoLib.joinClassNames('BIV-info', { 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsHidden })
                 },
-                React.createElement(
-                  'span',
-                  {
-                    className: UsernameClassname,
-                    onContextMenu: e => {
-                      WebpackModules.getByProps('openUserContextMenu').openUserContextMenu(e, message.author, DiscordAPI.currentChannel.discordObject);
-                    },
-                    style:
-                      iMember && iMember.colorString
-                        ? {
-                            color: iMember.colorString
-                          }
-                        : null,
-                    onClick: () => {
-                      this.props.onClose();
-                      NavigationUtils.transitionTo(`/channels/${(DiscordAPI.currentGuild && DiscordAPI.currentGuild.id) || '@me'}/${DiscordAPI.currentChannel.id}${message.id ? '/' + message.id : ''}`);
-                    }
-                  },
-                  (iMember && iMember.nick) || message.author.username
-                ),
-                React.createElement(MessageTimestamp, {
-                  timestamp: DiscordModules.Moment(message.timestamp)
-                }),
-                this._searchCache.noBefore &&
-                  React.createElement(
-                    'div',
-                    {
-                      className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
-                    },
-                    React.createElement(
-                      Tooltip,
-                      {
-                        text: 'You have reached the start of the channel'
-                      },
-                      e =>
-                        React.createElement(Icon, {
-                          ...e,
-                          name: 'LeftCaret'
-                        })
-                    )
-                  ),
-                this.state.isNearingEdge &&
-                  !this.props.settings.behavior.searchAPI &&
-                  React.createElement(
-                    'div',
-                    {
-                      className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.YELLOW)
-                    },
-                    React.createElement(
-                      Tooltip,
-                      {
-                        text: 'You are nearing the edge of available images. If you want more, enable search API.'
-                      },
-                      e =>
-                        React.createElement(Icon, {
-                          ...e,
-                          name: 'WarningTriangle'
-                        })
-                    )
-                  ),
-                this.state.requesting &&
-                  !this.state.unknownError &&
-                  React.createElement(
-                    'div',
-                    {
-                      className: 'BIV-requesting'
-                    },
-                    React.createElement(
-                      Tooltip,
-                      {
-                        text: 'Requesting more...'
-                      },
-                      e =>
-                        React.createElement(Icon, {
-                          ...e,
-                          name: 'UpdateAvailable'
-                        })
-                    )
-                  ),
-                this.state.indexing &&
-                  React.createElement(
-                    'div',
-                    {
-                      className: 'BIV-requesting'
-                    },
-                    React.createElement(
-                      Tooltip,
-                      {
-                        text: 'Indexing channel...'
-                      },
-                      e =>
-                        React.createElement(Icon, {
-                          ...e,
-                          name: 'Nova_Search'
-                        })
-                    )
-                  ),
-                this.state.localRateLimited || this.state.rateLimited
+                this.props.settings.ui.imageIndex
                   ? React.createElement(
-                      'div',
+                      TextElement.default,
                       {
-                        className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
+                        color: TextElement.Colors.PRIMARY,
+                        weight: TextElement.Weights.SEMIBOLD
                       },
-                      React.createElement(
-                        Tooltip,
-                        {
-                          text: 'You have been rate limited, please wait'
+                      'Image ',
+                      currentImage,
+                      ' of ',
+                      this._maxImages,
+                      this._searchCache._totalResults
+                        ? React.createElement(
+                            Tooltip,
+                            {
+                              text: `Estimated ${this._maxImages + this._searchCache._totalResults} images in current channel`,
+                              position: 'top'
+                            },
+                            e => React.createElement('span', e, ' (~', this._maxImages + this._searchCache._totalResults, ')')
+                          )
+                        : undefined
+                    )
+                  : null,
+                React.createElement(
+                  'div',
+                  {
+                    className: 'BIV-info-wrapper'
+                  },
+                  React.createElement(
+                    TextElement.default,
+                    {
+                      color: TextElement.Colors.PRIMARY,
+                      className: ClickableHeaderClassname
+                    },
+                    React.createElement(
+                      'span',
+                      {
+                        className: UsernameClassname,
+                        onContextMenu: e => {
+                          WebpackModules.getByProps('openUserContextMenu').openUserContextMenu(e, message.author, DiscordAPI.currentChannel.discordObject);
                         },
-                        e =>
-                          React.createElement(Icon, {
-                            ...e,
-                            name: 'Timer'
-                          })
+                        style:
+                          iMember && iMember.colorString
+                            ? {
+                                color: iMember.colorString
+                              }
+                            : null,
+                        onClick: () => {
+                          this.props.onClose();
+                          NavigationUtils.transitionTo(`/channels/${(DiscordAPI.currentGuild && DiscordAPI.currentGuild.id) || '@me'}/${DiscordAPI.currentChannel.id}${message.id ? '/' + message.id : ''}`);
+                        }
+                      },
+                      (iMember && iMember.nick) || message.author.username
+                    ),
+                    React.createElement(MessageTimestamp, {
+                      timestamp: DiscordModules.Moment(message.timestamp)
+                    }),
+                    this._searchCache.noBefore &&
+                      React.createElement(
+                        'div',
+                        {
+                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
+                        },
+                        React.createElement(
+                          Tooltip,
+                          {
+                            text: 'You have reached the start of the channel'
+                          },
+                          e =>
+                            React.createElement(Icon, {
+                              ...e,
+                              name: 'LeftCaret'
+                            })
+                        )
+                      ),
+                    this.state.isNearingEdge &&
+                      !this.props.settings.behavior.searchAPI &&
+                      React.createElement(
+                        'div',
+                        {
+                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.YELLOW)
+                        },
+                        React.createElement(
+                          Tooltip,
+                          {
+                            text: 'You are nearing the edge of available images. If you want more, enable search API.'
+                          },
+                          e =>
+                            React.createElement(Icon, {
+                              ...e,
+                              name: 'WarningTriangle'
+                            })
+                        )
+                      ),
+                    this.state.requesting &&
+                      !this.state.unknownError &&
+                      React.createElement(
+                        'div',
+                        {
+                          className: 'BIV-requesting'
+                        },
+                        React.createElement(
+                          Tooltip,
+                          {
+                            text: 'Requesting more...'
+                          },
+                          e =>
+                            React.createElement(Icon, {
+                              ...e,
+                              name: 'UpdateAvailable'
+                            })
+                        )
+                      ),
+                    this.state.indexing &&
+                      React.createElement(
+                        'div',
+                        {
+                          className: 'BIV-requesting'
+                        },
+                        React.createElement(
+                          Tooltip,
+                          {
+                            text: 'Indexing channel...'
+                          },
+                          e =>
+                            React.createElement(Icon, {
+                              ...e,
+                              name: 'Nova_Search'
+                            })
+                        )
+                      ),
+                    this.state.localRateLimited || this.state.rateLimited
+                      ? React.createElement(
+                          'div',
+                          {
+                            className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
+                          },
+                          React.createElement(
+                            Tooltip,
+                            {
+                              text: 'You have been rate limited, please wait'
+                            },
+                            e =>
+                              React.createElement(Icon, {
+                                ...e,
+                                name: 'Timer'
+                              })
+                          )
+                        )
+                      : undefined,
+                    this._followNew &&
+                      React.createElement(
+                        'div',
+                        {
+                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
+                        },
+                        React.createElement(
+                          Tooltip,
+                          {
+                            text: 'You have reached the end of the channel and are listening for new images'
+                          },
+                          e =>
+                            React.createElement(Icon, {
+                              ...e,
+                              name: 'RightCaret'
+                            })
+                        )
+                      ),
+                    this.state.unknownError &&
+                      React.createElement(
+                        'div',
+                        {
+                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
+                        },
+                        React.createElement(
+                          Tooltip,
+                          {
+                            text: 'Unknown error occured'
+                          },
+                          e =>
+                            React.createElement(Icon, {
+                              ...e,
+                              name: 'Clear'
+                            })
+                        )
                       )
-                    )
-                  : undefined,
-                this._followNew &&
-                  React.createElement(
-                    'div',
-                    {
-                      className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
-                    },
-                    React.createElement(
-                      Tooltip,
-                      {
-                        text: 'You have reached the end of the channel and are listening for new images'
-                      },
-                      e =>
-                        React.createElement(Icon, {
-                          ...e,
-                          name: 'RightCaret'
-                        })
-                    )
-                  ),
-                this.state.unknownError &&
-                  React.createElement(
-                    'div',
-                    {
-                      className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
-                    },
-                    React.createElement(
-                      Tooltip,
-                      {
-                        text: 'Unknown error occured'
-                      },
-                      e =>
-                        React.createElement(Icon, {
-                          ...e,
-                          name: 'Clear'
-                        })
-                    )
                   )
+                )
               )
-            )
+            ],
+            overlayDOMNode
           )
         );
         return ret;
@@ -885,6 +891,11 @@ var BetterImageViewer = (() => {
 
     return class BetterImageViewer extends Plugin {
       onStart() {
+        if (!overlayDOMNode) {
+          overlayDOMNode = document.createElement('div');
+          overlayDOMNode.className = 'biv-overlay';
+        }
+        document.querySelector('#app-mount').append(overlayDOMNode);
         this.promises = { state: { cancelled: false } };
         if (PluginBrokenFatal) {
           PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
@@ -983,11 +994,22 @@ var BetterImageViewer = (() => {
           max-width: 900px;
           overflow-x: hidden;
         }
+        .biv-overlay {
+          pointer-events: none;
+          position: absolute;
+          z-index: 1000;
+          width: 100%;
+          height: 100%;
+        }
+        .biv-overlay > * {
+          pointer-events: all;
+        }
         `
         );
       }
 
       onStop() {
+        if (overlayDOMNode) overlayDOMNode.remove();
         this.promises.state.cancelled = true;
         Patcher.unpatchAll();
         Dispatcher.unsubscribe('MESSAGE_DELETE', this.handleMessageDelete);
@@ -1028,6 +1050,7 @@ var BetterImageViewer = (() => {
               const original = _this.props.original || _this.props.src;
               ModalStack.push(e => {
                 return React.createElement(
+                  /* this safety net should prevent any major issues or crashes, in theory */
                   ErrorCatcher,
                   {
                     label: 'Image modal',
@@ -1231,12 +1254,15 @@ var BetterImageViewer = (() => {
           ret.props.children.splice(
             1,
             0,
-            React.createElement(
-              'div',
-              {
-                className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsHidden, 'BIV-inactive': _this.state.controlsInactive }, TextElement.Colors.PRIMARY)
-              },
-              React.createElement('table', {}, settings.infoResolution ? renderTableEntry(basicImageInfo ? `${basicImageInfo.width}x${basicImageInfo.height}` : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null)
+            ReactDOM.createPortal(
+              React.createElement(
+                'div',
+                {
+                  className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsHidden, 'BIV-inactive': _this.state.controlsInactive }, TextElement.Colors.PRIMARY)
+                },
+                React.createElement('table', {}, settings.infoResolution ? renderTableEntry(basicImageInfo ? `${basicImageInfo.width}x${basicImageInfo.height}` : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null)
+              ),
+              overlayDOMNode
             )
           );
         });
@@ -1256,12 +1282,10 @@ var BetterImageViewer = (() => {
       }
       get short() {
         let string = '';
-
         for (let i = 0, len = config.info.name.length; i < len; i++) {
           const char = config.info.name[i];
           if (char === char.toUpperCase()) string += char;
         }
-
         return string;
       }
       get author() {
@@ -1327,7 +1351,7 @@ var BetterImageViewer = (() => {
               ret += 'XenoLib ';
               if (zlibMissing || ZeresPluginLibraryOutdated) ret += 'and ZeresPluginLibrary ';
             } else if (zlibMissing || ZeresPluginLibraryOutdated) ret += 'ZeresPluginLibrary ';
-            ret += `required for ${this.getName()} ${bothLibsShit ? 'are' : 'is'} ${XenoLibMissing || zlibMissing ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (XenoLibMissing || zlibMissing ? ' and/or outdated' : 'outdated') : ''}.`;
+            ret += `required for ${this.name} ${bothLibsShit ? 'are' : 'is'} ${XenoLibMissing || zlibMissing ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (XenoLibMissing || zlibMissing ? ' and/or outdated' : 'outdated') : ''}.`;
             return ret;
           })();
           const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
@@ -1342,7 +1366,7 @@ var BetterImageViewer = (() => {
               const listener = () => {
                 BDEvents.off('xenolib-loaded', listener);
                 ModalStack.popWithKey(modalId); /* make it easier on the user */
-                pluginModule.reloadPlugin(this.getName());
+                pluginModule.reloadPlugin(this.name);
               };
               BDEvents.on('xenolib-loaded', listener);
               return () => BDEvents.off('xenolib-loaded', listener);
@@ -1352,7 +1376,7 @@ var BetterImageViewer = (() => {
               BDEvents.off('plugin-loaded', onLibLoaded);
               BDEvents.off('plugin-reloaded', onLibLoaded);
               ModalStack.popWithKey(modalId); /* make it easier on the user */
-              pluginModule.reloadPlugin(this.getName());
+              pluginModule.reloadPlugin(this.name);
             };
             BDEvents.on('plugin-loaded', onLibLoaded);
             BDEvents.on('plugin-reloaded', onLibLoaded);
