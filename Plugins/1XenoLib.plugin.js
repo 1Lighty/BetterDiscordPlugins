@@ -1,4 +1,4 @@
-//META{"name":"XenoLib","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js/"}*//
+//META{"name":"XenoLib","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js/","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
 /*@cc_on
 @if (@_jscript)
 
@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.10',
+      version: '1.3.11',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['Fixed error loading, if BDFDB exists. This is so sad, can we pat Lighty?', 'Should no longer throw "Cannot read property \'toString\' of undefined", nor fail to load under most circumstances.', 'Improved missing lib warning. It is no longer is possible for it to crash Discord, if another plugin loads Zeres lib, XenoLib auto closes its own modal and reload itself, so it can start functioning. This will cause a chain reaction of plugins starting to function, so you don\'t get spammed with "Missing library" modals.']
+        items: ['Beep boop, fixed some issues regarding adding support server, donate buttons etc.', 'Added backdrop-filter style to the notifications, can be disabled in settings if you dislike it.']
       }
     ],
     defaultConfig: [
@@ -66,6 +66,12 @@ var XenoLib = (() => {
             id: 'position',
             type: 'position',
             value: 'topRight'
+          },
+          {
+            name: 'Notifications use backdrop-filter',
+            id: 'backdrop',
+            type: 'switch',
+            value: true
           }
         ]
       }
@@ -92,7 +98,11 @@ var XenoLib = (() => {
       }
     }
 
-    if (global.XenoLib) global.XenoLib.shutdown();
+    if (global.XenoLib) {
+      try {
+        global.XenoLib.shutdown();
+      } catch (e) {}
+    }
     const XenoLib = {};
     XenoLib.shutdown = () => {
       try {
@@ -101,6 +111,7 @@ var XenoLib = (() => {
         Logger.stacktrace('Failed to unpatch all', e);
       }
       PluginUtilities.removeStyle('XenoLib-CSS');
+      PluginUtilities.removeStyle('XenoLib-CSS2');
       if (global.BDEvents) BDEvents.off('plugin-unloaded', listener);
       try {
         const notifWrapper = document.querySelector('.xenoLib-notifications');
@@ -306,6 +317,21 @@ var XenoLib = (() => {
       }
       `
     );
+    const addBackdrop = () => {
+      PluginUtilities.removeStyle('XenoLib-CSS2');
+      if (!LibrarySettings.notifications.backdrop) return;
+      PluginUtilities.addStyle(
+        'XenoLib-CSS2',
+        `
+        .xenoLib-notification-content {
+          backdrop-filter: blur(5px);
+          background: rgba(71, 71, 71, 0.3);
+          border: none;
+        }
+        `
+      );
+    };
+    addBackdrop();
     XenoLib.joinClassNames = WebpackModules.getModule(e => e.default && e.default.default);
     XenoLib.authorId = '239513071272329217';
     XenoLib.supportServerId = '389049952732446731';
@@ -342,109 +368,9 @@ var XenoLib = (() => {
         }
       ]; */
       if (V2C_PluginCard && V2C_ThemeCard) {
-        const ElectronShell = require('electron').shell;
         const LinkClassname = XenoLib.joinClassNames(XenoLib.getClass('anchorUnderlineOnHover anchor'), XenoLib.getClass('anchor anchorUnderlineOnHover'), 'bda-author');
         const handlePatch = (_this, _, ret) => {
-          const author = Utilities.getNestedProp(ret, 'props.children.0.props.children.0.props.children.4');
-          const footer = Utilities.getNestedProp(ret, 'props.children.2.props.children.0.props.children');
-          /* if (!author) return;
-          const donations = [];
-          const support = [];
-          for (let i = 0; i < pluginAuthors.length; i++) {
-            const pluginAuthor = pluginAuthors[i];
-            const onClick = () => {
-              if (DiscordAPI.currentUser.id === pluginAuthor.id) return;
-              PrivateChannelActions.ensurePrivateChannel(DiscordAPI.currentUser.id, pluginAuthor.id).then(() => {
-                PrivateChannelActions.openPrivateChannel(DiscordAPI.currentUser.id, pluginAuthor.id);
-                LayerManager.popLayer();
-              });
-            };
-            if (typeof author.props.children !== 'string') {
-              if (!Array.isArray(author.props.children)) return;
-              for (let ii = 0; ii < author.props.children.length; ii++) {
-                const name = author.props.children[ii];
-                if (typeof name !== 'string') continue;
-                const idx = name.indexOf(pluginAuthor.name);
-                if (idx === -1) continue;
-                console.log(author.props.children, name, idx, pluginAuthor.name);
-                const pre = name.slice(0, idx);
-                const post = name.slice(idx + pluginAuthor.name.length);
-                author.props.children.splice(idx, 1, pre, React.createElement('a', { className: LinkClassname, onClick }, pluginAuthor.name), post);
-                break;
-              }
-            } else {
-              if (author.props.children.indexOf(pluginAuthor.name) === -1) continue;
-              const idx = author.props.children.indexOf(pluginAuthor.name);
-              const pre = author.props.children.slice(0, idx);
-              const post = author.props.children.slice(idx + pluginAuthor.name.length);
-              author.props.children = [pre, React.createElement('a', { className: LinkClassname, onClick }, pluginAuthor.name), post];
-            }
-            if (Array.isArray(pluginAuthor.donations) && pluginAuthor.donations.length) donations.push({ name: pluginAuthor.name, donations: pluginAuthor.donations });
-            if (pluginAuthor.supportServerId && pluginAuthor.supportServerInvite) support.push({ name: pluginAuthor.name, id: pluginAuthor.supportServerId, invite: pluginAuthor.supportServerInvite });
-          }
-          if (!footer) return;
-          if (donations.length) {
-            footer.push(
-              ' | ',
-              React.createElement(
-                'a',
-                {
-                  className: 'bda-link',
-                  onClick: e => {
-                    ContextMenuActions.openContextMenu(e, e =>
-                      React.createElement(
-                        'div',
-                        { className: DiscordClasses.ContextMenu.contextMenu },
-                        XenoLib.createContextMenuGroup([
-                          donations.map(authorDonations =>
-                            XenoLib.createContextMenuSubMenu(
-                              authorDonations.name,
-                              authorDonations.donations.map(donation => XenoLib.createContextMenuItem(donation.name, () => ElectronShell.openExternal(donation.url)))
-                            )
-                          )
-                        ])
-                      )
-                    );
-                  }
-                },
-                'Donate'
-              )
-            );
-          }
-          if (support.length) {
-            footer.push(
-              ' | ',
-              React.createElement(
-                'a',
-                {
-                  className: 'bda-link',
-                  onClick: () => {
-                    LayerManager.popLayer();
-                    if (GuildStore.getGuild(support[0].id)) GuildActions.transitionToGuildSync(support[0].id);
-                    else InviteActions.openNativeAppModal(support[0].invite);
-                  }
-                },
-                'Support Server'
-              )
-            );
-          }
-          if (_this.props.plugin.showChangelog || _this.props.plugin.getChanges) {
-            footer.push(
-              ' | ',
-              React.createElement(
-                'a',
-                {
-                  className: 'bda-link',
-                  onClick: () => {
-                    if (_this.props.plugin.showChangelog) _this.props.plugin.showChangelog();
-                    else Modals.showChangelogModal(_this.props.plugin.getName() + ' Changelog', _this.props.plugin.getVersion(), _this.props.plugin.getChanges());
-                  }
-                },
-                'Changelog'
-              )
-            );
-          }
-          return; */
+          const author = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf('bda-author') !== -1);
           if (!author || typeof author.props.children !== 'string' || author.props.children.indexOf('Lighty') === -1) return;
           const onClick = () => {
             if (DiscordAPI.currentUser.id === XenoLib.authorId) return;
@@ -473,44 +399,27 @@ var XenoLib = (() => {
               ),
               post
             ];
+            delete author.props.onClick;
+            author.props.className = 'bda-author';
+            author.type = 'span';
           }
-          if (footer) {
-            footer.push(
-              ' | ',
-              React.createElement('a', { className: 'bda-link', href: 'https://paypal.me/lighty13', target: '_blank' }, 'Paypal'),
-              ' | ',
-              React.createElement('a', { className: 'bda-link', href: 'https://ko-fi.com/lighty_', target: '_blank' }, 'Ko-fi'),
-              ' | ',
-              React.createElement(
-                'a',
-                {
-                  className: 'bda-link',
-                  onClick: () => {
-                    LayerManager.popLayer();
-                    if (GuildStore.getGuild(XenoLib.supportServerId)) GuildActions.transitionToGuildSync(XenoLib.supportServerId);
-                    else InviteActions.openNativeAppModal('NYvWdN5');
-                  }
-                },
-                'Support Server'
-              )
-            );
-            if (_this.props.plugin.showChangelog || _this.props.plugin.getChanges) {
-              footer.push(
-                ' | ',
-                React.createElement(
-                  'a',
-                  {
-                    className: 'bda-link',
-                    onClick: () => {
-                      if (_this.props.plugin.showChangelog) _this.props.plugin.showChangelog();
-                      else Modals.showChangelogModal(_this.props.plugin.getName() + ' Changelog', _this.props.plugin.getVersion(), _this.props.plugin.getChanges());
-                    }
-                  },
-                  'Changelog'
-                )
-              );
-            }
-          }
+          let footerProps = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf('bda-links') !== -1);
+          if (!footerProps) return;
+          footerProps = footerProps.props;
+          if (!Array.isArray(footerProps.children)) footerProps.children = [footerProps.children];
+          const findLink = name => Utilities.findInReactTree(footerProps.children, e => e && e.props && e.props.children === name);
+          const makeLink = (name, url) => React.createElement('a', { className: 'bda-link', href: url, target: '_blank' }, name);
+          const websiteLink = findLink('Website');
+          const sourceLink = findLink('Source');
+          const paypalLink = findLink('Paypal');
+          const supportServerLink = findLink('Support Server');
+          footerProps.children = [];
+          if (websiteLink) footerProps.children.push(websiteLink);
+          if (sourceLink) footerProps.children.push(websiteLink ? ' | ' : null, sourceLink);
+          footerProps.children.push(websiteLink || sourceLink ? ' | ' : null, paypalLink || makeLink('Paypal', 'https://paypal.me/lighty13'));
+          footerProps.children.push(' | ', makeLink('Ko-fi', 'https://ko-fi.com/lighty_'));
+          footerProps.children.push(' | ', supportServerLink || React.createElement('a', { className: 'bda-link', onClick: () => (LayerManager.popLayer(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Support Server'));
+          footerProps.children.push(' | ', React.createElement('a', { className: 'bda-link', onClick: () => (_this.props.plugin.showChangelog ? _this.props.plugin.showChangelog() : Modals.showChangelogModal(_this.props.plugin.getName() + ' Changelog', _this.props.plugin.getVersion(), _this.props.plugin.getChanges())) }, 'Changelog'));
         };
         Patcher.after(V2C_PluginCard.prototype, 'render', handlePatch);
         Patcher.after(V2C_ThemeCard.prototype, 'render', handlePatch);
@@ -518,6 +427,7 @@ var XenoLib = (() => {
     } catch (e) {
       Logger.stacktrace('Failed to patch V2C_*Card', e);
     }
+
     XenoLib.ReactComponents = {};
 
     XenoLib.ReactComponents.ErrorBoundary = class XLErrorBoundary extends React.PureComponent {
@@ -588,7 +498,7 @@ var XenoLib = (() => {
           return null;
         }
       };
-      const renderContextMenus = ['NativeContextMenu', 'GuildRoleContextMenu', 'MessageContextMenu', 'DeveloperContextMenu', 'ScreenshareContextMenu'];
+      const renderContextMenus = ['NativeContextMenu', 'GuildRoleContextMenu', 'DeveloperContextMenu', 'ScreenshareContextMenu'];
       const hookContextMenus = [getModule(/case \w.ContextMenuTypes.CHANNEL_LIST_TEXT/), getModule(/case \w.ContextMenuTypes.GUILD_CHANNEL_LIST/), getModule(/case \w.ContextMenuTypes.USER_CHANNEL_MEMBERS/), getModule(/case \w\.ContextMenuTypes\.MESSAGE_MAIN/)];
       for (const type of renderContextMenus) {
         const module = WebpackModules.getByDisplayName(type);
@@ -652,7 +562,7 @@ var XenoLib = (() => {
     }
 
     /* shared between FilePicker and ColorPicker */
-    const MultiInputClassname = XenoLib.joinClassNames(DiscordClasses.BasicInputs.input.value, XenoLib.getClass('multiInput'));
+    const MultiInputClassname = XenoLib.joinClassNames(Utilities.getNestedProp(DiscordClasses, 'BasicInputs.input.value'), XenoLib.getClass('multiInput'));
     const MultiInputFirstClassname = XenoLib.getClass('multiInputFirst');
     const MultiInputFieldClassname = XenoLib.getClass('multiInputField');
     const ErrorMessageClassname = XenoLib.getClass('errorMessage');
@@ -660,7 +570,6 @@ var XenoLib = (() => {
 
     try {
       const dialog = require('electron').remote.dialog;
-      const showOpenDialog = dialog.showOpenDialogSync || dialog.showOpenDialog;
       const DelayedCall = WebpackModules.getByProps('DelayedCall').DelayedCall;
       const FsModule = require('fs');
       /**
@@ -671,6 +580,7 @@ var XenoLib = (() => {
        * @property {Function} onChange
        * @property {object} properties
        * @property {bool} nullOnInvalid
+       * @property {bool} saveOnEnter
        */
       XenoLib.ReactComponents.FilePicker = class FilePicker extends React.PureComponent {
         constructor(props) {
@@ -680,23 +590,30 @@ var XenoLib = (() => {
             path: props.path,
             error: null
           };
-          XenoLib._.bindAll(this, ['handleOnBrowse', 'handleChange']);
-          this.delayedCallVerifyPath = new DelayedCall(500, () =>
-            FsModule.access(this.state.path, FsModule.constants.W_OK, error => {
-              const invalid = (error && error.message.match(/.*: (.*), access '/)[1]) || null;
-              this.setState({ error: invalid });
-              if (invalid && this.props.nullOnInvalid) this.props.onChange(null);
-            })
-          );
+          XenoLib._.bindAll(this, ['handleOnBrowse', 'handleChange', 'checkInvalidDir']);
+          this.handleKeyDown = XenoLib._.throttle(this.handleKeyDown.bind(this), 500);
+          this.delayedCallVerifyPath = new DelayedCall(500, () => this.checkInvalidDir());
+        }
+        checkInvalidDir(doSave) {
+          FsModule.access(this.state.path, FsModule.constants.W_OK, error => {
+            const invalid = (error && error.message.match(/.*: (.*), access '/)[1]) || null;
+            this.setState({ error: invalid });
+            if (this.props.saveOnEnter && !doSave) return;
+            if (invalid) this.props.onChange(this.props.nullOnInvalid ? null : '');
+          });
         }
         handleOnBrowse() {
-          const path = showOpenDialog({ title: this.props.title, properties: this.props.properties });
-          if (Array.isArray(path) && path.length) this.handleChange(path[0]);
+          dialog.showOpenDialog({ title: this.props.title, properties: this.props.properties }).then(({ filePaths: [path] }) => {
+            if (path) this.handleChange(path);
+          });
         }
         handleChange(path) {
-          this.props.onChange(path);
           this.setState({ path });
           this.delayedCallVerifyPath.delay();
+        }
+        handleKeyDown(e) {
+          if (!this.props.saveOnEnter || e.which !== DiscordConstants.KeyboardKeys.ENTER) return;
+          this.checkInvalidDir(true);
         }
         render() {
           const n = {};
@@ -714,6 +631,7 @@ var XenoLib = (() => {
                 onChange: this.handleChange,
                 onFocus: () => this.setState({ multiInputFocused: true }),
                 onBlur: () => this.setState({ multiInputFocused: false }),
+                onKeyDown: this.handleKeyDown,
                 autoFocus: false,
                 className: MultiInputFirstClassname,
                 inputClassName: MultiInputFieldClassname
@@ -877,22 +795,35 @@ var XenoLib = (() => {
           );
         }
       }
-      XenoLib.Settings = {};
-      XenoLib.Settings.ColorPicker = class ColorPickerSettingField extends Settings.SettingField {
-        constructor(name, note, value, onChange, options = {}) {
-          super(name, note, onChange, ColorPicker, {
-            disabled: options.disabled ? true : false,
-            onChange: reactElement => color => {
-              this.onChange(color);
-            },
-            defaultColor: typeof options.defaultColor !== 'undefined' ? options.defaultColor : ColorConverter.int2hex(DiscordConstants.DEFAULT_ROLE_COLOR),
-            value
-          });
-        }
-      };
     } catch (e) {
       Logger.stacktrace('Failed to create ColorPicker settings component', e);
     }
+
+    XenoLib.Settings = {};
+    XenoLib.Settings.FilePicker = class FilePickerSettingField extends Settings.SettingField {
+      constructor(name, note, value, onChange, options = { properties: ['openDirectory', 'createDirectory'], placeholder: 'Path to folder', defaultPath: '' }) {
+        super(name, note, onChange, XenoLib.ReactComponents.FilePicker || class b {}, {
+          onChange: reactElement => path => {
+            this.onChange(path ? path : options.defaultPath);
+          },
+          path: value,
+          nullOnInvalid: true,
+          ...options
+        });
+      }
+    };
+    XenoLib.Settings.ColorPicker = class ColorPickerSettingField extends Settings.SettingField {
+      constructor(name, note, value, onChange, options = {}) {
+        super(name, note, onChange, ColorPicker, {
+          disabled: options.disabled ? true : false,
+          onChange: reactElement => color => {
+            this.onChange(color);
+          },
+          defaultColor: typeof options.defaultColor !== 'undefined' ? options.defaultColor : ColorConverter.int2hex(DiscordConstants.DEFAULT_ROLE_COLOR),
+          value
+        });
+      }
+    };
 
     XenoLib.changeName = (currentName, newName) => {
       const path = require('path');
@@ -1006,8 +937,6 @@ var XenoLib = (() => {
         }
       };
       XenoLib.Notifications = utils;
-      XenoLib.Notifications.__api = api;
-      XenoLib.Notifications.__api._DO_NOT_USE_THIS_IN_YOUR_PLUGIN_OR_YOU_WILL_CRY = 'Because it may be removed at any point in the future';
       const ReactSpring = WebpackModules.getByProps('useTransition');
       const BadgesModule = WebpackModules.getByProps('NumberBadge');
       const ParsersModule = WebpackModules.getByProps('parseAllowLinks', 'parse');
@@ -1368,7 +1297,6 @@ var XenoLib = (() => {
       }
     }
 
-    const wasRenamed = !XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
     return class CXenoLib extends Plugin {
       constructor() {
         super();
@@ -1378,9 +1306,9 @@ var XenoLib = (() => {
           XenoLib.shutdown();
           BDEvents.off('plugin-unloaded', listener);
         };
+        XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
       }
       load() {
-	if (wasRenamed) return;
         super.load();
         if (global.BDEvents) {
           BDEvents.dispatch('xenolib-loaded');
@@ -1409,8 +1337,18 @@ var XenoLib = (() => {
               DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
               Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
             }
+          } else if (setting === 'backdrop') {
+            addBackdrop();
           }
         }
+      }
+      showChangelog(footer) {
+        super.showChangelog(footer);
+        XenoLib.Notifications.show('Right click the x and click "Close All" to close them all quickly!', { timeout: 0 });
+        XenoLib.Notifications.info('If you dislike this style, or want it to look like your theme, disable it in settings', { timeout: 0 });
+        XenoLib.Notifications.error('That is if your client is up to date, otherwise you just see a transparent notification', { timeout: 0 });
+        XenoLib.Notifications.warning("Everything behind them is blurred! Albeit you probably can't see it well due to the changelog right now", { timeout: 0 });
+        XenoLib.Notifications.success('These have backdrops now!', { timeout: 0 });
       }
       get name() {
         return config.info.name;
@@ -1439,111 +1377,97 @@ var XenoLib = (() => {
 
   /* Finalize */
 
-  return !global.ZeresPluginLibrary
+  let ZeresPluginLibraryOutdated = false;
+  try {
+    if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
+      const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
+        b = BdApi.getPlugin('ZeresPluginLibrary');
+      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.10') && (ZeresPluginLibraryOutdated = !0);
+    }
+  } catch (e) {
+    console.error('Error checking if ZeresPluginLibrary is out of date', e);
+  }
+
+  return !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
     ? class {
         getName() {
           return this.name.replace(/\s+/g, '');
         }
-
         getAuthor() {
           return this.author;
         }
-
         getVersion() {
           return this.version;
         }
-
         getDescription() {
           return this.description;
         }
-
         stop() {}
-
         load() {
-          const header = `Missing Library`;
-          const content = `The Library ZeresPluginLibrary required for ${this.name} is missing.`;
-          const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
-          const TextElement = BdApi.findModuleByProps('Sizes', 'Weights');
-          const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
-          const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the library yourself. After opening the link, do CTRL + S to download the library.<br/><br/><a href="https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>`);
-          if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
-          let modalId;
-          const onHeckWouldYouLookAtThat = (() => {
-            if (!global.pluginModule || !global.BDEvents) return;
-            const onLoaded = e => {
-              if (e !== 'ZeresPluginLibrary') return;
-              BDEvents.off('plugin-loaded', onLoaded);
-              ModalStack.popWithKey(modalId); /* make it easier on the user */
-              pluginModule.reloadPlugin(this.name);
-            };
-            BDEvents.on('plugin-loaded', onLoaded);
-            return () => BDEvents.off('plugin-loaded', onLoaded);
-          })();
-          class TempErrorBoundary extends BdApi.React.PureComponent {
-            constructor(props) {
-              super(props);
-              this.state = { hasError: false };
+          const a = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
+            b = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
+            c = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
+            d = BdApi.findModuleByProps('Sizes', 'Weights'),
+            e = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
+            f = () => BdApi.getCore().alert(a, `${b}<br/>Due to a slight mishap however, you'll have to download the library yourself.<br/><br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>`);
+          if (!c || !e || !d) return f();
+          class g extends BdApi.React.PureComponent {
+            constructor(a) {
+              super(a), (this.state = { hasError: !1 });
             }
-            componentDidCatch(err, inf) {
-              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`);
-              this.setState({ hasError: true });
-              if (typeof this.props.onError === 'function') this.props.onError(err);
+            componentDidCatch(a, b) {
+              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a);
             }
             render() {
-              if (this.state.hasError) return null;
-              return this.props.children;
+              return this.state.hasError ? null : this.props.children;
             }
           }
-          modalId = ModalStack.push(props => {
-            return BdApi.React.createElement(
-              TempErrorBoundary,
+          let h;
+          const i = (() => {
+            if (!global.pluginModule || !global.BDEvents) return () => {};
+            const a = b => {
+              'ZeresPluginLibrary' !== b || (BDEvents.off('plugin-loaded', a), BDEvents.off('plugin-reloaded', a), c.popWithKey(h), pluginModule.reloadPlugin(this.getName()));
+            };
+            return BDEvents.on('plugin-loaded', a), BDEvents.on('plugin-reloaded', a), () => (BDEvents.off('plugin-loaded', a), BDEvents.off('plugin-reloaded', a));
+          })();
+          h = c.push(j =>
+            BdApi.React.createElement(
+              g,
               {
-                label: 'missing dependency modal',
+                label: 'missing/outdated dependency modal',
                 onError: () => {
-                  ModalStack.popWithKey(modalId); /* smh... */
-                  onFail();
+                  c.popWithKey(h), f();
                 }
               },
               BdApi.React.createElement(
-                ConfirmationModal,
+                e,
                 Object.assign(
                   {
-                    header,
-                    children: [
-                      BdApi.React.createElement(TextElement, {
-                        color: TextElement.Colors.PRIMARY,
-                        children: [`${content} Please click Download Now to install it.`]
-                      })
-                    ],
-                    red: false,
+                    header: a,
+                    children: [BdApi.React.createElement(d, { color: d.Colors.PRIMARY, children: [`${b} Please click Download Now to download it.`] })],
+                    red: !1,
                     confirmText: 'Download Now',
                     cancelText: 'Cancel',
                     onConfirm: () => {
-                      onHeckWouldYouLookAtThat();
-                      const request = require('request');
-                      const fs = require('fs');
-                      const path = require('path');
-                      const onDone = () => {
-                        if (!global.pluginModule || !global.BDEvents) return;
-                        const onLoaded = e => {
-                          if (e !== 'ZeresPluginLibrary') return;
-                          BDEvents.off('plugin-loaded', onLoaded);
-                          pluginModule.reloadPlugin(this.name);
+                      i();
+                      const a = require('request'),
+                        b = require('fs'),
+                        c = require('path'),
+                        d = () => {
+                          if (!global.pluginModule || !global.BDEvents) return;
+                          const a = b => {
+                            'ZeresPluginLibrary' !== b || (BDEvents.off('plugin-loaded', a), BDEvents.off('plugin-reloaded', a), pluginModule.reloadPlugin(this.name));
+                          };
+                          BDEvents.on('plugin-loaded', a), BDEvents.on('plugin-reloaded', a);
                         };
-                        BDEvents.on('plugin-loaded', onLoaded);
-                      };
-                      request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
-                        if (error) return onFail();
-                        onDone();
-                        fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
-                      });
+                      a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, e, g) => (a ? f() : void (d(), b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), g, () => {}))));
                     }
                   },
-                  props
+                  j
                 )
               )
-            );
-          });
+            )
+          );
         }
         start() {}
         get name() {
