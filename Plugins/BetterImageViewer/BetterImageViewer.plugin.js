@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.1',
+      version: '1.0.2',
       description: 'Telegram image viewer ported to Discord. Adds ability to go between images in the current channel with arrow keys, or on screen buttons. Also provides info about the image, who posted it and when.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -47,6 +47,11 @@ var BetterImageViewer = (() => {
         title: "Now you're thinking with portals!",
         type: 'fixed',
         items: ['Nav buttons and info are now an overlay which means, fixed an issue from a certain trash plugin from a certain bad developer of who we do not speak of.']
+      },
+      {
+        title: 'how sad',
+        type: 'fixed',
+        items: ['Fixed plugin throwing a fit if image size was 1x1', 'Fixed some class issues making the authors name and send time not looking fancy']
       }
     ],
     defaultConfig: [
@@ -152,7 +157,7 @@ var BetterImageViewer = (() => {
       const images = [];
       if (Array.isArray(message.attachments)) {
         message.attachments.forEach(({ filename, width, height, url: original, proxy_url: src }) => {
-          if (!DiscordConstants.IMAGE_RE.test(filename)) return;
+          if (!DiscordConstants.IMAGE_RE.test(filename) || (width <= 1 && height <= 1)) return;
           const max = ImageUtils.zoomFit(width, height);
           const placeholder = getPlaceholder(src, width, height, max.width, max.height);
           images.push({ width, height, src, original, placeholder });
@@ -162,7 +167,7 @@ var BetterImageViewer = (() => {
         message.embeds.forEach(({ image }) => {
           if (!image) return;
           const { width, height, url: original, proxyURL: src } = image;
-          if (!src) return;
+          if (!src || (width <= 1 && height <= 1)) return;
           const max = ImageUtils.zoomFit(width, height);
           const placeholder = getPlaceholder(src, width, height, max.width, max.height);
           images.push({ width, height, original, src, placeholder });
@@ -197,6 +202,10 @@ var BetterImageViewer = (() => {
       }
       render() {
         const ret = super.render();
+        if (!ret) {
+          Logger.warn('LazyImage render returned null!', new Error()); /* should not occur */
+          return ret;
+        }
         ret.props.children = e =>
           React.createElement('img', {
             className: e.className || undefined,
@@ -890,6 +899,23 @@ var BetterImageViewer = (() => {
     }
 
     return class BetterImageViewer extends Plugin {
+      constructor() {
+        super();
+        XenoLib.changeName(__filename, this.name);
+        const oOnStart = this.onStart.bind(this);
+        this.onStart = () => {
+          try {
+            oOnStart();
+          } catch (e) {
+            Logger.stacktrace('Failed to start!', e);
+            PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
+            XenoLib.Notifications.error(`[**${this.name}**] Failed to start! Please update it, press CTRL + R, or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });
+            try {
+              this.onStop();
+            } catch (e) {}
+          }
+        };
+      }
       onStart() {
         if (!overlayDOMNode) {
           overlayDOMNode = document.createElement('div');
@@ -899,7 +925,7 @@ var BetterImageViewer = (() => {
         this.promises = { state: { cancelled: false } };
         if (PluginBrokenFatal) {
           PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
-          return XenoLib.Notifications.error(`[**BetterImageViewer**] Plugin is in a broken state. Please update it, or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });
+          return XenoLib.Notifications.error(`[**${this.name}**] Plugin is in a broken state. Please update it, or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });
         }
         this.patchAll();
         Dispatcher.subscribe('MESSAGE_DELETE', this.handleMessageDelete);
@@ -1195,7 +1221,7 @@ var BetterImageViewer = (() => {
         });
         const RequestModule = require('request');
         Patcher.after(ImageModal.prototype, 'componentDidMount', _this => {
-          if (_this.state.internalError) return;
+          if (!_this.state || _this.state.internalError) return;
           const requestImageInfo = XenoLib._.debounce(_this.requestImageInfo.bind(_this), 750, { leading: true });
           _this.requestImageInfo = props => {
             const settings = this.settings.ui;
@@ -1229,7 +1255,7 @@ var BetterImageViewer = (() => {
           window.addEventListener('mousemove', _this.handleMouseMove);
         });
         Patcher.after(ImageModal.prototype, 'componentWillUnmount', _this => {
-          if (_this.state.internalError) return;
+          if (!_this.state || _this.state.internalError) return;
           if (_this._headerRequest1) _this._headerRequest1.abort();
           if (_this._headerRequest2) _this._headerRequest2.abort();
           _this._controlsHiddenTimeout.stop();
