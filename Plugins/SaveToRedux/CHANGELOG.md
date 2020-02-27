@@ -1,4 +1,10 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.10
+- Fixed the append random option when a file conflicted not working properly.
+- Most of the changes are under the hood and functionally don't make too much of a difference.
+- Saving with Save As... or browsing for a folder no longer freezes Discord.
+- In the event the plugin cannot start, it will warn you that it failed to start.
+
 ### 2.0.9
 - Added new conflict option. If a file already exists, it can open up the Save As... modal to set a custom name instead.
 - Added a Randomize button to the Save As... modal.
