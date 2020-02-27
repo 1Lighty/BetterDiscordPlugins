@@ -1,4 +1,7 @@
 # [MentionAliasesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=MentionAliasesRedux "MentionAliasesRedux") Changelog
+### 2.0.7
+- Fixed tag not showing within chat
+
 ### 2.0.6
 - Fixed menu button not showing
 - Fixed misc error spam

@@ -50,7 +50,7 @@ var MentionAliasesRedux = (() => {
       {
         title: "bug b' gone",
         type: 'fixed',
-        items: ['Fixed menu button not showing', 'Fixed misc error spam']
+        items: ['Fixed tag not showing within chat']
       }
     ],
     defaultConfig: [
@@ -262,7 +262,7 @@ var MentionAliasesRedux = (() => {
       }
     }
 
-    class SetAliasModal extends (WebpackModules.getByDisplayName('ChangeNickname') || class fuck {}) {
+    class SetAliasModal extends (WebpackModules.getByDisplayName('ChangeNickname') || (Logger.error('Failed to find modal "ChangeNickname"'), class fuck {})) {
       constructor(props) {
         super(props);
         this.handleSubmit = this.handleSubmitPatch.bind(this);
@@ -398,6 +398,19 @@ var MentionAliasesRedux = (() => {
         super();
         XenoLib._.bindAll(this, ['openAliasesPopout', 'queryAliases', 'setAlias', 'setGroup', 'handleSetAliasDispatch', 'handleSetGroupDispatch', 'getUserAlias', 'forceUpdateAll', 'handleContextMenu']);
         XenoLib.changeName(__filename, 'MentionAliasesRedux');
+        const oOnStart = this.onStart.bind(this);
+        this.onStart = () => {
+          try {
+            oOnStart();
+          } catch (e) {
+            Logger.stacktrace('Failed to start!', e);
+            PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
+            XenoLib.Notifications.error(`[**${this.name}**] Failed to start! Please update it, press CTRL + R, or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });
+            try {
+              this.onStop();
+            } catch (e) {}
+          }
+        };
       }
       onStart() {
         this.__menuBroken = false;
@@ -462,6 +475,7 @@ var MentionAliasesRedux = (() => {
         Dispatcher.unsubscribe('MA_SET_GROUP', this.handleSetGroupDispatch);
         PluginUtilities.removeStyle(this.short + '-CSS');
         this.toggleTagCSS(true);
+        this.forceRerenderMessages();
       }
 
       buildSetting(data) {
@@ -653,6 +667,20 @@ var MentionAliasesRedux = (() => {
         return ret;
       }
 
+      async forceRerenderMessages() {
+        if (ZeresPluginLibrary.DiscordAPI.currentChannel) {
+          const Messages = await ReactComponents.getComponentByName('Messages', `.${XenoLib.getSingleClass('messages messagesWrapper')}`);
+          const unpatch = ZeresPluginLibrary.Patcher.after(this.name + 'RERENDER', Messages.component.prototype, 'render', (_this, _, ret) => {
+            unpatch();
+            const scroller = Utilities.getNestedProp(ret, 'props.children.1');
+            if (!scroller) return;
+            /* crash repellent */
+            scroller.props.children[1].forEach(e => (e.key = DiscordModules.KeyGenerator()));
+          });
+          Messages.forceUpdateAll();
+        }
+      }
+
       /* PATCHES */
 
       patchAll() {
@@ -696,67 +724,34 @@ var MentionAliasesRedux = (() => {
       }
 
       patchMessageUsername() {
-        const MessageModule = WebpackModules.getByProps('MessageUsername', 'Message');
-        if (MessageModule) {
-          Patcher.after(MessageModule.MessageUsername.prototype, 'render', (_this, _, ret) => {
-            if (!_this.props.message.author || !this.settings.display.displayMessageTags) return;
-            const alias = this.getUserAlias(_this.props.message.author.id);
-            if (!alias) return;
-            const oChildren = ret.props.children;
-            ret.props.children = e => {
-              const ret2 = oChildren(e);
-              if (DiscordAPI.UserSettings.displayCompact && !this.settings.display.displayRightCompact) ret2.props.children.unshift(this.createAlias(alias, MessageCompactTagClassname));
-              else ret2.props.children.push(this.createAlias(alias, MessageCozyTagClassname));
-              return ret2;
-            };
-          });
-          /* reason for div:not is so it doesn't match anything that is not an actual message, like pins */
-          const Message = new ReactComponents.ReactComponent('Message', MessageModule.Message, `.${XenoLib.getSingleClass('messageEditorCompact container', true)} > div:not(.${XenoLib.getSingleClass('marginCompactIndent content', true)})`);
-          this.patchedModules.push(Message);
-          Message.forceUpdateAll();
-        } else {
-          const MessageHeader = WebpackModules.getByIndex(WebpackModules.getIndex(e => e.displayName === 'MessageHeader'));
-          Patcher.after(MessageHeader, 'default', (_, [props], ret) => {
-            const forceUpdate = React.useState()[1];
-            React.useEffect(
-              function() {
-                const e = function() {
-                  forceUpdate({});
-                };
-                Dispatcher.subscribe('MAR_FORCE_UPDATE', e); /* this will make it easier to update the message later */
-                return function() {
-                  Dispatcher.unsubscribe('MAR_FORCE_UPDATE', e);
-                };
-              },
-              [props.message.id, forceUpdate]
-            );
-            if (!props.message.author || !this.settings.display.displayMessageTags) return;
-            const alias = this.getUserAlias(props.message.author.id);
-            if (!alias) return;
-            const username = Utilities.getNestedProp(
-              Utilities.findInReactTree(ret.props.children, e => e && e.props && Array.isArray(e.props.children) && e.props.children.findIndex(m => m && m.type && m.type.displayName === 'Popout') !== -1),
-              'props.children'
-            );
-            if (!username) return; /* eh? */
-            if (DiscordAPI.UserSettings.displayCompact && !this.settings.display.displayRightCompact) username.unshift(this.createAlias(alias, MessageCompactTagClassname));
-            else username.push(this.createAlias(alias, MessageCozyTagClassname));
-          });
-          if (!DiscordAPI.currentChannel) return;
-          const ChannelCache = WebpackModules.getByProps('_channelMessages');
-          const CachedChannel = ChannelCache.get(DiscordAPI.currentChannel.id);
-          ChannelCache.commit(
-            CachedChannel.mutate(e => {
-              e._array.forEach((message, index) => {
-                const cloned = XenoLib._.clone(message);
-                /* we change the reference, nothing else */
-                /* this is to force React.memo to render once more */
-                e._array[index] = cloned;
-                e._map[message.id] = cloned;
-              });
-            })
+        const MessageHeader = WebpackModules.getByIndex(WebpackModules.getIndex(e => e.default && e.default.toString().indexOf('.ComponentActions.ANIMATE_CHAT_AVATAR') !== -1));
+        Patcher.after(MessageHeader, 'default', (_, [props], ret) => {
+          const forceUpdate = React.useState()[1];
+          React.useEffect(
+            function() {
+              const e = function() {
+                forceUpdate({});
+              };
+              Dispatcher.subscribe('MAR_FORCE_UPDATE', e); /* this will make it easier to update the message later */
+              return function() {
+                Dispatcher.unsubscribe('MAR_FORCE_UPDATE', e);
+              };
+            },
+            [props.message.id, forceUpdate]
           );
-          MessageStore._changeCallbacks.forEach(e => e());
-        }
+          if (!props.message.author || !this.settings.display.displayMessageTags) return;
+          const alias = this.getUserAlias(props.message.author.id);
+          if (!alias) return;
+          const username = Utilities.getNestedProp(
+            Utilities.findInReactTree(ret.props.children, e => e && e.props && Array.isArray(e.props.children) && e.props.children.findIndex(m => m && m.type && m.type.displayName === 'Popout') !== -1),
+            'props.children'
+          );
+          if (!username) return; /* eh? */
+          if (DiscordAPI.UserSettings.displayCompact && !this.settings.display.displayRightCompact) username.unshift(this.createAlias(alias, MessageCompactTagClassname));
+          else username.push(this.createAlias(alias, MessageCozyTagClassname));
+        });
+        if (!DiscordAPI.currentChannel) return;
+        this.forceRerenderMessages();
       }
 
       async patchMemberListItem(promiseState) {
