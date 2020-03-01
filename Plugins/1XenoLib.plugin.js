@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.11',
+      version: '1.3.12',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,23 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'Added',
-        items: ['Beep boop, fixed some issues regarding adding support server, donate buttons etc.', 'Added backdrop-filter style to the notifications, can be disabled in settings if you dislike it.']
+        items: ['What if you wanted to be *COOL* and ***__EPIC__***, but Zack said:\n![no](https://i.imgur.com/PJGBetG.png)\nSuch a sad world we live in', "Oh yeah, changelog is now very 💵 **__rich__** 💸, so it's more easy to **emphasise** stuff or show inline images!"]
+      },
+      {
+        title: 'oops',
+        type: 'fixed',
+        items: ['Fixed misc classes being hard coded, also fixed ColorPicker not being defined properly causing MentionAliasesRedux to break', ['Misc notification changes:', ['backdrop-filter, background and border are now inlined and set as !important so themes cannot override it, unless you disable the backdrop-filter option.', 'Due to that, added an option to change the color of the backdrop in settings.']]]
+      },
+      {
+        type: 'description',
+        content: 'Added option to change the on hover behavior to this:'
+      },
+      {
+        type: 'video',
+        src: 'https://cdn.discordapp.com/attachments/389049952732446733/683706310629392463/i8hQ2poeNmmo.mp4',
+        thumbnail: 'https://media.discordapp.net/attachments/389049952732446733/683706310629392463/i8hQ2poeNmmo.mp4?format=jpeg',
+        width: 368,
+        height: 166
       }
     ],
     defaultConfig: [
@@ -72,6 +88,18 @@ var XenoLib = (() => {
             id: 'backdrop',
             type: 'switch',
             value: true
+          },
+          {
+            name: 'Backdrop color',
+            id: 'backdropColor',
+            type: 'color',
+            value: '#474747'
+          },
+          {
+            name: 'Timeout resets to 0 when hovered',
+            id: 'timeoutReset',
+            type: 'switch',
+            value: true
           }
         ]
       }
@@ -81,7 +109,7 @@ var XenoLib = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions, TextElement, FlexChild, Titles, Changelog: ChangelogModal } = DiscordModules;
 
     const DefaultLibrarySettings = {};
 
@@ -111,7 +139,6 @@ var XenoLib = (() => {
         Logger.stacktrace('Failed to unpatch all', e);
       }
       PluginUtilities.removeStyle('XenoLib-CSS');
-      PluginUtilities.removeStyle('XenoLib-CSS2');
       if (global.BDEvents) BDEvents.off('plugin-unloaded', listener);
       try {
         const notifWrapper = document.querySelector('.xenoLib-notifications');
@@ -124,9 +151,13 @@ var XenoLib = (() => {
       }
     };
 
+    XenoLib._ = XenoLib.DiscordUtils = WebpackModules.getByProps('bindAll', 'debounce');
+
     XenoLib.loadData = (name, key, defaultData, returnNull) => {
       try {
-        return Object.assign(defaultData ? Utilities.deepclone(defaultData) : {}, BdApi.getData(name, key));
+        return XenoLib._.mergeWith(defaultData ? Utilities.deepclone(defaultData) : {}, BdApi.getData(name, key), (_, b) => {
+          if (XenoLib._.isArray(b)) return b;
+        });
       } catch (err) {
         Logger.err(name, 'Unable to load data: ', err);
         if (returnNull) return null;
@@ -233,6 +264,7 @@ var XenoLib = (() => {
         pointer-events: all;
         position: relative;
         width: 20vw;
+        white-space: break-spaces;
       }
       .xenoLib-notification-loadbar {
         position: absolute;
@@ -315,23 +347,12 @@ var XenoLib = (() => {
         flex-direction: column-reverse;
         bottom: 0;
       }
+      .XL-chl-p img{
+        width: unset !important;
+      }
       `
     );
-    const addBackdrop = () => {
-      PluginUtilities.removeStyle('XenoLib-CSS2');
-      if (!LibrarySettings.notifications.backdrop) return;
-      PluginUtilities.addStyle(
-        'XenoLib-CSS2',
-        `
-        .xenoLib-notification-content {
-          backdrop-filter: blur(5px);
-          background: rgba(71, 71, 71, 0.3);
-          border: none;
-        }
-        `
-      );
-    };
-    addBackdrop();
+
     XenoLib.joinClassNames = WebpackModules.getModule(e => e.default && e.default.default);
     XenoLib.authorId = '239513071272329217';
     XenoLib.supportServerId = '389049952732446731';
@@ -346,86 +367,6 @@ var XenoLib = (() => {
       else requestUser();
     } catch (e) {
       Logger.stacktrace('Failed to grab author object', e);
-    }
-
-    try {
-      /* const pluginAuthors = [
-        {
-          name: 'Lighty',
-          id: XenoLib.authorId,
-          supportServerId: XenoLib.supportServerId,
-          supportServerInvite: 'NYvWdN5',
-          donations: [
-            {
-              url: 'https://paypal.me/lighty13',
-              name: 'Paypal'
-            },
-            {
-              url: 'https://ko-fi.com/lighty_',
-              name: 'Ko-fi'
-            }
-          ]
-        }
-      ]; */
-      if (V2C_PluginCard && V2C_ThemeCard) {
-        const LinkClassname = XenoLib.joinClassNames(XenoLib.getClass('anchorUnderlineOnHover anchor'), XenoLib.getClass('anchor anchorUnderlineOnHover'), 'bda-author');
-        const handlePatch = (_this, _, ret) => {
-          const author = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf('bda-author') !== -1);
-          if (!author || typeof author.props.children !== 'string' || author.props.children.indexOf('Lighty') === -1) return;
-          const onClick = () => {
-            if (DiscordAPI.currentUser.id === XenoLib.authorId) return;
-            PrivateChannelActions.ensurePrivateChannel(DiscordAPI.currentUser.id, XenoLib.authorId).then(() => {
-              PrivateChannelActions.openPrivateChannel(DiscordAPI.currentUser.id, XenoLib.authorId);
-              LayerManager.popLayer();
-            });
-          };
-          if (author.props.children === 'Lighty') {
-            author.type = 'a';
-            author.props.className = LinkClassname;
-            author.props.onClick = onClick;
-          } else {
-            const idx = author.props.children.indexOf('Lighty');
-            const pre = author.props.children.slice(0, idx);
-            const post = author.props.children.slice(idx + 6);
-            author.props.children = [
-              pre,
-              React.createElement(
-                'a',
-                {
-                  className: LinkClassname,
-                  onClick
-                },
-                'Lighty'
-              ),
-              post
-            ];
-            delete author.props.onClick;
-            author.props.className = 'bda-author';
-            author.type = 'span';
-          }
-          let footerProps = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf('bda-links') !== -1);
-          if (!footerProps) return;
-          footerProps = footerProps.props;
-          if (!Array.isArray(footerProps.children)) footerProps.children = [footerProps.children];
-          const findLink = name => Utilities.findInReactTree(footerProps.children, e => e && e.props && e.props.children === name);
-          const makeLink = (name, url) => React.createElement('a', { className: 'bda-link', href: url, target: '_blank' }, name);
-          const websiteLink = findLink('Website');
-          const sourceLink = findLink('Source');
-          const paypalLink = findLink('Paypal');
-          const supportServerLink = findLink('Support Server');
-          footerProps.children = [];
-          if (websiteLink) footerProps.children.push(websiteLink);
-          if (sourceLink) footerProps.children.push(websiteLink ? ' | ' : null, sourceLink);
-          footerProps.children.push(websiteLink || sourceLink ? ' | ' : null, paypalLink || makeLink('Paypal', 'https://paypal.me/lighty13'));
-          footerProps.children.push(' | ', makeLink('Ko-fi', 'https://ko-fi.com/lighty_'));
-          footerProps.children.push(' | ', supportServerLink || React.createElement('a', { className: 'bda-link', onClick: () => (LayerManager.popLayer(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Support Server'));
-          footerProps.children.push(' | ', React.createElement('a', { className: 'bda-link', onClick: () => (_this.props.plugin.showChangelog ? _this.props.plugin.showChangelog() : Modals.showChangelogModal(_this.props.plugin.getName() + ' Changelog', _this.props.plugin.getVersion(), _this.props.plugin.getChanges())) }, 'Changelog'));
-        };
-        Patcher.after(V2C_PluginCard.prototype, 'render', handlePatch);
-        Patcher.after(V2C_ThemeCard.prototype, 'render', handlePatch);
-      }
-    } catch (e) {
-      Logger.stacktrace('Failed to patch V2C_*Card', e);
     }
 
     XenoLib.ReactComponents = {};
@@ -552,13 +493,71 @@ var XenoLib = (() => {
     XenoLib.createContextMenuItem = (label, action, options = {}) => React.createElement(ContextMenuItem, { label, action: () => (!options.noClose && ContextMenuActions.closeContextMenu(), action()), ...options });
     XenoLib.createContextMenuSubMenu = (label, items, options = {}) => React.createElement(ContextMenuSubMenuItem, { label, render: items, ...options });
     XenoLib.createContextMenuGroup = (children, options) => React.createElement(ContextMenuItemsGroup, { children, ...options });
-    XenoLib._ = XenoLib.DiscordUtils = WebpackModules.getByProps('bindAll', 'debounce');
 
     try {
       XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('ButtonLink');
       XenoLib.ReactComponents.Button = XenoLib.ReactComponents.ButtonOptions.default;
     } catch (e) {
       Logger.stacktrace('Error getting Button component', e);
+    }
+
+    try {
+      if (V2C_PluginCard && V2C_ThemeCard) {
+        const LinkClassname = XenoLib.joinClassNames(XenoLib.getClass('anchorUnderlineOnHover anchor'), XenoLib.getClass('anchor anchorUnderlineOnHover'), 'bda-author');
+        const handlePatch = (_this, _, ret) => {
+          const author = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf('bda-author') !== -1);
+          if (!author || typeof author.props.children !== 'string' || author.props.children.indexOf('Lighty') === -1) return;
+          const onClick = () => {
+            if (DiscordAPI.currentUser.id === XenoLib.authorId) return;
+            PrivateChannelActions.ensurePrivateChannel(DiscordAPI.currentUser.id, XenoLib.authorId).then(() => {
+              PrivateChannelActions.openPrivateChannel(DiscordAPI.currentUser.id, XenoLib.authorId);
+              LayerManager.popLayer();
+            });
+          };
+          if (author.props.children === 'Lighty') {
+            author.type = 'a';
+            author.props.className = LinkClassname;
+            author.props.onClick = onClick;
+          } else {
+            const idx = author.props.children.indexOf('Lighty');
+            const pre = author.props.children.slice(0, idx);
+            const post = author.props.children.slice(idx + 6);
+            author.props.children = [
+              pre,
+              React.createElement(
+                'a',
+                {
+                  className: LinkClassname,
+                  onClick
+                },
+                'Lighty'
+              ),
+              post
+            ];
+            delete author.props.onClick;
+            author.props.className = 'bda-author';
+            author.type = 'span';
+          }
+          let footerProps = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf('bda-links') !== -1);
+          if (!footerProps) return;
+          footerProps = footerProps.props;
+          if (!Array.isArray(footerProps.children)) footerProps.children = [footerProps.children];
+          const findLink = name => Utilities.findInReactTree(footerProps.children, e => e && e.props && e.props.children === name);
+          const websiteLink = findLink('Website');
+          const sourceLink = findLink('Source');
+          const supportServerLink = findLink('Support Server');
+          footerProps.children = [];
+          if (websiteLink) footerProps.children.push(websiteLink);
+          if (sourceLink) footerProps.children.push(websiteLink ? ' | ' : null, sourceLink);
+          footerProps.children.push(websiteLink || sourceLink ? ' | ' : null, React.createElement('a', { className: 'bda-link', onClick: e => ContextMenuActions.openContextMenu(e, e => React.createElement('div', { className: DiscordClasses.ContextMenu.contextMenu }, XenoLib.createContextMenuGroup([XenoLib.createContextMenuItem('Paypal', () => window.open('https://paypal.me/lighty13')), XenoLib.createContextMenuItem('Ko-fi', () => window.open('https://ko-fi.com/lighty_')), XenoLib.createContextMenuItem('Patreon', () => window.open('https://www.patreon.com/lightyp'))]))) }, 'Donate'));
+          footerProps.children.push(' | ', supportServerLink || React.createElement('a', { className: 'bda-link', onClick: () => (LayerManager.popLayer(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Support Server'));
+          footerProps.children.push(' | ', React.createElement('a', { className: 'bda-link', onClick: () => (_this.props.plugin.showChangelog ? _this.props.plugin.showChangelog() : Modals.showChangelogModal(_this.props.plugin.getName() + ' Changelog', _this.props.plugin.getVersion(), _this.props.plugin.getChanges())) }, 'Changelog'));
+        };
+        Patcher.after(V2C_PluginCard.prototype, 'render', handlePatch);
+        Patcher.after(V2C_ThemeCard.prototype, 'render', handlePatch);
+      }
+    } catch (e) {
+      Logger.stacktrace('Failed to patch V2C_*Card', e);
     }
 
     /* shared between FilePicker and ColorPicker */
@@ -646,159 +645,156 @@ var XenoLib = (() => {
       Logger.stacktrace('Failed to create FilePicker component', e);
     }
 
-    try {
-      /**
-       * @param {string} name - name label of the setting
-       * @param {string} note - help/note to show underneath or above the setting
-       * @param {string} value - current hex color
-       * @param {callable} onChange - callback to perform on setting change, callback receives hex string
-       * @param {object} [options] - object of options to give to the setting
-       * @param {boolean} [options.disabled=false] - should the setting be disabled
-       * @param {Array<number>} [options.colors=presetColors] - preset list of colors
-       * @author Zerebos, from his library ZLibrary
-       */
-      const FormItem = WebpackModules.getByDisplayName('FormItem');
-      const DeprecatedModal = WebpackModules.getByDisplayName('DeprecatedModal');
-      const ModalContainerClassname = XenoLib.getClass('mobile container');
-      const ModalContentClassname = XenoLib.getClass('mobile container content');
+    /**
+     * @param {string} name - name label of the setting
+     * @param {string} note - help/note to show underneath or above the setting
+     * @param {string} value - current hex color
+     * @param {callable} onChange - callback to perform on setting change, callback receives hex string
+     * @param {object} [options] - object of options to give to the setting
+     * @param {boolean} [options.disabled=false] - should the setting be disabled
+     * @param {Array<number>} [options.colors=presetColors] - preset list of colors
+     * @author Zerebos, from his library ZLibrary
+     */
+    const FormItem = WebpackModules.getByDisplayName('FormItem');
+    const DeprecatedModal = WebpackModules.getByDisplayName('DeprecatedModal');
+    const ModalContainerClassname = XenoLib.getClass('mobile container');
+    const ModalContentClassname = XenoLib.getClass('mobile container content');
 
-      const Icon = WebpackModules.getByDisplayName('Icon');
+    const Icon = WebpackModules.getByDisplayName('Icon');
 
-      class ColorPickerModal extends React.PureComponent {
-        constructor(props) {
-          super(props);
-          this.state = { value: props.value };
-          XenoLib._.bindAll(this, ['handleChange']);
-        }
-        handleChange(value) {
-          this.setState({ value });
-          this.props.onChange(ColorConverter.int2hex(value));
-        }
-        render() {
-          return React.createElement(
-            DeprecatedModal,
-            { className: ModalContainerClassname, tag: 'form', onSubmit: this.handleSubmit, size: '' },
+    class ColorPickerModal extends React.PureComponent {
+      constructor(props) {
+        super(props);
+        this.state = { value: props.value };
+        XenoLib._.bindAll(this, ['handleChange']);
+      }
+      handleChange(value) {
+        this.setState({ value });
+        this.props.onChange(ColorConverter.int2hex(value));
+      }
+      render() {
+        return React.createElement(
+          DeprecatedModal,
+          { className: ModalContainerClassname, tag: 'form', onSubmit: this.handleSubmit, size: '' },
+          React.createElement(
+            DeprecatedModal.Content,
+            { className: ModalContentClassname },
             React.createElement(
-              DeprecatedModal.Content,
-              { className: ModalContentClassname },
+              FormItem,
+              { className: DiscordClasses.Margins.marginTop20 },
+              React.createElement(WebpackModules.getByDisplayName('ColorPicker'), {
+                defaultColor: this.props.defaultColor,
+                colors: [16711680, 16746496, 16763904, 13434624, 65314, 65484, 61183, 43775, 26367, 8913151, 16711918, 16711782, 11730944, 11755264, 11767552, 9417472, 45848, 45967, 42931, 30643, 18355, 6226099, 11731111, 11731015],
+                value: this.state.value,
+                onChange: this.handleChange
+              })
+            )
+          )
+        );
+      }
+    }
+
+    const ExtraButtonClassname = XenoLib.joinClassNames('xenoLib-button', XenoLib.getClass('recording button'));
+    const TextClassname = XenoLib.getClass('recording text');
+    class ColorPicker extends React.PureComponent {
+      constructor(props) {
+        super(props);
+        this.state = {
+          error: null,
+          value: props.value,
+          multiInputFocused: false
+        };
+        XenoLib._.bindAll(this, ['handleChange', 'handleColorPicker', 'handleReset']);
+      }
+      handleChange(value) {
+        if (!value.length) {
+          this.state.error = 'You must input a hex string';
+        } else if (!ColorConverter.isValidHex(value)) {
+          this.state.error = 'Invalid hex string';
+        } else {
+          this.state.error = null;
+        }
+        this.setState({ value });
+        this.props.onChange(!value.length || !ColorConverter.isValidHex(value) ? this.props.defaultColor : value);
+      }
+      handleColorPicker() {
+        const modalId = ModalStack.push(e => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'color picker modal', onError: () => ModalStack.popWithKey(modalId) }, React.createElement(ColorPickerModal, { ...e, defaultColor: ColorConverter.hex2int(this.props.defaultColor), value: ColorConverter.hex2int(this.props.value), onChange: this.handleChange })));
+      }
+      handleReset() {
+        this.handleChange(this.props.defaultColor);
+      }
+      render() {
+        const n = {};
+        n[DiscordClasses.BasicInputs.focused] = this.state.multiInputFocused;
+        n[ErrorClassname] = !!this.state.error;
+        return React.createElement(
+          'div',
+          { className: XenoLib.joinClassNames(DiscordClasses.BasicInputs.inputWrapper.value, 'xenoLib-color-picker'), style: { width: '100%' } },
+          React.createElement(
+            'div',
+            { className: XenoLib.joinClassNames(MultiInputClassname, n) },
+            React.createElement('div', {
+              className: XenoLib.ReactComponents.Button.Sizes.SMALL,
+              style: {
+                backgroundColor: this.state.value,
+                height: 38
+              }
+            }),
+            React.createElement(DiscordModules.Textbox, {
+              value: this.state.value,
+              placeholder: 'Hex color',
+              onChange: this.handleChange,
+              onFocus: () => this.setState({ multiInputFocused: true }),
+              onBlur: () => this.setState({ multiInputFocused: false }),
+              autoFocus: false,
+              className: MultiInputFirstClassname,
+              inputClassName: MultiInputFieldClassname
+            }),
+            React.createElement(
+              XenoLib.ReactComponents.Button,
+              {
+                onClick: this.handleColorPicker,
+                color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY,
+                look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST,
+                size: XenoLib.ReactComponents.Button.Sizes.MIN,
+                className: ExtraButtonClassname
+              },
+              React.createElement('span', { className: TextClassname }, 'Color picker'),
               React.createElement(
-                FormItem,
-                { className: DiscordClasses.Margins.marginTop20 },
-                React.createElement(WebpackModules.getByDisplayName('ColorPicker'), {
-                  defaultColor: this.props.defaultColor,
-                  colors: [16711680, 16746496, 16763904, 13434624, 65314, 65484, 61183, 43775, 26367, 8913151, 16711918, 16711782, 11730944, 11755264, 11767552, 9417472, 45848, 45967, 42931, 30643, 18355, 6226099, 11731111, 11731015],
-                  value: this.state.value,
-                  onChange: this.handleChange
+                'span',
+                {
+                  className: 'xenoLib-button-icon'
+                },
+                React.createElement(Icon, {
+                  name: 'Dropper'
+                })
+              )
+            ),
+            React.createElement(
+              XenoLib.ReactComponents.Button,
+              {
+                onClick: this.handleReset,
+                color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY,
+                look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST,
+                size: XenoLib.ReactComponents.Button.Sizes.MIN,
+                className: ExtraButtonClassname
+              },
+              React.createElement('span', { className: TextClassname }, 'Reset'),
+              React.createElement(
+                'span',
+                {
+                  className: 'xenoLib-button-icon xenoLib-revert'
+                },
+                React.createElement(Icon, {
+                  name: 'ClockReverse'
                 })
               )
             )
-          );
-        }
+          ),
+          !!this.state.error && React.createElement('div', { className: ErrorMessageClassname }, 'Error: ', this.state.error)
+        );
       }
-
-      class ColorPicker extends React.PureComponent {
-        constructor(props) {
-          super(props);
-          this.state = {
-            error: null,
-            value: props.value,
-            multiInputFocused: false
-          };
-          XenoLib._.bindAll(this, ['handleChange', 'handleColorPicker', 'handleReset']);
-        }
-        handleChange(value) {
-          if (!value.length) {
-            this.state.error = 'You must input a hex string';
-          } else if (!ColorConverter.isValidHex(value)) {
-            this.state.error = 'Invalid hex string';
-          } else {
-            this.state.error = null;
-          }
-          this.setState({ value });
-          this.props.onChange(!value.length || !ColorConverter.isValidHex(value) ? this.props.defaultColor : value);
-        }
-        handleColorPicker() {
-          const modalId = ModalStack.push(e => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'color picker modal', onError: () => ModalStack.popWithKey(modalId) }, React.createElement(ColorPickerModal, { ...e, defaultColor: ColorConverter.hex2int(this.props.defaultColor), value: ColorConverter.hex2int(this.props.value), onChange: this.handleChange })));
-        }
-        handleReset() {
-          this.handleChange(this.props.defaultColor);
-        }
-        render() {
-          const n = {};
-          n[DiscordClasses.BasicInputs.focused] = this.state.multiInputFocused;
-          n[ErrorClassname] = !!this.state.error;
-          return React.createElement(
-            'div',
-            { className: XenoLib.joinClassNames(DiscordClasses.BasicInputs.inputWrapper.value, 'xenoLib-color-picker'), style: { width: '100%' } },
-            React.createElement(
-              'div',
-              { className: XenoLib.joinClassNames(MultiInputClassname, n) },
-              React.createElement('div', {
-                className: XenoLib.ReactComponents.Button.Sizes.SMALL,
-                style: {
-                  backgroundColor: this.state.value,
-                  height: 38
-                }
-              }),
-              React.createElement(DiscordModules.Textbox, {
-                value: this.state.value,
-                placeholder: 'Hex color',
-                onChange: this.handleChange,
-                onFocus: () => this.setState({ multiInputFocused: true }),
-                onBlur: () => this.setState({ multiInputFocused: false }),
-                autoFocus: false,
-                className: MultiInputFirstClassname,
-                inputClassName: MultiInputFieldClassname
-              }),
-              React.createElement(
-                XenoLib.ReactComponents.Button,
-                {
-                  onClick: this.handleColorPicker,
-                  color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY,
-                  look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST,
-                  size: XenoLib.ReactComponents.Button.Sizes.MIN,
-                  className: 'xenoLib-button button-34kXw5 button-3tQuzi'
-                },
-                React.createElement('span', { className: 'text-2sI5Sd' }, 'Color picker'),
-                React.createElement(
-                  'span',
-                  {
-                    className: 'xenoLib-button-icon'
-                  },
-                  React.createElement(Icon, {
-                    name: 'Dropper'
-                  })
-                )
-              ),
-              React.createElement(
-                XenoLib.ReactComponents.Button,
-                {
-                  onClick: this.handleReset,
-                  color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY,
-                  look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST,
-                  size: XenoLib.ReactComponents.Button.Sizes.MIN,
-                  className: 'xenoLib-button button-34kXw5 button-3tQuzi'
-                },
-                React.createElement('span', { className: 'text-2sI5Sd' }, 'Reset'),
-                React.createElement(
-                  'span',
-                  {
-                    className: 'xenoLib-button-icon xenoLib-revert'
-                  },
-                  React.createElement(Icon, {
-                    name: 'ClockReverse'
-                  })
-                )
-              )
-            ),
-            !!this.state.error && React.createElement('div', { className: ErrorMessageClassname }, 'Error: ', this.state.error)
-          );
-        }
-      }
-    } catch (e) {
-      Logger.stacktrace('Failed to create ColorPicker settings component', e);
     }
-
     XenoLib.Settings = {};
     XenoLib.Settings.FilePicker = class FilePickerSettingField extends Settings.SettingField {
       constructor(name, note, value, onChange, options = { properties: ['openDirectory', 'createDirectory'], placeholder: 'Path to folder', defaultPath: '' }) {
@@ -856,7 +852,98 @@ var XenoLib = (() => {
       }
     };
 
+    const FancyParser = (() => {
+      const ParsersModule = WebpackModules.getByProps('parseAllowLinks', 'parse');
+      try {
+        const DeepClone = WebpackModules.getByRegex(/function\(\w\)\{var \w=\{\},\w=\w,\w=Array\.isArray\(\w\),\w=0;for\(\w=\w\?\w:\w\[Symbol\.iterator\]\(\);;\)\{var \w;if\(\w\)\{\w/);
+        const ReactParserRules = WebpackModules.getByRegex(/function\(\){return \w}$/);
+        const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES', 'ALLOW_LINKS_RULES').ALLOW_LINKS_RULES, ReactParserRules()]);
+        FANCY_PANTS_PARSER_RULES.image = WebpackModules.getByProps('defaultParse').defaultRules.image;
+        return ParsersModule.reactParserFor(FANCY_PANTS_PARSER_RULES);
+      } catch (e) {
+        Logger.stacktrace('Failed to create special parser', e);
+        return ParsersModule.parseAllowLinks;
+      }
+    })();
+    const AnchorClasses = WebpackModules.getByProps('anchor', 'anchorUnderlineOnHover') || {};
+    const EmbedVideo = (() => {
+      try {
+        return WebpackModules.getByProps('EmbedVideo').EmbedVideo;
+      } catch (e) {
+        Logger.stacktrace('Failed to get EmbedVideo!', e);
+        return DiscordConstants.NOOP_NULL;
+      }
+    })();
+    const VideoComponent = (() => {
+      try {
+        const ret = new (WebpackModules.getByDisplayName('MediaPlayer'))({}).render();
+        const vc = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf('video-8eMOth') !== -1);
+        return vc.type;
+      } catch (e) {
+        Logger.stacktrace('Failed to get the video component', e);
+        return DiscordConstants.NOOP_NULL;
+      }
+    })();
+    const ComponentRenderers = WebpackModules.getByProps('renderVideoComponent') || {};
+    /* MY CHANGELOG >:C */
+    XenoLib.showChangelog = (title, version, changelog, footer) => {
+      const ChangelogClasses = DiscordClasses.Changelog;
+      const items = [];
+      let isFistType = true;
+      for (let i = 0; i < changelog.length; i++) {
+        const item = changelog[i];
+        switch (item.type) {
+          case 'image':
+            items.push(React.createElement('img', { alt: '', src: item.src, width: item.width || 451, height: item.height || 254 }));
+            continue;
+          case 'video':
+            items.push(React.createElement(VideoComponent, { src: item.src, poster: item.thumbnail, width: item.width || 451, height: item.height || 254, loop: !0, muted: !0, autoPlay: !0, className: ChangelogClasses.video }));
+            continue;
+          case 'youtube':
+            items.push(React.createElement(EmbedVideo, { className: ChangelogClasses.video, allowFullScreen: !1, href: `https://youtu.be/${item.youtube_id}`, thumbnail: { url: `https://i.ytimg.com/vi/${item.youtube_id}/maxresdefault.jpg`, width: item.width || 451, height: item.height || 254 }, video: { url: `https://www.youtube.com/embed/${item.youtube_id}?vq=large&rel=0&controls=0&showinfo=0`, width: item.width || 451, height: item.height || 254 }, width: item.width || 451, height: item.height || 254, renderVideoComponent: ComponentRenderers.renderVideoComponent || DiscordConstants.NOOP_NULL, renderImageComponent: ComponentRenderers.renderImageComponent || DiscordConstants.NOOP_NULL, renderLinkComponent: ComponentRenderers.renderMaskedLinkComponent || DiscordConstants.NOOP_NULL }));
+            continue;
+          case 'description':
+            items.push(React.createElement('p', {}, FancyParser(item.content)));
+            continue;
+          default:
+            const logType = ChangelogClasses[item.type] || ChangelogClasses.added;
+            items.push(React.createElement('h1', { className: XenoLib.joinClassNames(logType.value, { [ChangelogClasses.marginTop.value]: item.marginTop || isFistType }) }, item.title));
+            items.push(
+              React.createElement(
+                'ul',
+                { className: 'XL-chl-p' },
+                item.items.map(e =>
+                  React.createElement(
+                    'li',
+                    {},
+                    React.createElement(
+                      'p',
+                      {},
+                      Array.isArray(e)
+                        ? e.map(e =>
+                            Array.isArray(e)
+                              ? React.createElement(
+                                  'ul',
+                                  {},
+                                  e.map(e => React.createElement('li', {}, FancyParser(e)))
+                                )
+                              : FancyParser(e)
+                          )
+                        : FancyParser(e)
+                    )
+                  )
+                )
+              )
+            );
+            isFistType = false;
+        }
+      }
+      const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (ModalStack.pop(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Join my support server!'), FancyParser(' Or consider donating via [Paypal](https://paypal.me/lighty13), [Ko-fi](https://ko-fi.com/lighty_) or [Patreon](https://www.patreon.com/lightyp)!')];
+      ModalStack.push(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement.default, { size: TextElement.Sizes.SMALL, color: TextElement.Colors.PRIMARY, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement.default, { size: TextElement.Sizes.SMALL, color: TextElement.Colors.PRIMARY }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
+    };
+
     /* NOTIFICATIONS START */
+    let UPDATEKEY = {};
     try {
       const zustand = WebpackModules.getByRegex(/\w\(function\(\){return \w\(\w\)},\[\]\),\w\?\w:\w\.currentSlice},\w\]}/);
       const [useStore, api] = zustand(e => ({ data: [] }));
@@ -864,7 +951,7 @@ var XenoLib = (() => {
         loading: false,
         progress: -1,
         channelId: undefined,
-        timeout: 1000,
+        timeout: 3500,
         color: '#2196f3'
       };
       const utils = {
@@ -939,7 +1026,6 @@ var XenoLib = (() => {
       XenoLib.Notifications = utils;
       const ReactSpring = WebpackModules.getByProps('useTransition');
       const BadgesModule = WebpackModules.getByProps('NumberBadge');
-      const ParsersModule = WebpackModules.getByProps('parseAllowLinks', 'parse');
       const CloseButton = WebpackModules.getByProps('CloseButton').CloseButton;
       class Notification extends React.PureComponent {
         constructor(props) {
@@ -962,7 +1048,10 @@ var XenoLib = (() => {
           this._animationCancel = () => {};
           this._oldOffsetHeight = 0;
           this._initialProgress = !this.props.timeout ? (this.state.loading && this.state.progress !== -1 ? this.state.progress : 100) : 0;
-          XenoLib._.bindAll(this, ['closeNow', 'handleResizeEvent', 'handleDispatch']);
+          XenoLib._.bindAll(this, ['closeNow', 'handleDispatch', '_setContentRef']);
+          this.handleResizeEvent = XenoLib._.throttle(this.handleResizeEvent.bind(this), 100);
+          this.resizeObserver = new ResizeObserver(this.handleResizeEvent);
+          this._timeout = props.timeout;
         }
         componentDidMount() {
           this._unsubscribe = api.subscribe(_ => this.checkOffScreen());
@@ -971,6 +1060,7 @@ var XenoLib = (() => {
           Dispatcher.subscribe('XL_NOTIFS_REMOVE', this.handleDispatch);
           Dispatcher.subscribe('XL_NOTIFS_UPDATE', this.handleDispatch);
           Dispatcher.subscribe('XL_NOTIFS_ANIMATED', this.handleDispatch);
+          Dispatcher.subscribe('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
         }
         componentWillUnmount() {
           this._unsubscribe();
@@ -979,8 +1069,16 @@ var XenoLib = (() => {
           Dispatcher.unsubscribe('XL_NOTIFS_REMOVE', this.handleDispatch);
           Dispatcher.unsubscribe('XL_NOTIFS_UPDATE', this.handleDispatch);
           Dispatcher.unsubscribe('XL_NOTIFS_ANIMATED', this.handleDispatch);
+          Dispatcher.unsubscribe('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
+          this.resizeObserver.disconnect();
         }
         handleDispatch(e) {
+          if (e.type === 'XL_NOTIFS_SETTINGS_UPDATE') {
+            if (e.key !== UPDATEKEY) return;
+            this._animationCancel();
+            this.forceUpdate();
+            return;
+          }
           if (e.type === 'XL_NOTIFS_ANIMATED') this.checkOffScreen();
           if (e.id !== this.props.id) return;
           const { content, channelId, loading, progress, color } = e;
@@ -1007,7 +1105,9 @@ var XenoLib = (() => {
           }
         }
         parseContent(content, channelId) {
-          return typeof content === 'string' ? ParsersModule.parseAllowLinks(content, true, { channelId }) : content;
+          if (typeof content === 'string') return FancyParser(content, true, { channelId });
+          else if (content instanceof Element) return ReactTools.createWrappedElement(content);
+          else return content;
         }
         checkOffScreen() {
           const bcr = this._contentRef.getBoundingClientRect();
@@ -1023,6 +1123,7 @@ var XenoLib = (() => {
         }
         closeNow() {
           if (this.state.closeFast) return;
+          this.resizeObserver.disconnect();
           this._animationCancel();
           this.setState({ closeFast: true });
         }
@@ -1031,6 +1132,11 @@ var XenoLib = (() => {
             this._animationCancel();
             this.forceUpdate();
           }
+        }
+        _setContentRef(ref) {
+          if (!ref) return;
+          this._contentRef = ref;
+          this.resizeObserver.observe(ref);
         }
         render() {
           const config = { duration: 200 };
@@ -1065,7 +1171,8 @@ var XenoLib = (() => {
                 const isSettingHeight = this._ref.offsetHeight !== this._contentRef.offsetHeight;
                 await next({ opacity: 1, height: this._contentRef.offsetHeight });
                 if (isSettingHeight) Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
-                if (this.state.resetBar || this.state.hovered) {
+                this.state.initialAnimDone = true;
+                if (this.state.resetBar || (this.state.hovered && LibrarySettings.notifications.timeoutReset)) {
                   await next({ progress: 0 }); /* shit gets reset */
                   this.state.resetBar = false;
                 }
@@ -1081,6 +1188,7 @@ var XenoLib = (() => {
                   if (this.state.progress !== 100 || !this.state.loading) return;
                 }
                 if (this.state.hovered && !this.state.closeFast) return;
+                if (!this.state.closeFast && !LibrarySettings.notifications.timeoutReset) this._startProgressing = Date.now();
                 await next({ progress: 100 });
                 this.state.leaving = true;
                 await next({ opacity: 0, height: 0 });
@@ -1088,7 +1196,7 @@ var XenoLib = (() => {
               },
               config: key => {
                 if (key === 'progress') {
-                  let duration = this.props.timeout;
+                  let duration = this._timeout;
                   if (this.state.closeFast || !this.props.timeout || this.state.resetBar || this.state.hovered) duration = 150;
                   if (this.state.offscreen) duration = 0; /* don't animate at all */
                   return { duration };
@@ -1112,10 +1220,13 @@ var XenoLib = (() => {
                   'div',
                   {
                     className: 'xenoLib-notification-content-wrapper',
-                    ref: e => e && (this._contentRef = e),
+                    ref: this._setContentRef,
                     onMouseEnter: e => {
                       if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
                       this._animationCancel();
+                      if (this._startProgressing) {
+                        this._timeout -= Date.now() - this._startProgressing;
+                      }
                       this.setState({ hovered: true });
                     },
                     onMouseLeave: e => {
@@ -1143,7 +1254,20 @@ var XenoLib = (() => {
                   React.createElement(
                     'div',
                     {
-                      className: 'xenoLib-notification-content'
+                      className: 'xenoLib-notification-content',
+                      style: LibrarySettings.notifications.backdrop
+                        ? {
+                            backdropFilter: 'blur(5px)',
+                            background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), 0.3),
+                            border: 'none'
+                          }
+                        : undefined,
+                      ref: e => {
+                        if (!LibrarySettings.notifications.backdrop || !e) return;
+                        e.style.setProperty('backdrop-filter', e.style.backdropFilter, 'important');
+                        e.style.setProperty('background', e.style.background, 'important');
+                        e.style.setProperty('border', e.style.border, 'important');
+                      }
                     },
                     React.createElement(ReactSpring.animated.div, {
                       className: XenoLib.joinClassNames('xenoLib-notification-loadbar', { 'xenoLib-notification-loadbar-striped': !this.props.timeout && this.state.loading, 'xenoLib-notification-loadbar-user': !this.props.timeout && !this.state.loading }),
@@ -1184,7 +1308,7 @@ var XenoLib = (() => {
         const notifications = useStore(e => {
           return e.data;
         });
-        return notifications.map(item => React.createElement(Notification, { ...item, key: item.id })).reverse();
+        return notifications.map(item => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: `Notification ${item.id}`, onError: () => api.setState(state => ({ data: state.data.filter(n => n.id !== item.id) })), key: item.id.toString() }, React.createElement(Notification, item))).reverse();
       }
       NotificationsWrapper.displayName = 'XenoLibNotifications';
       const DOMElement = document.createElement('div');
@@ -1320,6 +1444,10 @@ var XenoLib = (() => {
           const setting = new NotificationPositionField(data.name, data.note, data.onChange, data.value);
           if (data.id) setting.id = data.id;
           return setting;
+        } else if (data.type === 'color') {
+          const setting = new XenoLib.Settings.ColorPicker(data.name, data.note, data.value, data.onChange, data.options);
+          if (data.id) setting.id = data.id;
+          return setting;
         }
         return super.buildSetting(data);
       }
@@ -1337,18 +1465,13 @@ var XenoLib = (() => {
               DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
               Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
             }
-          } else if (setting === 'backdrop') {
-            addBackdrop();
+          } else if (setting === 'backdrop' || setting === 'backdropColor') {
+            Dispatcher.wait(() => Dispatcher.dispatch({ type: 'XL_NOTIFS_SETTINGS_UPDATE', key: UPDATEKEY }), (UPDATEKEY = {}));
           }
         }
       }
       showChangelog(footer) {
-        super.showChangelog(footer);
-        XenoLib.Notifications.show('Right click the x and click "Close All" to close them all quickly!', { timeout: 0 });
-        XenoLib.Notifications.info('If you dislike this style, or want it to look like your theme, disable it in settings', { timeout: 0 });
-        XenoLib.Notifications.error('That is if your client is up to date, otherwise you just see a transparent notification', { timeout: 0 });
-        XenoLib.Notifications.warning("Everything behind them is blurred! Albeit you probably can't see it well due to the changelog right now", { timeout: 0 });
-        XenoLib.Notifications.success('These have backdrops now!', { timeout: 0 });
+        XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog);
       }
       get name() {
         return config.info.name;
