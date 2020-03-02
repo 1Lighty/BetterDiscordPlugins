@@ -37,21 +37,16 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.2',
+      version: '1.0.3',
       description: 'Telegram image viewer ported to Discord. Adds ability to go between images in the current channel with arrow keys, or on screen buttons. Also provides info about the image, who posted it and when.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: "Now you're thinking with portals!",
+        title: 'fixes',
         type: 'fixed',
-        items: ['Nav buttons and info are now an overlay which means, fixed an issue from a certain trash plugin from a certain bad developer of who we do not speak of.']
-      },
-      {
-        title: 'how sad',
-        type: 'fixed',
-        items: ['Fixed plugin throwing a fit if image size was 1x1', 'Fixed some class issues making the authors name and send time not looking fancy']
+        items: ['Fixed some class issues making the authors name and send time not looking fancy']
       }
     ],
     defaultConfig: [
@@ -278,8 +273,9 @@ var BetterImageViewer = (() => {
     const APIEncodeModule = WebpackModules.getByProps('stringify');
     const ImageModal = WebpackModules.getByDisplayName('ImageModal');
     const ImageProps = ['height', 'width', 'original', 'placeholder', 'src'];
-    const ClickableHeaderClassname = XenoLib.getClass('username clickableHeader');
     const UsernameClassname = XenoLib.getClass('botTag username');
+    const ClickableClassname = XenoLib.getClass('username clickable');
+    const CozyClassname = XenoLib.getClass('zalgo cozy');
 
     class RichImageModal extends (() => {
       if (ImageModal) return ImageModal;
@@ -733,12 +729,12 @@ var BetterImageViewer = (() => {
                     TextElement.default,
                     {
                       color: TextElement.Colors.PRIMARY,
-                      className: ClickableHeaderClassname
+                      className: CozyClassname
                     },
                     React.createElement(
                       'span',
                       {
-                        className: UsernameClassname,
+                        className: XenoLib.joinClassNames(UsernameClassname, ClickableClassname),
                         onContextMenu: e => {
                           WebpackModules.getByProps('openUserContextMenu').openUserContextMenu(e, message.author, DiscordAPI.currentChannel.discordObject);
                         },
@@ -1019,6 +1015,7 @@ var BetterImageViewer = (() => {
         .BIV-info-wrapper .${UsernameClassname.split(' ')[0]} {
           max-width: 900px;
           overflow-x: hidden;
+          margin-right: .25rem;
         }
         .biv-overlay {
           pointer-events: none;

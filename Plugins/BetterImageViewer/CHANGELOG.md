@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.0.3
+- Fixed some class issues making the authors name and send time not looking fancy
+
 ### 1.0.2
 - Fixed plugin throwing a fit if image size was 1x1
 - Fixed some class issues making the authors name and send time not looking fancy
