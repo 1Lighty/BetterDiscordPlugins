@@ -938,7 +938,7 @@ var XenoLib = (() => {
             isFistType = false;
         }
       }
-      const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (ModalStack.pop(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Join my support server!'), FancyParser(' Or consider donating via [Paypal](https://paypal.me/lighty13), [Ko-fi](https://ko-fi.com/lighty_) or [Patreon](https://www.patreon.com/lightyp)!')];
+      const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (LayerManager.popLayer(), ModalStack.pop(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Join my support server!'), FancyParser(' Or consider donating via [Paypal](https://paypal.me/lighty13), [Ko-fi](https://ko-fi.com/lighty_) or [Patreon](https://www.patreon.com/lightyp)!')];
       ModalStack.push(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement.default, { size: TextElement.Sizes.SMALL, color: TextElement.Colors.PRIMARY, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement.default, { size: TextElement.Sizes.SMALL, color: TextElement.Colors.PRIMARY }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
     };
 
@@ -952,7 +952,8 @@ var XenoLib = (() => {
         progress: -1,
         channelId: undefined,
         timeout: 3500,
-        color: '#2196f3'
+        color: '#2196f3',
+        onLeave: DiscordConstants.NOOP
       };
       const utils = {
         success(content, options = {}) {
@@ -971,7 +972,7 @@ var XenoLib = (() => {
           return this.danger(content, options);
         },
         /**
-         * @param {string|*} content - Content to display. If it's a string, it'll be formatted with markdown, including URL support [like this](https://google.com/)
+         * @param {string|HTMLElement|React} content - Content to display. If it's a string, it'll be formatted with markdown, including URL support [like this](https://google.com/)
          * @param {object} options
          * @param {string} [options.channelId] Channel ID if content is a string which gets formatted, and you want to mention a role for example.
          * @param {Number} [options.timeout] Set to 0 to keep it permanently until user closes it, or if you want a progress bar
@@ -979,6 +980,7 @@ var XenoLib = (() => {
          * @param {Number} [options.progress] 0-100, -1 sets it to 100%, setting it to 100% closes the notification automatically
          * @param {string} [options.color] Bar color
          * @param {string} [options.allowDuplicates] By default, notifications that are similar get grouped together, use true to disable that
+         * @param {function} [options.onLeave] Callback when notification is leaving
          * @return {Number} - Notification ID. Store this if you plan on force closing it, changing its content or want to set the progress
          */
         show(content, options = {}) {
@@ -986,7 +988,7 @@ var XenoLib = (() => {
           options = Object.assign(Utilities.deepclone(defaultOptions), options);
           api.setState(state => {
             if (!options.allowDuplicates) {
-              const notif = state.data.find(n => n.content === content && n.timeout === options.timeout);
+              const notif = state.data.find(n => n.content === content && n.timeout === options.timeout && !n.leaving);
               if (notif) {
                 id = notif.id;
                 Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_DUPLICATE', id: notif.id });
@@ -1011,6 +1013,7 @@ var XenoLib = (() => {
          * @param {Boolean} [options.loading] Makes the bar animate differently instead of fading in and out slowly
          * @param {Number} [options.progress] 0-100, -1 sets it to 100%, setting it to 100% closes the notification automatically
          * @param {string} [options.color] Bar color
+         * @param {function} [options.onLeave] Callback when notification is leaving
          */
         update(id, options) {
           delete options.id;
@@ -1021,6 +1024,9 @@ var XenoLib = (() => {
             return state;
           });
           Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_UPDATE', id, ...options });
+        },
+        exists(id) {
+          return api.getState().data.findIndex(e => e.id === id && !e.leaving) !== -1;
         }
       };
       XenoLib.Notifications = utils;
@@ -1191,6 +1197,12 @@ var XenoLib = (() => {
                 if (!this.state.closeFast && !LibrarySettings.notifications.timeoutReset) this._startProgressing = Date.now();
                 await next({ progress: 100 });
                 this.state.leaving = true;
+                api.setState(state => {
+                  const dt = state.data.find(m => m.id === this.props.id);
+                  if (dt) dt.leaving = true;
+                  return { data: state.data };
+                });
+                this.props.onLeave();
                 await next({ opacity: 0, height: 0 });
                 api.setState(state => ({ data: state.data.filter(n => n.id !== this.props.id) }));
               },
