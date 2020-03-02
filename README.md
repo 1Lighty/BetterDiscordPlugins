@@ -20,6 +20,9 @@ Makes unavailable guilds (servers) still show in the list, and be able to drag i
 ##  [CrashRecovery](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/CrashRecovery "CrashRecovery")
 In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.
 
+##  [InAppNotifications](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/InAppNotifications "InAppNotifications")
+Show a notification in Discord when someone sends a message, just like on mobile.
+
 ##  [MentionAliasesRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/MentionAliasesRedux "MentionAliasesRedux")
 Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.
 ## [SaveToRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/SaveToRedux "SaveToRedux")
