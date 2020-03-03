@@ -1,10 +1,11 @@
 # [MentionAliasesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=MentionAliasesRedux "MentionAliasesRedux") Changelog
 ### 2.0.7
-- Fixed tag not showing within chat
+- Fixed le crash
 
 ### 2.0.6
 - Fixed menu button not showing
 - Fixed misc error spam
+- Fixed tag not showing within chat
 
 ### 2.0.5
 - Fixed crash if XenoLib or ZeresPluginLib were missing
