@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.12',
+      version: '1.3.13',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -49,24 +49,8 @@ var XenoLib = (() => {
     changelog: [
       {
         title: 'Boring changes',
-        type: 'Added',
-        items: ['What if you wanted to be *COOL* and ***__EPIC__***, but Zack said:\n![no](https://i.imgur.com/PJGBetG.png)\nSuch a sad world we live in', "Oh yeah, changelog is now very 💵 **__rich__** 💸, so it's more easy to **emphasise** stuff or show inline images!"]
-      },
-      {
-        title: 'oops',
         type: 'fixed',
-        items: ['Fixed misc classes being hard coded, also fixed ColorPicker not being defined properly causing MentionAliasesRedux to break', ['Misc notification changes:', ['backdrop-filter, background and border are now inlined and set as !important so themes cannot override it, unless you disable the backdrop-filter option.', 'Due to that, added an option to change the color of the backdrop in settings.']]]
-      },
-      {
-        type: 'description',
-        content: 'Added option to change the on hover behavior to this:'
-      },
-      {
-        type: 'video',
-        src: 'https://cdn.discordapp.com/attachments/389049952732446733/683706310629392463/i8hQ2poeNmmo.mp4',
-        thumbnail: 'https://media.discordapp.net/attachments/389049952732446733/683706310629392463/i8hQ2poeNmmo.mp4?format=jpeg',
-        width: 368,
-        height: 166
+        items: ['Misc fixes to compensate for upcoming PTB update']
       }
     ],
     defaultConfig: [
@@ -93,7 +77,10 @@ var XenoLib = (() => {
             name: 'Backdrop color',
             id: 'backdropColor',
             type: 'color',
-            value: '#474747'
+            value: '#3e4346',
+            options: {
+              defaultColor: '#3e4346'
+            }
           },
           {
             name: 'Timeout resets to 0 when hovered',
@@ -265,6 +252,7 @@ var XenoLib = (() => {
         position: relative;
         width: 20vw;
         white-space: break-spaces;
+        min-width: 330px;
       }
       .xenoLib-notification-loadbar {
         position: absolute;
@@ -660,7 +648,7 @@ var XenoLib = (() => {
     const ModalContainerClassname = XenoLib.getClass('mobile container');
     const ModalContentClassname = XenoLib.getClass('mobile container content');
 
-    const Icon = WebpackModules.getByDisplayName('Icon');
+    const ColorPickerComponent = WebpackModules.getByDisplayName('ColorPicker');
 
     class ColorPickerModal extends React.PureComponent {
       constructor(props) {
@@ -682,7 +670,7 @@ var XenoLib = (() => {
             React.createElement(
               FormItem,
               { className: DiscordClasses.Margins.marginTop20 },
-              React.createElement(WebpackModules.getByDisplayName('ColorPicker'), {
+              React.createElement(ColorPickerComponent, {
                 defaultColor: this.props.defaultColor,
                 colors: [16711680, 16746496, 16763904, 13434624, 65314, 65484, 61183, 43775, 26367, 8913151, 16711918, 16711782, 11730944, 11755264, 11767552, 9417472, 45848, 45967, 42931, 30643, 18355, 6226099, 11731111, 11731015],
                 value: this.state.value,
@@ -696,6 +684,8 @@ var XenoLib = (() => {
 
     const ExtraButtonClassname = XenoLib.joinClassNames('xenoLib-button', XenoLib.getClass('recording button'));
     const TextClassname = XenoLib.getClass('recording text');
+    const DropperIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16' }, React.createElement('path', { d: 'M14.994 1.006C13.858-.257 11.904-.3 10.72.89L8.637 2.975l-.696-.697-1.387 1.388 5.557 5.557 1.387-1.388-.697-.697 1.964-1.964c1.13-1.13 1.3-2.985.23-4.168zm-13.25 10.25c-.225.224-.408.48-.55.764L.02 14.37l1.39 1.39 2.35-1.174c.283-.14.54-.33.765-.55l4.808-4.808-2.776-2.776-4.813 4.803z', fill: 'currentColor' }));
+    const ClockReverseIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M13,3 C8.03,3 4,7.03 4,12 L1,12 L4.89,15.89 L4.96,16.03 L9,12 L6,12 C6,8.13 9.13,5 13,5 C16.87,5 20,8.13 20,12 C20,15.87 16.87,19 13,19 C11.07,19 9.32,18.21 8.06,16.94 L6.64,18.36 C8.27,19.99 10.51,21 13,21 C17.97,21 22,16.97 22,12 C22,7.03 17.97,3 13,3 L13,3 Z M12,8 L12,13 L16.28,15.54 L17,14.33 L13.5,12.25 L13.5,8 L12,8 L12,8 Z', fill: 'currentColor' }));
     class ColorPicker extends React.PureComponent {
       constructor(props) {
         super(props);
@@ -765,9 +755,7 @@ var XenoLib = (() => {
                 {
                   className: 'xenoLib-button-icon'
                 },
-                React.createElement(Icon, {
-                  name: 'Dropper'
-                })
+                DropperIcon
               )
             ),
             React.createElement(
@@ -785,9 +773,7 @@ var XenoLib = (() => {
                 {
                   className: 'xenoLib-button-icon xenoLib-revert'
                 },
-                React.createElement(Icon, {
-                  name: 'ClockReverse'
-                })
+                ClockReverseIcon
               )
             )
           ),
