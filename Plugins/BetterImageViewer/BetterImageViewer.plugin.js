@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.3',
+      version: '1.0.4',
       description: 'Telegram image viewer ported to Discord. Adds ability to go between images in the current channel with arrow keys, or on screen buttons. Also provides info about the image, who posted it and when.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,7 @@ var BetterImageViewer = (() => {
       {
         title: 'fixes',
         type: 'fixed',
-        items: ['Fixed some class issues making the authors name and send time not looking fancy']
+        items: ['Fixed plugin refusing to work in PTB and canary']
       }
     ],
     defaultConfig: [
@@ -111,6 +111,13 @@ var BetterImageViewer = (() => {
             id: 'hoverSearch',
             type: 'switch',
             value: false
+          },
+          {
+            name: 'DEBUG',
+            note: 'do not touch',
+            id: 'debug',
+            type: 'switch',
+            value: false
           }
         ]
       }
@@ -123,10 +130,10 @@ var BetterImageViewer = (() => {
     const { React, ReactDOM, ModalStack, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, TextElement, MessageStore, APIModule, NavigationUtils } = DiscordModules;
 
     let PluginBrokenFatal = false;
+    let NoImageZoom = false;
     let overlayDOMNode;
 
     const { ARROW_LEFT, ARROW_RIGHT } = DiscordConstants.KeyboardKeys;
-    const Icon = WebpackModules.getByDisplayName('Icon');
     const Clickable = WebpackModules.getByDisplayName('Clickable');
 
     const ImageUtils = Object.assign({}, WebpackModules.getByProps('getImageSrc'), WebpackModules.getByProps('getRatio'));
@@ -170,6 +177,142 @@ var BetterImageViewer = (() => {
       }
       return images;
     }
+    const ReactSpring = WebpackModules.getByProps('useTransition');
+
+    class Image extends (() => {
+      const Image = WebpackModules.getByDisplayName('Image');
+      if (Image) return Image;
+      Logger.error('Failed to get Image!');
+      NoImageZoom = true;
+      return class error {};
+    })() {
+      constructor(props) {
+        super(props);
+        this.state = {
+          hovered: false,
+          x: 0,
+          y: 0,
+          startX: 0,
+          startY: 0,
+          zoom: 1.5,
+          offsetX: 0,
+          offsetY: 0
+        };
+        XenoLib._.bindAll(this, ['handleMouseDown', 'handleMouseUp', 'handleMouseWheel']);
+        const throttled = XenoLib._.throttle(this.handleMouseMove.bind(this), 50);
+        this.handleMouseMove = e => this.state.hovered && throttled(e.clientX, e.clientY);
+      }
+      componentDidMount() {
+        if (super.componentDidMount) super.componentDidMount();
+        window.addEventListener('mouseup', this.handleMouseUp);
+        window.addEventListener('mousemove', this.handleMouseMove);
+        window.addEventListener('mousewheel', this.handleMouseWheel);
+        this.getRawImage();
+      }
+      componentWillUnmount() {
+        if (super.componentWillUnmount) super.componentWillUnmount();
+        window.removeEventListener('mouseup', this.handleMouseUp);
+        window.removeEventListener('mousemove', this.handleMouseMove);
+        window.removeEventListener('mousewheel', this.handleMouseWheel);
+      }
+      componentDidUpdate(prevProps, prevState) {
+        if (super.componentDidUpdate) super.componentDidUpdate(prevProps, prevState);
+        this.getRawImage();
+      }
+      handleMouseDown(e) {
+        console.log(e);
+        this.setState({ hovered: !this.state.hovered, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY });
+      }
+      handleMouseUp() {
+        return;
+        this.setState({ hovered: false });
+      }
+      handleMouseMove(x, y) {
+        x = Math.min(this._ref.offsetLeft + this._ref.offsetWidth, Math.max(this._ref.offsetLeft, x));
+        y = Math.min(this._ref.offsetTop + this._ref.offsetHeight, Math.max(this._ref.offsetTop, y));
+        const offsetX = ((x - this._ref.offsetLeft) / (this._ref.offsetWidth + 250)) * (this._ref.offsetWidth + 250);
+        const offsetY = ((y - this._ref.offsetTop) / (this._ref.offsetHeight + 250)) * (this._ref.offsetHeight + 250);
+        this.setState({ x, y, offsetX, offsetY });
+      }
+      handleMouseWheel(e) {
+        if (e.deltaY < 0) {
+          this.setState({
+            zoom: Math.min(this.state.zoom * 1.1, 10)
+          });
+        } else if (e.deltaY > 0) {
+          this.setState({
+            zoom: Math.max(this.state.zoom * 0.9)
+          });
+        }
+      }
+      getRawImage() {
+        if (this.__BIV_updating) return;
+        this.__BIV_updating = true;
+        const src = this.props.src;
+        const fullSource = (() => {
+          const split = src.split('?')[0];
+          const SaveToRedux = BdApi.getPlugin('SaveToRedux');
+          if (SaveToRedux) return SaveToRedux.formatURL(split, src.substr(src.indexOf('?')).indexOf('size=') !== -1, '', '').url;
+          return split;
+        })();
+        this.__BIV_updating = true;
+        this.setState({ raw: fullSource });
+        this.__BIV_updating = false;
+      }
+      render() {
+        const ret = super.render();
+        ret.props.onMouseDown = this.handleMouseDown;
+        ret.ref = e => (this._ref = e);
+        if (this.state.hovered) {
+          ret.props.children.push(
+            ReactDOM.createPortal(
+              React.createElement(
+                ReactSpring.Spring,
+                {
+                  native: true,
+                  from: { x: this.state.startX, y: this.state.startY },
+                  to: { x: this.state.x, y: this.state.y },
+                  config: { mass: 1, tension: 2000, friction: 100 }
+                },
+                e =>
+                  React.createElement(
+                    ReactSpring.animated.div,
+                    {
+                      style: {
+                        width: 500,
+                        height: 500,
+                        position: 'absolute',
+                        top: e.y,
+                        left: e.x,
+                        overflow: 'hidden'
+                      }
+                    },
+                    React.createElement(
+                      'div',
+                      {
+                        style: {
+                          position: 'absolute',
+                          transform: `scale(${this.state.zoom})`,
+                          transformOrigin: '0px 0px',
+                          left: -this.state.offsetX,
+                          top: -this.state.offsetY
+                        }
+                      },
+                      React.createElement('img', {
+                        src: this.state.raw,
+                        width: this.props.width,
+                        height: this.props.height
+                      })
+                    )
+                  )
+              ),
+              overlayDOMNode
+            )
+          );
+        }
+        return ret;
+      }
+    }
 
     class LazyImage extends (() => {
       const LazyImage = WebpackModules.getByDisplayName('LazyImage');
@@ -178,10 +321,10 @@ var BetterImageViewer = (() => {
       PluginBrokenFatal = true;
       return class error {};
     })() {
-      componentDidUpdate(props) {
+      componentDidUpdate(props, prevState) {
         this._cancellers.forEach(e => e());
         this._cancellers.clear();
-        super.componentDidUpdate(props);
+        super.componentDidUpdate(props, prevState);
         if (this.__BIV_updating) return;
         this.__BIV_updating = true;
         const max = ImageUtils.zoomFit(this.props.width, this.props.height);
@@ -277,6 +420,15 @@ var BetterImageViewer = (() => {
     const ClickableClassname = XenoLib.getClass('username clickable');
     const CozyClassname = XenoLib.getClass('zalgo cozy');
 
+    /* discord gay */
+    const LeftCaretIcon = e => React.createElement('svg', { ...e, name: 'LeftCaret', width: 24, height: 24, viewBox: '0 0 24 24' }, React.createElement('polygon', { points: '18.35 4.35 16 2 6 12 16 22 18.35 19.65 10.717 12', fill: 'currentColor', fillRule: 'nonzero' }));
+    const RightCaretIcon = e => React.createElement('svg', { ...e, name: 'RightCaret', width: 24, height: 24, viewBox: '0 0 24 24' }, React.createElement('polygon', { points: '8.47 2 6.12 4.35 13.753 12 6.12 19.65 8.47 22 18.47 12', fill: 'currentColor', fillRule: 'nonzero' }));
+    const WarningTriangleIcon = e => React.createElement('svg', { ...e, name: 'WarningTriangle', width: 16, height: 16, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M1,21 L23,21 L12,2 L1,21 L1,21 Z M13,18 L11,18 L11,16 L13,16 L13,18 L13,18 Z M13,14 L11,14 L11,10 L13,10 L13,14 L13,14 Z', fill: 'currentColor' }));
+    const UpdateAvailableIcon = e => React.createElement('svg', { ...e, name: 'UpdateAvailable', width: 16, height: 16, viewBox: '0 0 24 24', className: 'BIV-searching-icon-spin' }, React.createElement('path', { d: 'M5,8 L9,12 L6,12 C6,15.31 8.69,18 12,18 C13.01,18 13.97,17.75 14.8,17.3 L16.26,18.76 C15.03,19.54 13.57,20 12,20 C7.58,20 4,16.42 4,12 L1,12 L5,8 Z M18,12 C18,8.69 15.31,6 12,6 C10.99,6 10.03,6.25 9.2,6.7 L7.74,5.24 C8.97,4.46 10.43,4 12,4 C16.42,4 20,7.58 20,12 L23,12 L19,16 L15,12 L18,12 Z', fill: 'currentColor', fillRule: 'nonzero' }));
+    const SearchIcon = e => React.createElement('svg', { ...e, name: 'Nova_Search', width: 24, height: 24, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M21.707 20.293L16.314 14.9C17.403 13.504 18 11.799 18 10C18 7.863 17.167 5.854 15.656 4.344C14.146 2.832 12.137 2 10 2C7.863 2 5.854 2.832 4.344 4.344C2.833 5.854 2 7.863 2 10C2 12.137 2.833 14.146 4.344 15.656C5.854 17.168 7.863 18 10 18C11.799 18 13.504 17.404 14.9 16.314L20.293 21.706L21.707 20.293ZM10 16C8.397 16 6.891 15.376 5.758 14.243C4.624 13.11 4 11.603 4 10C4 8.398 4.624 6.891 5.758 5.758C6.891 4.624 8.397 4 10 4C11.603 4 13.109 4.624 14.242 5.758C15.376 6.891 16 8.398 16 10C16 11.603 15.376 13.11 14.242 14.243C13.109 15.376 11.603 16 10 16Z', fill: 'currentColor' }));
+    const TimerIcon = e => React.createElement('svg', { ...e, name: 'Timer', width: 16, height: 16, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z', fill: 'currentColor', fillRule: 'nonzero' }));
+    const ClearIcon = e => React.createElement('svg', { ...e, name: 'Clear', width: 18, height: 18, viewBox: '0 0 18 18' }, React.createElement('path', { d: 'M9,2 C12.871,2 16,5.129 16,9 C16,12.871 12.871,16 9,16 C5.129,16 2,12.871 2,9 C2,5.129 5.129,2 9,2 L9,2 Z M11.6925,5.25 L9,7.9425 L6.3075,5.25 L5.25,6.3075 L7.9425,9 L5.25,11.6925 L6.3075,12.75 L9,10.0575 L11.6925,12.75 L12.75,11.6925 L10.0575,9 L12.75,6.3075 L11.6925,5.25 Z', fill: 'currentColor', fillRule: 'nonzero' }));
+
     class RichImageModal extends (() => {
       if (ImageModal) return ImageModal;
       Logger.error('ImageModal is undefined! Plugin will not work!');
@@ -301,7 +453,7 @@ var BetterImageViewer = (() => {
           isNearingEdge: false,
           controlsHovered: false,
           unknownError: false,
-          controlsHidden: false,
+          controlsVisible: false,
           imageSize: null,
           originalImageSize: null,
           basicImageInfo: null
@@ -536,12 +688,14 @@ var BetterImageViewer = (() => {
       }
       handleMouseEnter(next) {
         this.state.controlsHovered = true;
+        if (this.props.settings.behavior.debug) this.forceUpdate();
         if (!this.state.needsSearch || (this.state.needsSearch === -1 && !next) || !this.props.settings.behavior.hoverSearch) return;
         const filtered = this.filterMessages();
         this.handleSearch(next ? filtered[filtered.length - 1].id : filtered[0].id, next);
       }
       handleMouseLeave() {
         this.state.controlsHovered = false;
+        if (this.props.settings.behavior.debug) this.forceUpdate();
       }
       handlePreLoad(keyboardMode, next, subsidiaryMessageId) {
         const filtered = this.filterMessages();
@@ -550,6 +704,7 @@ var BetterImageViewer = (() => {
         const isNearingEdge = next ? filtered.length - (targetIdx + 1) < 5 : targetIdx + 1 < 5;
         this.setState({ isNearingEdge });
         if (keyboardMode === -1 || isNearingEdge) {
+          /* search required, wait for user input if none of these are tripped */
           if (keyboardMode || this._maxImages < 2 || this.state.controlsHovered) {
             if (!next || (next && ChannelMessages[DiscordAPI.currentChannel.id].hasMoreAfter)) this.handleSearch(next ? filtered[filtered.length - 1].id : filtered[0].id, next);
           } else {
@@ -666,38 +821,38 @@ var BetterImageViewer = (() => {
         ret.props.children.push(
           ReactDOM.createPortal(
             [
-              this.props.settings.ui.navButtons
+              this.props.settings.ui.navButtons || this.props.settings.behavior.debug
                 ? [
                     React.createElement(
                       Clickable,
                       {
-                        className: XenoLib.joinClassNames('BIV-left', { 'BIV-disabled': currentImage === this._maxImages && (this._searchCache.noBefore || this.state.rateLimited), 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsHidden }),
+                        className: XenoLib.joinClassNames('BIV-left', { 'BIV-disabled': currentImage === this._maxImages && (this._searchCache.noBefore || this.state.rateLimited), 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsVisible }),
                         onClick: this.handlePrevious,
                         onContextMenu: () => this.handleFastJump(),
                         onMouseEnter: () => this.handleMouseEnter(),
                         onMouseLeave: this.handleMouseLeave
                       },
-                      React.createElement(Icon, { name: 'LeftCaret' })
+                      React.createElement(LeftCaretIcon)
                     ),
                     React.createElement(
                       Clickable,
                       {
-                        className: XenoLib.joinClassNames('BIV-right', { 'BIV-disabled': currentImage === 1, 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsHidden }),
+                        className: XenoLib.joinClassNames('BIV-right', { 'BIV-disabled': currentImage === 1, 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsVisible }),
                         onClick: this.handleNext,
                         onContextMenu: () => this.handleFastJump(true),
                         onMouseEnter: () => this.handleMouseEnter(true),
                         onMouseLeave: this.handleMouseLeave
                       },
-                      React.createElement(Icon, { name: 'RightCaret' })
+                      React.createElement(RightCaretIcon)
                     )
                   ]
                 : null,
               React.createElement(
                 'div',
                 {
-                  className: XenoLib.joinClassNames('BIV-info', { 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsHidden })
+                  className: XenoLib.joinClassNames('BIV-info', { 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsVisible })
                 },
-                this.props.settings.ui.imageIndex
+                this.props.settings.ui.imageIndex || this.props.settings.behavior.debug
                   ? React.createElement(
                       TextElement.default,
                       {
@@ -708,7 +863,7 @@ var BetterImageViewer = (() => {
                       currentImage,
                       ' of ',
                       this._maxImages,
-                      this._searchCache._totalResults
+                      this._searchCache._totalResults || this.props.settings.behavior.debug
                         ? React.createElement(
                             Tooltip,
                             {
@@ -754,7 +909,7 @@ var BetterImageViewer = (() => {
                     React.createElement(MessageTimestamp, {
                       timestamp: DiscordModules.Moment(message.timestamp)
                     }),
-                    this._searchCache.noBefore &&
+                    (this.props.settings.behavior.debug || this._searchCache.noBefore) &&
                       React.createElement(
                         'div',
                         {
@@ -765,15 +920,10 @@ var BetterImageViewer = (() => {
                           {
                             text: 'You have reached the start of the channel'
                           },
-                          e =>
-                            React.createElement(Icon, {
-                              ...e,
-                              name: 'LeftCaret'
-                            })
+                          e => React.createElement(LeftCaretIcon, e)
                         )
                       ),
-                    this.state.isNearingEdge &&
-                      !this.props.settings.behavior.searchAPI &&
+                    (this.props.settings.behavior.debug || (this.state.isNearingEdge && !this.props.settings.behavior.searchAPI)) &&
                       React.createElement(
                         'div',
                         {
@@ -784,15 +934,10 @@ var BetterImageViewer = (() => {
                           {
                             text: 'You are nearing the edge of available images. If you want more, enable search API.'
                           },
-                          e =>
-                            React.createElement(Icon, {
-                              ...e,
-                              name: 'WarningTriangle'
-                            })
+                          e => React.createElement(WarningTriangleIcon, e)
                         )
                       ),
-                    this.state.requesting &&
-                      !this.state.unknownError &&
+                    (this.props.settings.behavior.debug || (this.state.requesting && !this.state.unknownError)) &&
                       React.createElement(
                         'div',
                         {
@@ -803,14 +948,10 @@ var BetterImageViewer = (() => {
                           {
                             text: 'Requesting more...'
                           },
-                          e =>
-                            React.createElement(Icon, {
-                              ...e,
-                              name: 'UpdateAvailable'
-                            })
+                          e => React.createElement(UpdateAvailableIcon, e)
                         )
                       ),
-                    this.state.indexing &&
+                    (this.props.settings.behavior.debug || this.state.indexing) &&
                       React.createElement(
                         'div',
                         {
@@ -821,14 +962,10 @@ var BetterImageViewer = (() => {
                           {
                             text: 'Indexing channel...'
                           },
-                          e =>
-                            React.createElement(Icon, {
-                              ...e,
-                              name: 'Nova_Search'
-                            })
+                          e => React.createElement(SearchIcon, e)
                         )
                       ),
-                    this.state.localRateLimited || this.state.rateLimited
+                    this.props.settings.behavior.debug || this.state.localRateLimited || this.state.rateLimited
                       ? React.createElement(
                           'div',
                           {
@@ -839,15 +976,11 @@ var BetterImageViewer = (() => {
                             {
                               text: 'You have been rate limited, please wait'
                             },
-                            e =>
-                              React.createElement(Icon, {
-                                ...e,
-                                name: 'Timer'
-                              })
+                            e => React.createElement(TimerIcon, e)
                           )
                         )
                       : undefined,
-                    this._followNew &&
+                    (this.props.settings.behavior.debug || this._followNew) &&
                       React.createElement(
                         'div',
                         {
@@ -858,14 +991,10 @@ var BetterImageViewer = (() => {
                           {
                             text: 'You have reached the end of the channel and are listening for new images'
                           },
-                          e =>
-                            React.createElement(Icon, {
-                              ...e,
-                              name: 'RightCaret'
-                            })
+                          e => React.createElement(RightCaretIcon, e)
                         )
                       ),
-                    this.state.unknownError &&
+                    (this.props.settings.behavior.debug || this.state.unknownError) &&
                       React.createElement(
                         'div',
                         {
@@ -876,11 +1005,7 @@ var BetterImageViewer = (() => {
                           {
                             text: 'Unknown error occured'
                           },
-                          e =>
-                            React.createElement(Icon, {
-                              ...e,
-                              name: 'Clear'
-                            })
+                          e => React.createElement(ClearIcon, e)
                         )
                       )
                   )
@@ -899,13 +1024,16 @@ var BetterImageViewer = (() => {
         super();
         XenoLib.changeName(__filename, this.name);
         const oOnStart = this.onStart.bind(this);
+        this._startFailure = message => {
+          PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
+          XenoLib.Notifications.error(`[**${this.name}**] ${message} Please update it, press CTRL + R, or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });
+        };
         this.onStart = () => {
           try {
             oOnStart();
           } catch (e) {
             Logger.stacktrace('Failed to start!', e);
-            PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
-            XenoLib.Notifications.error(`[**${this.name}**] Failed to start! Please update it, press CTRL + R, or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });
+            this._startFailure('Failed to start!');
             try {
               this.onStop();
             } catch (e) {}
@@ -919,10 +1047,8 @@ var BetterImageViewer = (() => {
         }
         document.querySelector('#app-mount').append(overlayDOMNode);
         this.promises = { state: { cancelled: false } };
-        if (PluginBrokenFatal) {
-          PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
-          return XenoLib.Notifications.error(`[**${this.name}**] Plugin is in a broken state. Please update it, or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });
-        }
+        if (PluginBrokenFatal) return this._startFailure('Plugin is in a broken state.');
+        if (NoImageZoom) this._startFailure('Image zoom is broken.');
         this.patchAll();
         Dispatcher.subscribe('MESSAGE_DELETE', this.handleMessageDelete);
         Dispatcher.subscribe('MESSAGE_DELETE_BULK', this.handlePurge);
@@ -941,7 +1067,6 @@ var BetterImageViewer = (() => {
             transition: all .25s ease-in-out;
             color: gray;
           }
-
           .BIV-disabled {
             color: #4d4d4d;
           }
@@ -958,75 +1083,86 @@ var BetterImageViewer = (() => {
             background-color: hsla(0, 0%, 49%, 0.2);
             color: white;
           }
-        .BIV-left {
-            left: 0;
-        }
-        .BIV-right {
-            right: 0;
-        }
-        .BIV-left > svg, .BIV-right > svg {
-            width: 30px;
-            height: 30px;
-        }
-        .BIV-info {
+          .BIV-left {
+              left: 0;
+          }
+          .BIV-right {
+              right: 0;
+          }
+          .BIV-left > svg, .BIV-right > svg {
+              width: 30px;
+              height: 30px;
+          }
+          .BIV-info {
+              position: absolute;
+              left: 18px;
+              bottom: 12px;
+              height: 42px;
+              transition: opacity .35s ease-in-out;
+          }
+          .BIV-info-extra {
+            left: unset;
+            right: 12px;
+            height: unset;
+          }
+          .BIV-info-extra > table {
+            width: 200px;
+          }
+          .BIV-info-extra tr > td:nth-child(2) {
+            text-align: end;
+          }
+          .BIV-info-wrapper {
+              bottom: 0;
+              position: absolute;
+              white-space: nowrap;
+          }
+          .BIV-info-wrapper > .${TextElement.Colors.PRIMARY} {
+            display: flex;
+            align-items: center;
+          }
+          .BIV-requesting {
+            display: flex;
+            margin-left: 5px;
+          }
+          .BIV-requesting > svg[name="Nova_Search"], .BIV-requesting > svg[name="LeftCaret"], .BIV-requesting > svg[name="RightCaret"] {
+            width: 16px;
+            height: 16px;
+          }
+
+          .BIV-inactive {
+            transition: opacity 1s ease-in-out;
+          }
+
+          .BIV-hidden {
+            opacity: 0;
+          }
+
+          .BIV-info-wrapper .${UsernameClassname.split(' ')[0]} {
+            max-width: 900px;
+            overflow-x: hidden;
+            margin-right: .25rem;
+          }
+          .biv-overlay {
+            pointer-events: none;
             position: absolute;
-            left: 18px;
-            bottom: 12px;
-            height: 42px;
-            transition: opacity .35s ease-in-out;
-        }
-        .BIV-info-extra {
-          left: unset;
-          right: 12px;
-          height: unset;
-        }
-        .BIV-info-extra > table {
-          width: 200px;
-        }
-        .BIV-info-extra tr > td:nth-child(2) {
-          text-align: end;
-        }
-        .BIV-info-wrapper {
-            bottom: 0;
-            position: absolute;
-            white-space: nowrap;
-        }
-        .BIV-info-wrapper > .${TextElement.Colors.PRIMARY} {
-          display: flex;
-          align-items: center;
-        }
-        .BIV-requesting {
-          display: flex;
-          margin-left: 5px;
-        }
-        .BIV-requesting > svg[name="Nova_Search"], .BIV-requesting > svg[name="LeftCaret"], .BIV-requesting > svg[name="RightCaret"] {
-          width: 16px;
-          height: 16px;
-        }
-
-        .BIV-inactive {
-          transition: opacity 1s ease-in-out;
-        }
-
-        .BIV-hidden {
-          opacity: 0;
-        }
-
-        .BIV-info-wrapper .${UsernameClassname.split(' ')[0]} {
-          max-width: 900px;
-          overflow-x: hidden;
-          margin-right: .25rem;
-        }
-        .biv-overlay {
-          pointer-events: none;
-          position: absolute;
-          z-index: 1000;
-          width: 100%;
-          height: 100%;
-        }
-        .biv-overlay > * {
-          pointer-events: all;
-        }
+            z-index: 1000;
+            width: 100%;
+            height: 100%;
+          }
+          .biv-overlay > * {
+            pointer-events: all;
+          }
+          @keyframes BIV-spin {
+            0% {
+                transform: rotate(0deg)
+            }
+            to {
+                transform: rotate(1turn)
+            }
+          }
+          .BIV-searching-icon-spin {
+            animation: BIV-spin 2s linear infinite;
+          }
         `
         );
       }
@@ -1059,9 +1195,10 @@ var BetterImageViewer = (() => {
       /* PATCHES */
 
       patchAll() {
-        Utilities.suppressErrors(this.patchImageModal.bind(this), 'ImageModal patch')(this.promises.state);
         Utilities.suppressErrors(this.patchMessageAccessories.bind(this), 'MessageAccessories patch')(this.promises.state);
         this.patchLazyImageZoomable();
+        this.patchImageModal();
+        this.patchLazyImage();
       }
 
       patchLazyImageZoomable() {
@@ -1167,7 +1304,7 @@ var BetterImageViewer = (() => {
         MessageAccessories.forceUpdateAll();
       }
 
-      patchImageModal(promiseState) {
+      patchImageModal() {
         /*  shared code
             these patches are for displaying image info
             but the same code is shared with RichImageModal
@@ -1244,8 +1381,8 @@ var BetterImageViewer = (() => {
             if (settings.infoSize) requestImageInfo(props, finalRatio === 1);
           };
           _this.requestImageInfo();
-          _this._controlsHiddenTimeout = new TimingModule.Timeout();
-          _this._controlsHiddenTimeout.start(300, () => _this.setState({ controlsHidden: true }));
+          _this._controlsVisibleTimeout = new TimingModule.Timeout();
+          _this._controlsVisibleTimeout.start(300, () => _this.setState({ controlsVisible: true }));
           _this._controlsInactiveDelayedCall = new TimingModule.DelayedCall(3500, () => _this.setState({ controlsInactive: true }));
           _this._controlsInactiveDelayedCall.delay();
           _this.handleMouseMove = XenoLib._.throttle(_this.handleMouseMove.bind(_this), 500);
@@ -1255,7 +1392,7 @@ var BetterImageViewer = (() => {
           if (!_this.state || _this.state.internalError) return;
           if (_this._headerRequest1) _this._headerRequest1.abort();
           if (_this._headerRequest2) _this._headerRequest2.abort();
-          _this._controlsHiddenTimeout.stop();
+          _this._controlsVisibleTimeout.stop();
           _this._controlsInactiveDelayedCall.cancel();
           window.removeEventListener('mousemove', _this.handleMouseMove);
         });
@@ -1264,26 +1401,28 @@ var BetterImageViewer = (() => {
           if (!_this.state)
             _this.state = {
               controlsInactive: false,
-              controlsHidden: false,
+              controlsVisible: false,
               imageSize: null,
               originalImageSize: null,
               basicImageInfo: null
             };
           if (_this.state.internalError) return;
           const settings = this.settings.ui;
-          if (!settings.infoResolution && settings.infoScale && settings.infoSize) return;
+          const debug = this.settings.behavior.debug;
+          if (!settings.infoResolution && settings.infoScale && settings.infoSize && !debug) return;
           const { basicImageInfo, imageSize, originalImageSize } = _this.state;
           // splice in, otherwise ImageToClipboard freaks out
           ret.props.children.splice(
             1,
             0,
+            /* portals are cool o; */
             ReactDOM.createPortal(
               React.createElement(
                 'div',
                 {
-                  className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsHidden, 'BIV-inactive': _this.state.controlsInactive }, TextElement.Colors.PRIMARY)
+                  className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug }, TextElement.Colors.PRIMARY)
                 },
-                React.createElement('table', {}, settings.infoResolution ? renderTableEntry(basicImageInfo ? `${basicImageInfo.width}x${basicImageInfo.height}` : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null)
+                React.createElement('table', {}, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? `${basicImageInfo.width}x${basicImageInfo.height}` : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale || debug ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
               ),
               overlayDOMNode
             )
@@ -1291,7 +1430,19 @@ var BetterImageViewer = (() => {
         });
       }
 
+      patchLazyImage() {
+        if (NoImageZoom || true) return;
+        Patcher.after(WebpackModules.getByDisplayName('LazyImage').prototype, 'render', (_this, _, ret) => {
+          if (_this.props.onContextMenu || _this.props.onZoom || _this.props.children) return;
+          ret.type = Image;
+        });
+      }
+
       /* PATCHES */
+
+      showChangelog(footer) {
+        XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog);
+      }
 
       getSettingsPanel() {
         return this.buildSettingsPanel().getElement();
@@ -1335,7 +1486,7 @@ var BetterImageViewer = (() => {
       const iZeresPluginLibrary = BdApi.getPlugin('ZeresPluginLibrary');
       const iXenoLib = BdApi.getPlugin('XenoLib');
       if (isOutOfDate(iZeresPluginLibrary, '1.2.10')) ZeresPluginLibraryOutdated = true;
-      if (isOutOfDate(iXenoLib, '1.3.10')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.3.13')) XenoLibOutdated = true;
     }
   } catch (e) {
     console.error('Error checking if libraries are out of date', e);

@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.0.4
+- Fixed plugin refusing to work in PTB and canary
+
 ### 1.0.3
 - Fixed some class issues making the authors name and send time not looking fancy
 
