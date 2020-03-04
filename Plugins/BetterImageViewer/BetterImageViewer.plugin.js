@@ -37,16 +37,16 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.4',
-      description: 'Telegram image viewer ported to Discord. Adds ability to go between images in the current channel with arrow keys, or on screen buttons. Also provides info about the image, who posted it and when.',
+      version: '1.1.0',
+      description: 'Adds ability to go between images in the current channel with arrow keys, or on screen buttons, and has click to zoom. Also provides info about the image, who posted it and when.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'fixes',
-        type: 'fixed',
-        items: ['Fixed plugin refusing to work in PTB and canary']
+        title: 'IMAGE ZOOM IS HERE!',
+        type: 'added',
+        items: ['*SOME* people kept asking, so here you go.\nAdded image zoom, simply activate by click and holding on the image.', 'Use scroll wheel to zoom in and out, hold shift while scrolling to change lens size.', "If you prefer using a different plugin to handle zooming for you, that's fine too, there is a toggle to disable it in settings.", 'The click and hold can of course be easily changed in the settings to your prefered method of zooming.\n![zoommode](https://i.imgur.com/A8HjQb9.png)', 'There are other options too, for those that may want it!\n![moreoptions](https://i.imgur.com/JGNe7Re.png)']
       }
     ],
     defaultConfig: [
@@ -120,13 +120,74 @@ var BetterImageViewer = (() => {
             value: false
           }
         ]
+      },
+      {
+        type: 'category',
+        id: 'zoom',
+        name: 'Image Zoom settings',
+        collapsible: true,
+        shown: false,
+        settings: [
+          {
+            name: 'Enable image zoom',
+            id: 'enabled',
+            type: 'switch',
+            value: true
+          },
+          {
+            name: 'Zoom enable mode',
+            id: 'enableMode',
+            type: 'radio',
+            value: 0,
+            options: [
+              { name: 'Click and hold', value: 0 },
+              { name: 'Click to toggle', value: 1 },
+              { name: 'Scroll to toggle', value: 2 }
+            ]
+          },
+          {
+            name: 'Anti-aliasing',
+            note: 'On low resolution images, pixels become blurry',
+            id: 'interp',
+            type: 'switch',
+            value: true
+          },
+          {
+            name: 'Round lens',
+            note: 'why',
+            id: 'round',
+            type: 'switch',
+            value: true
+          },
+          {
+            name: 'Allow lens to go out of bounds',
+            note: 'Allows the lens to go beyond the border of the image',
+            id: 'outOfBounds',
+            type: 'switch',
+            value: false
+          },
+          {
+            name: 'Allow lens to clip out of view',
+            note: 'Allows the lens to go beyond the window',
+            id: 'outOfScreen',
+            type: 'switch',
+            value: true
+          },
+          {
+            name: 'Movement smoothing',
+            note: 'Not recommended to disable. Smooths out movement and zoom',
+            id: 'smoothing',
+            type: 'switch',
+            value: true
+          }
+        ]
       }
     ]
   };
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, Patcher, PluginUtilities, PluginUpdater } = Api;
+    const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, Patcher, PluginUtilities, PluginUpdater, Structs } = Api;
     const { React, ReactDOM, ModalStack, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, TextElement, MessageStore, APIModule, NavigationUtils } = DiscordModules;
 
     let PluginBrokenFatal = false;
@@ -179,6 +240,8 @@ var BetterImageViewer = (() => {
     }
     const ReactSpring = WebpackModules.getByProps('useTransition');
 
+    const Easing = WebpackModules.getByProps('Easing').Easing;
+
     class Image extends (() => {
       const Image = WebpackModules.getByDisplayName('Image');
       if (Image) return Image;
@@ -188,19 +251,16 @@ var BetterImageViewer = (() => {
     })() {
       constructor(props) {
         super(props);
-        this.state = {
-          hovered: false,
-          x: 0,
-          y: 0,
-          startX: 0,
-          startY: 0,
-          zoom: 1.5,
-          offsetX: 0,
-          offsetY: 0
-        };
+        this.state = { zooming: false, visible: false, panelWH: [props.hiddenSettings.panelWH, props.hiddenSettings.panelWH], panelX: [0, 0], panelY: [0, 0], offsetX: [0, 0], offsetY: [0, 0], zoom: [1.5, 1.5] };
         XenoLib._.bindAll(this, ['handleMouseDown', 'handleMouseUp', 'handleMouseWheel']);
-        const throttled = XenoLib._.throttle(this.handleMouseMove.bind(this), 50);
-        this.handleMouseMove = e => this.state.hovered && throttled(e.clientX, e.clientY);
+        this._handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleMouseMove = e => this.state.zooming && this._handleMouseMove(e.clientX, e.clientY);
+        this._handleSaveLensWHChangeDC = new TimingModule.DelayedCall(1000, this._handleSaveLensWHChange.bind(this));
+        this._WHCS = true;
+        this.handleSaveLensWHChange = () => {
+          this._WHCS = false;
+          this._handleSaveLensWHChangeDC();
+        };
       }
       componentDidMount() {
         if (super.componentDidMount) super.componentDidMount();
@@ -214,46 +274,103 @@ var BetterImageViewer = (() => {
         window.removeEventListener('mouseup', this.handleMouseUp);
         window.removeEventListener('mousemove', this.handleMouseMove);
         window.removeEventListener('mousewheel', this.handleMouseWheel);
+        this._handleSaveLensWHChangeDC.cancel();
+        this._handleSaveLensWHChange();
       }
-      componentDidUpdate(prevProps, prevState) {
-        if (super.componentDidUpdate) super.componentDidUpdate(prevProps, prevState);
-        this.getRawImage();
+      componentDidUpdate(prevProps, prevState, snapshot) {
+        if (super.componentDidUpdate) super.componentDidUpdate(prevProps, prevState, snapshot);
+        if (this.props.src !== prevProps.src) {
+          this.getRawImage();
+        }
+      }
+      setStateImmediate(state) {
+        for (const prop in state) this.state[prop] = state[prop];
+      }
+      _handleSaveLensWHChange() {
+        Dispatcher.dispatch({ type: 'BIV_LENS_WH_CHANGE', value: this.state.panelWH[0] });
+        this._WHCS = true;
       }
       handleMouseDown(e) {
-        console.log(e);
-        this.setState({ hovered: !this.state.hovered, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY });
+        if (e.button !== DiscordConstants.MouseButtons.PRIMARY) return;
+        if (this.state.zooming) return this.setState({ zooming: false });
+        else if (this.props.settings.enableMode === 2) return; /* scroll to toggle */
+        this.state;
+        this.setStateImmediate({ zooming: true, visible: true });
+        this._handleMouseMove(e.clientX, e.clientY, true);
+        e.preventDefault();
       }
       handleMouseUp() {
-        return;
-        this.setState({ hovered: false });
+        /* click and hold mode */
+        if (this.props.settings.enableMode !== 0) return;
+        this.setState({ zooming: false });
       }
-      handleMouseMove(x, y) {
-        x = Math.min(this._ref.offsetLeft + this._ref.offsetWidth, Math.max(this._ref.offsetLeft, x));
-        y = Math.min(this._ref.offsetTop + this._ref.offsetHeight, Math.max(this._ref.offsetTop, y));
-        const offsetX = ((x - this._ref.offsetLeft) / (this._ref.offsetWidth + 250)) * (this._ref.offsetWidth + 250);
-        const offsetY = ((y - this._ref.offsetTop) / (this._ref.offsetHeight + 250)) * (this._ref.offsetHeight + 250);
-        this.setState({ x, y, offsetX, offsetY });
+      handleMouseMove(cx, cy, start) {
+        if (!this.props.settings.outOfBounds) {
+          cx = Math.min(this._ref.offsetLeft + this._ref.offsetWidth, Math.max(this._ref.offsetLeft, cx));
+          cy = Math.min(this._ref.offsetTop + this._ref.offsetHeight, Math.max(this._ref.offsetTop, cy));
+        }
+        let panelWH = this.state.panelWH[0];
+        if (!this.props.settings.outOfScreen) {
+          if (Structs.Screen.height < Structs.Screen.width && panelWH > Structs.Screen.height) panelWH = Structs.Screen.height - 2;
+          else if (Structs.Screen.height > Structs.Screen.width && panelWH > Structs.Screen.width) panelWH = Structs.Screen.width - 2;
+        }
+        const offsetX = cx - this._ref.offsetLeft;
+        const offsetY = cy - this._ref.offsetTop;
+        let panelX = cx - panelWH / 2;
+        let panelY = cy - panelWH / 2;
+        if (!this.props.settings.outOfScreen) {
+          if (panelX < 0) panelX = 0;
+          else if (panelX + panelWH > Structs.Screen.width) panelX = Structs.Screen.width - (panelWH + 2);
+          if (panelY < 0) panelY = 0;
+          else if (panelY + panelWH > Structs.Screen.height) panelY = Structs.Screen.height - (panelWH + 2);
+        }
+        this.setState({ panelX: [panelX, start ? panelX : this.state.panelX[1]], panelY: [panelY, start ? panelY : this.state.panelY[1]], offsetX: [offsetX, start ? offsetX : this.state.offsetX[1]], offsetY: [offsetY, start ? offsetY : this.state.offsetY[1]], zoom: [this.state.zoom[0], start ? this.state.zoom[0] : this.state.zoom[1]], panelWH: [panelWH, start ? panelWH : this.state.panelWH[1]] });
       }
       handleMouseWheel(e) {
+        /* scroll to toggle mode */
+        const scrollToggle = this.props.settings.enableMode === 2;
+        if ((!scrollToggle || (scrollToggle && e.shiftKey)) && !this.state.zooming) return;
         if (e.deltaY < 0) {
-          this.setState({
-            zoom: Math.min(this.state.zoom * 1.1, 10)
-          });
+          if (e.shiftKey) {
+            this.state.panelWH[0] *= 1.1;
+            if (Structs.Screen.height > Structs.Screen.width && this.state.panelWH[0] > (this.props.settings.outOfScreen ? Structs.Screen.height * 2 : Structs.Screen.height)) this.state.panelWH[0] = this.props.settings.outOfScreen ? Structs.Screen.height * 2 : Structs.Screen.height - 2;
+            else if (Structs.Screen.height < Structs.Screen.width && this.state.panelWH[0] > (this.props.settings.outOfScreen ? Structs.Screen.width * 2 : Structs.Screen.width)) this.state.panelWH[0] = this.props.settings.outOfScreen ? Structs.Screen.width * 2 : Structs.Screen.width - 2;
+            this.state.panelWH[0] = Math.ceil(this.state.panelWH[0]);
+            this._handleMouseMove(e.clientX, e.clientY);
+            this._handleSaveLensWHChangeDC.delay();
+          } else {
+            const nextZoom = [Math.min(this.state.zoom[0] * 1.1, 60), this.state.zoom[1]];
+            if (scrollToggle && !this.state.zooming) {
+              this.setStateImmediate({ zooming: true, visible: true, zoom: nextZoom });
+              this._handleMouseMove(e.clientX, e.clientY, true);
+            } else this.setState({ zoom: nextZoom });
+          }
         } else if (e.deltaY > 0) {
-          this.setState({
-            zoom: Math.max(this.state.zoom * 0.9)
-          });
+          if (e.shiftKey) {
+            this.state.panelWH[0] *= 0.9;
+            if (this.state.panelWH[0] < 75) this.state.panelWH[0] = 75;
+            this.state.panelWH[0] = Math.ceil(this.state.panelWH[0]);
+            this._handleMouseMove(e.clientX, e.clientY);
+            this._handleSaveLensWHChangeDC.delay();
+          } else {
+            const nextZoom = this.state.zoom[0] * 0.9;
+            if (scrollToggle && nextZoom < 1.5) this.setStateImmediate({ zooming: false });
+            this.setState({ zoom: [Math.max(nextZoom, 1.5), this.state.zoom[1]] });
+          }
         }
       }
       getRawImage() {
-        if (this.__BIV_updating) return;
+        if (this.__BIV_updating || this.props.__BIV_animated) return;
         this.__BIV_updating = true;
         const src = this.props.src;
         const fullSource = (() => {
           const split = src.split('?')[0];
-          const SaveToRedux = BdApi.getPlugin('SaveToRedux');
-          if (SaveToRedux) return SaveToRedux.formatURL(split, src.substr(src.indexOf('?')).indexOf('size=') !== -1, '', '').url;
-          return split;
+          const SaveToRedux = BdApi.getPlugin && BdApi.getPlugin('SaveToRedux');
+          const needsSize = src.substr(src.indexOf('?')).indexOf('size=') !== -1;
+          try {
+            if (SaveToRedux) return SaveToRedux.formatURL(split, needsSize, '', '').url;
+          } catch (_) {}
+          return split + (needsSize ? '?size=2048' : '');
         })();
         this.__BIV_updating = true;
         this.setState({ raw: fullSource });
@@ -262,49 +379,75 @@ var BetterImageViewer = (() => {
       render() {
         const ret = super.render();
         ret.props.onMouseDown = this.handleMouseDown;
+        delete ret.props.settings;
         ret.ref = e => (this._ref = e);
-        if (this.state.hovered) {
+        if (this.state.visible) {
           ret.props.children.push(
             ReactDOM.createPortal(
               React.createElement(
                 ReactSpring.Spring,
                 {
                   native: true,
-                  from: { x: this.state.startX, y: this.state.startY },
-                  to: { x: this.state.x, y: this.state.y },
-                  config: { mass: 1, tension: 2000, friction: 100 }
+                  from: { opacity: 0 },
+                  to: { opacity: this.state.zooming ? 1 : 0 },
+                  config: { duration: 100 },
+                  onRest: () => {
+                    !this.state.zooming && this.setState({ visible: false });
+                  }
                 },
-                e =>
-                  React.createElement(
-                    ReactSpring.animated.div,
-                    {
-                      style: {
-                        width: 500,
-                        height: 500,
-                        position: 'absolute',
-                        top: e.y,
-                        left: e.x,
-                        overflow: 'hidden'
-                      }
+                ea => [
+                  React.createElement(ReactSpring.animated.div, {
+                    style: {
+                      opacity: ea.opacity
                     },
-                    React.createElement(
-                      'div',
-                      {
-                        style: {
-                          position: 'absolute',
-                          transform: `scale(${this.state.zoom})`,
-                          transformOrigin: '0px 0px',
-                          left: -this.state.offsetX,
-                          top: -this.state.offsetY
-                        }
-                      },
-                      React.createElement('img', {
-                        src: this.state.raw,
-                        width: this.props.width,
-                        height: this.props.height
-                      })
-                    )
+                    className: 'BIV-zoom-backdrop'
+                  }),
+                  React.createElement(
+                    ReactSpring.Spring,
+                    {
+                      native: true,
+                      from: { panelX: this.state.panelX[1], panelY: this.state.panelY[1], panelWH: this.state.panelWH[1], offsetX: this.state.offsetX[1], offsetY: this.state.offsetY[1], zoom: this.state.zoom[1], opacity: 0 },
+                      to: { panelX: this.state.panelX[0], panelY: this.state.panelY[0], panelWH: this.state.panelWH[0], offsetX: this.state.offsetX[0], offsetY: this.state.offsetY[0], zoom: this.state.zoom[0], opacity: 1 },
+                      immediate: !this.props.settings.smoothing,
+                      config: { mass: 1, tension: 1500, friction: 75, easing: Easing.linear, clamp: false }
+                    },
+                    e =>
+                      React.createElement(
+                        ReactSpring.animated.div,
+                        {
+                          style: {
+                            width: e.panelWH,
+                            height: e.panelWH,
+                            left: e.panelX,
+                            top: e.panelY,
+                            opacity: ea.opacity
+                          },
+                          className: XenoLib.joinClassNames('BIV-zoom-lens', { 'BIV-zoom-lens-round': this.props.settings.round })
+                        },
+                        React.createElement(
+                          ReactSpring.animated.div,
+                          {
+                            style: {
+                              position: 'absolute',
+                              left: ReactSpring.to([e.zoom, e.offsetX, e.panelWH], (z, x, wh) => -x * z + wh / 2),
+                              top: ReactSpring.to([e.zoom, e.offsetY, e.panelWH], (z, y, wh) => -y * z + wh / 2)
+                            }
+                          },
+                          React.createElement(this.props.__BIV_animated ? ReactSpring.animated.video : ReactSpring.animated.img, {
+                            src: this.props.__BIV_animated ? this.props.__BIV_src : this.state.raw,
+                            width: e.zoom.to(e => e * this.props.width),
+                            height: e.zoom.to(e => e * this.props.height),
+                            style: this.props.settings.interp
+                              ? undefined
+                              : {
+                                  imageRendering: 'pixelated'
+                                },
+                            ...(this.props.__BIV_animated ? { autoPlay: true, muted: true, loop: true } : {})
+                          })
+                        )
+                      )
                   )
+                ]
               ),
               overlayDOMNode
             )
@@ -321,10 +464,10 @@ var BetterImageViewer = (() => {
       PluginBrokenFatal = true;
       return class error {};
     })() {
-      componentDidUpdate(props, prevState) {
+      componentDidUpdate(props, prevState, snapshot) {
         this._cancellers.forEach(e => e());
         this._cancellers.clear();
-        super.componentDidUpdate(props, prevState);
+        super.componentDidUpdate(props, prevState, snapshot);
         if (this.__BIV_updating) return;
         this.__BIV_updating = true;
         const max = ImageUtils.zoomFit(this.props.width, this.props.height);
@@ -1023,6 +1166,7 @@ var BetterImageViewer = (() => {
       constructor() {
         super();
         XenoLib.changeName(__filename, this.name);
+        this.handleWHChange = this.handleWHChange.bind(this);
         const oOnStart = this.onStart.bind(this);
         this._startFailure = message => {
           PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
@@ -1049,13 +1193,17 @@ var BetterImageViewer = (() => {
         this.promises = { state: { cancelled: false } };
         if (PluginBrokenFatal) return this._startFailure('Plugin is in a broken state.');
         if (NoImageZoom) this._startFailure('Image zoom is broken.');
+        if (BdApi.getPlugin && BdApi.getPlugin('ImageZoom') && global.pluginCookie && pluginCookie['ImageZoom']) XenoLib.Notifications.warning(`[**${this.name}**] Using ImageZoom while having the zoom function in BetterImageViewer enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });
+        this.hiddenSettings = XenoLib.loadData(this.name, 'hidden', { panelWH: 500 });
         this.patchAll();
         Dispatcher.subscribe('MESSAGE_DELETE', this.handleMessageDelete);
         Dispatcher.subscribe('MESSAGE_DELETE_BULK', this.handlePurge);
+        Dispatcher.subscribe('BIV_LENS_WH_CHANGE', this.handleWHChange);
         PluginUtilities.addStyle(
           this.short + '-CSS',
           `
-          .BIV-left, .BIV-right {
+          .BIV-left,
+          .BIV-right {
             position: absolute;
             top: 90px;
             bottom: 90px;
@@ -1064,41 +1212,41 @@ var BetterImageViewer = (() => {
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: all .25s ease-in-out;
+            transition: all 0.25s ease-in-out;
             color: gray;
           }
           .BIV-disabled {
             color: #4d4d4d;
           }
-
-          .BIV-left.BIV-inactive, .BIV-right.BIV-inactive {
+          .BIV-left.BIV-inactive,
+          .BIV-right.BIV-inactive {
             opacity: 0;
           }
-
           .BIV-info.BIV-inactive {
             opacity: 0.65;
           }
-
-          .BIV-left:not(.BIV-disabled):hover, .BIV-right:not(.BIV-disabled):hover {
+          .BIV-left:not(.BIV-disabled):hover,
+          .BIV-right:not(.BIV-disabled):hover {
             background-color: hsla(0, 0%, 49%, 0.2);
-            color: white;
+            color: #fff;
           }
           .BIV-left {
-              left: 0;
+            left: 0;
           }
           .BIV-right {
-              right: 0;
+            right: 0;
           }
-          .BIV-left > svg, .BIV-right > svg {
-              width: 30px;
-              height: 30px;
+          .BIV-left > svg,
+          .BIV-right > svg {
+            width: 30px;
+            height: 30px;
           }
           .BIV-info {
-              position: absolute;
-              left: 18px;
-              bottom: 12px;
-              height: 42px;
-              transition: opacity .35s ease-in-out;
+            position: absolute;
+            left: 18px;
+            bottom: 12px;
+            height: 42px;
+            transition: opacity 0.35s ease-in-out;
           }
           .BIV-info-extra {
             left: unset;
@@ -1112,11 +1260,11 @@ var BetterImageViewer = (() => {
             text-align: end;
           }
           .BIV-info-wrapper {
-              bottom: 0;
-              position: absolute;
-              white-space: nowrap;
+            bottom: 0;
+            position: absolute;
+            white-space: nowrap;
           }
-          .BIV-info-wrapper > .${TextElement.Colors.PRIMARY} {
+          .BIV-info-wrapper > .primary-jw0I4K {
             display: flex;
             align-items: center;
           }
@@ -1124,44 +1272,59 @@ var BetterImageViewer = (() => {
             display: flex;
             margin-left: 5px;
           }
-          .BIV-requesting > svg[name="Nova_Search"], .BIV-requesting > svg[name="LeftCaret"], .BIV-requesting > svg[name="RightCaret"] {
+          .BIV-requesting > svg[name='Nova_Search'],
+          .BIV-requesting > svg[name='LeftCaret'],
+          .BIV-requesting > svg[name='RightCaret'] {
             width: 16px;
             height: 16px;
           }
-
+          .BIV-zoom-backdrop,
+          .biv-overlay {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+          }
           .BIV-inactive {
             transition: opacity 1s ease-in-out;
           }
-
           .BIV-hidden {
             opacity: 0;
           }
-
-          .BIV-info-wrapper .${UsernameClassname.split(' ')[0]} {
+          .BIV-info-wrapper .username-1A8OIy {
             max-width: 900px;
             overflow-x: hidden;
-            margin-right: .25rem;
+            margin-right: 0.25rem;
           }
           .biv-overlay {
             pointer-events: none;
-            position: absolute;
             z-index: 1000;
-            width: 100%;
-            height: 100%;
           }
           .biv-overlay > * {
             pointer-events: all;
           }
           @keyframes BIV-spin {
             0% {
-                transform: rotate(0deg)
+              transform: rotate(0);
             }
             to {
-                transform: rotate(1turn)
+              transform: rotate(1turn);
             }
           }
           .BIV-searching-icon-spin {
             animation: BIV-spin 2s linear infinite;
+          }
+          .BIV-zoom-lens {
+            position: absolute;
+            overflow: hidden;
+            cursor: none;
+            border: 1px solid #0092ff;
+          }
+          .BIV-zoom-lens-round {
+            border-radius: 50%;
+            border: 2px solid #0092ff;
+          }
+          .BIV-zoom-backdrop {
+            background: rgba(0, 0, 0, 0.4);
           }
         `
         );
@@ -1173,12 +1336,17 @@ var BetterImageViewer = (() => {
         Patcher.unpatchAll();
         Dispatcher.unsubscribe('MESSAGE_DELETE', this.handleMessageDelete);
         Dispatcher.unsubscribe('MESSAGE_DELETE_BULK', this.handlePurge);
+        Dispatcher.unsubscribe('BIV_LENS_WH_CHANGE', this.handleWHChange);
         PluginUtilities.removeStyle(this.short + '-CSS');
       }
 
       /* zlib uses reference to defaultSettings instead of a cloned object, which sets settings as default settings, messing everything up */
       loadSettings(defaultSettings) {
         return PluginUtilities.loadSettings(this.name, Utilities.deepclone(this.defaultSettings ? this.defaultSettings : defaultSettings));
+      }
+
+      saveHiddenSettings() {
+        PluginUtilities.saveData(this.name, 'hidden', this.hiddenSettings);
       }
 
       handleMessageDelete(e) {
@@ -1190,6 +1358,10 @@ var BetterImageViewer = (() => {
         const { channelId, ids: messageIds } = e;
         if (e['__\x4e\x4f\x552Prevent\x46\x41\x47\x47\x4f\x54']) return;
         stripPurgedMessages(channelId, messageIds);
+      }
+      handleWHChange({ value }) {
+        this.hiddenSettings.panelWH = value;
+        this.saveHiddenSettings();
       }
 
       /* PATCHES */
@@ -1334,9 +1506,12 @@ var BetterImageViewer = (() => {
           const height = (props && props.height) || _this.props.height;
           const reqUrl = (() => {
             const split = src.split('?')[0];
-            const SaveToRedux = BdApi.getPlugin('SaveToRedux');
-            if (SaveToRedux) return SaveToRedux.formatURL(split, src.substr(src.indexOf('?')).indexOf('size=') !== -1, '', '', (props && props.original) || _this.props.original).url;
-            return split;
+            const SaveToRedux = BdApi.getPlugin && BdApi.getPlugin('SaveToRedux');
+            const needsSize = src.substr(src.indexOf('?')).indexOf('size=') !== -1;
+            try {
+              if (SaveToRedux) return SaveToRedux.formatURL(split, needsSize, '', '').url;
+            } catch (_) {}
+            return split + (needsSize ? '?size=2048' : '');
           })();
           const max = ImageUtils.zoomFit(width, height);
           const ratio = getRatio(width, height, max.width, max.height);
@@ -1431,10 +1606,31 @@ var BetterImageViewer = (() => {
       }
 
       patchLazyImage() {
-        if (NoImageZoom || true) return;
-        Patcher.after(WebpackModules.getByDisplayName('LazyImage').prototype, 'render', (_this, _, ret) => {
-          if (_this.props.onContextMenu || _this.props.onZoom || _this.props.children) return;
+        if (NoImageZoom) return;
+        const LazyImage = WebpackModules.getByDisplayName('LazyImage');
+        Patcher.instead(LazyImage.prototype, 'componentDidUpdate', (_this, [props, state]) => {
+          /* custom handler, original one caused issues with GIFs not animating */
+          const animated = LazyImage.isAnimated(_this.props);
+          if (animated !== LazyImage.isAnimated(props)) {
+            if (animated) _this.observeVisibility();
+            else _this.unobserveVisibility();
+          } else if (state.readyState !== _this.state.readyState && animated) _this.observeVisibility();
+          else if (!animated) _this.unobserveVisibility();
+        });
+        Patcher.after(LazyImage.prototype, 'render', (_this, _, ret) => {
+          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || !ret) return;
+          if (_this.props.animated && ret.props.children) {
+            /* dirty */
+            try {
+              ret.props.__BIV_src = ret.props.children({ size: {} }).props.src;
+            } catch (e) {
+              return;
+            }
+          }
           ret.type = Image;
+          ret.props.settings = this.settings.zoom;
+          ret.props.__BIV_animated = _this.props.animated;
+          ret.props.hiddenSettings = this.hiddenSettings;
         });
       }
 
