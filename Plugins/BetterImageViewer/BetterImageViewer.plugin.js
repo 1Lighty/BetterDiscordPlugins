@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.0',
+      version: '1.1.1',
       description: 'Adds ability to go between images in the current channel with arrow keys, or on screen buttons, and has click to zoom. Also provides info about the image, who posted it and when.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -47,6 +47,11 @@ var BetterImageViewer = (() => {
         title: 'IMAGE ZOOM IS HERE!',
         type: 'added',
         items: ['*SOME* people kept asking, so here you go.\nAdded image zoom, simply activate by click and holding on the image.', 'Use scroll wheel to zoom in and out, hold shift while scrolling to change lens size.', "If you prefer using a different plugin to handle zooming for you, that's fine too, there is a toggle to disable it in settings.", 'The click and hold can of course be easily changed in the settings to your prefered method of zooming.\n![zoommode](https://i.imgur.com/A8HjQb9.png)', 'There are other options too, for those that may want it!\n![moreoptions](https://i.imgur.com/JGNe7Re.png)']
+      },
+      {
+        title: 'post v1.1.0 update',
+        type: 'fixed',
+        items: ['Fixed breaking videos, lmao']
       }
     ],
     defaultConfig: [
@@ -1618,7 +1623,7 @@ var BetterImageViewer = (() => {
           else if (!animated) _this.unobserveVisibility();
         });
         Patcher.after(LazyImage.prototype, 'render', (_this, _, ret) => {
-          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || !ret) return;
+          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || _this.props.__BIV_isVideo || !ret) return;
           if (_this.props.animated && ret.props.children) {
             /* dirty */
             try {
@@ -1631,6 +1636,10 @@ var BetterImageViewer = (() => {
           ret.props.settings = this.settings.zoom;
           ret.props.__BIV_animated = _this.props.animated;
           ret.props.hiddenSettings = this.hiddenSettings;
+        });
+        Patcher.after(WebpackModules.getByDisplayName('LazyVideo').prototype, 'render', (_, __, ret) => {
+          if (!ret) return;
+          ret.props.__BIV_isVideo = true;
         });
       }
 
