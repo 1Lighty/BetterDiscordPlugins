@@ -9,7 +9,7 @@ If you like these plugins, consider donating!
 
 [![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L3L01A2WY) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/lighty13)
 ## [BetterImageViewer](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/BetterImageViewer "BetterImageViewer")
-Telegram image viewer ported to Discord. Adds ability to go between images in the current channel with arrow keys, or on screen buttons. Also provides info about the image, who posted it and when.
+Adds ability to go between images in the current channel with arrow keys, or on screen buttons, and has click to zoom. Also provides info about the image, who posted it and when.
 
 ## [BetterTypingUsers](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/BetterTypingUsers "BetterTypingUsers")
 Replaces "Several people are typing" with who is actually typing, plus "x others" if it can't fit. Number of shown people typing can be changed.
