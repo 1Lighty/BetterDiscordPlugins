@@ -41,16 +41,16 @@ var UnreadBadgesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.1',
+      version: '1.0.2',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'sad',
+        title: 'wohoo!',
         type: 'fixed',
-        items: ['Fixed crash if XenoLib or ZeresPluginLib were missing']
+        items: ['Heavily optimized the plugin, expect better performance if you have lots of servers']
       }
     ],
     defaultConfig: [
@@ -197,18 +197,13 @@ var UnreadBadgesRedux = (() => {
 
     const UnreadStore = WebpackModules.getByProps('getUnreadCount');
     const MuteModule = WebpackModules.getByProps('isMuted');
+    const AltChannelStore = WebpackModules.find(m => m.getChannels && m.getChannels.length === 1);
 
     const getUnreadCount = (guildId, includeMuted) => {
-      const channels = ChannelStore.getChannels();
-      const guildChannels = [];
-      for (const channelId in channels) {
-        const channel = channels[channelId];
-        if (channel.guild_id === guildId) guildChannels.push(channel);
-      }
+      const channels = AltChannelStore.getChannels(guildId);
       let count = 0;
-      for (let i = 0; i < guildChannels.length; i++) {
-        const channel = guildChannels[i];
-        if ((!MuteModule.isChannelMuted(channel.guild_id, channel.id) && (!channel.parent_id || !MuteModule.isChannelMuted(channel.guild_id, channel.parent_id))) || includeMuted) count += UnreadStore.getUnreadCount(channel.id);
+      for (const { channel } of channels.SELECTABLE) {
+        if (includeMuted || (!MuteModule.isChannelMuted(channel.guild_id, channel.id) && (!channel.parent_id || !MuteModule.isChannelMuted(channel.guild_id, channel.parent_id)))) count += UnreadStore.getUnreadCount(channel.id);
       }
       return count;
     };
@@ -310,7 +305,12 @@ var UnreadBadgesRedux = (() => {
         const MentionsBadgeClassname = XenoLib.getClass('iconVisibility mentionsBadge');
         const IconsChildren = XenoLib.getClass('modeMuted children');
         function UnreadBadge(e) {
-          const unreadCount = StoresModule.useStateFromStores([UnreadStore], () => ((e.muted && !settings.misc.mutedChannels) || !settings.misc.channels ? 0 : UnreadStore.getUnreadCount(e.channelId)));
+          const unreadCount = StoresModule.useStateFromStores([UnreadStore], () => {
+            if ((e.muted && !settings.misc.mutedChannels) || !settings.misc.channels) return 0;
+            const count = UnreadStore.getUnreadCount(e.channelId);
+            if (count > 1000) return Math.floor(count / 1000) * 1000; /* only trigger rerender if it changes in thousands */
+            return count;
+          });
           if (!unreadCount) return null;
           return React.createElement(
             'div',
@@ -356,13 +356,14 @@ var UnreadBadgesRedux = (() => {
               const guildId = e.__UBR_guildIds[i];
               if (!settings.misc.noMutedGuildsInFolderCount || (settings.misc.noMutedGuildsInFolderCount && !MuteModule.isMuted(guildId))) count += getUnreadCount(guildId, !settings.misc.noMutedChannelsInGuildsInFolderCount);
             }
+            if (count > 1000) return Math.floor(count / 1000) * 1000; /* only trigger rerender if it changes in thousands */
             return count;
           });
           return React.createElement(e.__UBR_old_type, e);
         }
         BlobMaskWrapper.displayName = 'BlobMask';
-        Patcher.after(GuildFolder.component.prototype, 'render', (_this, args, ret) => {
-          const mask = Utilities.getNestedProp(ret, 'props.children.1.props.children.props.children.1.props.children.props.children');
+        Patcher.after(GuildFolder.component.prototype, 'render', (_this, _, ret) => {
+          const mask = Utilities.findInTree(ret, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
           if (!mask) return;
           mask.props.__UBR_old_type = mask.type;
           mask.props.__UBR_guildIds = _this.props.guildIds;
@@ -383,7 +384,7 @@ var UnreadBadgesRedux = (() => {
           return e.__UBR_old_type(e);
         }
         PatchedConnectedGuild.displayName = 'ConnectedGuild';
-        Patcher.after(ConnectedGuild.component.prototype, 'render', (_this, args, ret) => {
+        Patcher.after(ConnectedGuild.component.prototype, 'render', (_this, _, ret) => {
           const old = ret.props.children;
           ret.props.children = e => {
             const ret2 = old(e);
@@ -399,11 +400,11 @@ var UnreadBadgesRedux = (() => {
       async patchGuildIcon(promiseState) {
         const Guild = await ReactComponents.getComponentByName('Guild', `.${XenoLib.getSingleClass('listItem')}`);
         if (promiseState.cancelled) return;
-        Patcher.after(Guild.component.prototype, 'render', (_this, args, ret) => {
-          const props = Utilities.getNestedProp(ret, 'props.children.props.children.1.props.children.props.children.props');
-          if (!props) return;
-          props.__UBR_unread_count = _this.props.__UBR_unread_count;
-          props.guildId = _this.props.guildId;
+        Patcher.after(Guild.component.prototype, 'render', (_this, _, ret) => {
+          const mask = Utilities.findInTree(ret, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
+          if (!mask) return;
+          mask.props.__UBR_unread_count = _this.props.__UBR_unread_count;
+          mask.props.guildId = _this.props.guildId;
         });
         Guild.forceUpdateAll();
       }
@@ -417,7 +418,7 @@ var UnreadBadgesRedux = (() => {
             spring: 0
           });
         };
-        Patcher.after(BlobMask.component.prototype, 'componentDidMount', (_this, args, ret) => {
+        Patcher.after(BlobMask.component.prototype, 'componentDidMount', _this => {
           if (typeof _this.props.__UBR_unread_count !== 'number') return;
           ensureUnreadBadgeMask(_this);
           _this.state.unreadBadgeMask
@@ -427,13 +428,13 @@ var UnreadBadgesRedux = (() => {
             })
             .start();
         });
-        Patcher.after(BlobMask.component.prototype, 'componentWillUnmount', (_this, args, ret) => {
+        Patcher.after(BlobMask.component.prototype, 'componentWillUnmount', _this => {
           if (typeof _this.props.__UBR_unread_count !== 'number') return;
           if (!_this.state.unreadBadgeMask) return;
           _this.state.unreadBadgeMask.destroy();
         });
-        Patcher.after(BlobMask.component.prototype, 'componentDidUpdate', (_this, args, ret) => {
-          if (typeof _this.props.__UBR_unread_count !== 'number') return;
+        Patcher.after(BlobMask.component.prototype, 'componentDidUpdate', (_this, [{ __UBR_unread_count }]) => {
+          if (typeof _this.props.__UBR_unread_count !== 'number' || _this.props.__UBR_unread_count === __UBR_unread_count) return;
           ensureUnreadBadgeMask(_this);
           _this.state.unreadBadgeMask
             .update({
@@ -448,10 +449,10 @@ var UnreadBadgesRedux = (() => {
             .start();
         });
         const LowerBadgeClassname = XenoLib.joinClassNames(XenoLib.getClass('wrapper lowerBadge'), 'unread-badge');
-        Patcher.after(BlobMask.component.prototype, 'render', (_this, args, ret) => {
+        Patcher.after(BlobMask.component.prototype, 'render', (_this, _, ret) => {
           if (typeof _this.props.__UBR_unread_count !== 'number') return;
-          const badges = Utilities.getNestedProp(ret, 'props.children.1.props.children');
-          const masks = Utilities.getNestedProp(ret, 'props.children.0.props.children.0.props.children');
+          const badges = Utilities.findInTree(ret, e => e && e.type && e.type.displayName === 'TransitionGroup', { walkable: ['props', 'children'] });
+          const masks = Utilities.findInTree(ret, e => e && e.type === 'mask', { walkable: ['props', 'children'] });
           if (!badges || !masks) return;
           ensureUnreadBadgeMask(_this);
           /* if count is 0, we're animating out, and as such, it's better to at least still display the old
@@ -461,7 +462,7 @@ var UnreadBadgesRedux = (() => {
           if (_this.props.__UBR_unread_count) _this.state.__UBR_old_unread_count = _this.props.__UBR_unread_count;
           const width = BadgesModule.getBadgeWidthForValue(counter);
           const unreadCountMaskSpring = _this.state.unreadBadgeMask.animated.spring;
-          masks.push(
+          masks.props.children.push(
             React.createElement(ReactSpring.animated.rect, {
               x: -4,
               y: 28,
@@ -473,7 +474,7 @@ var UnreadBadgesRedux = (() => {
               fill: 'black'
             })
           );
-          badges.unshift(
+          badges.props.children.unshift(
             React.createElement(
               BadgeContainer,
               {
@@ -492,6 +493,9 @@ var UnreadBadgesRedux = (() => {
 
       /* PATCHES */
 
+      showChangelog(footer) {
+        XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog);
+      }
       getSettingsPanel() {
         return this.buildSettingsPanel().getElement();
       }
@@ -529,7 +533,21 @@ var UnreadBadgesRedux = (() => {
 
   /* Finalize */
 
-  return !global.ZeresPluginLibrary || !global.XenoLib
+  let ZeresPluginLibraryOutdated = false;
+  let XenoLibOutdated = false;
+  try {
+    if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
+      const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
+        n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
+        e = BdApi.getPlugin('ZeresPluginLibrary'),
+        author = BdApi.getPlugin('XenoLib');
+      n(e, '1.2.10') && (ZeresPluginLibraryOutdated = !0), n(author, '1.3.11') && (XenoLibOutdated = !0);
+    }
+  } catch (i) {
+    console.error('Error checking if libraries are out of date', i);
+  }
+
+  return !global.ZeresPluginLibrary || !global.XenoLib || ZeresPluginLibraryOutdated || XenoLibOutdated
     ? class {
         getName() {
           return this.name.replace(/\s+/g, '');
@@ -545,119 +563,94 @@ var UnreadBadgesRedux = (() => {
         }
         stop() {}
         load() {
-          const XenoLibMissing = !global.XenoLib;
-          const zlibMissing = !global.ZeresPluginLibrary;
-          const bothLibsMissing = XenoLibMissing && zlibMissing;
-          const header = `Missing ${(bothLibsMissing && 'Libraries') || 'Library'}`;
-          const content = `The ${(bothLibsMissing && 'Libraries') || 'Library'} ${(zlibMissing && 'ZeresPluginLibrary') || ''} ${(XenoLibMissing && (zlibMissing ? 'and XenoLib' : 'XenoLib')) || ''} required for ${this.name} ${(bothLibsMissing && 'are') || 'is'} missing.`;
-          const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
-          const TextElement = BdApi.findModuleByProps('Sizes', 'Weights');
-          const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
-          const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${(zlibMissing && '<br/><a href="https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>') || ''}${(zlibMissing && '<br/><a href="http://localhost:7474/XenoLib.js"target="_blank">Click here to download XenoLib</a>') || ''}`);
-          if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
-          class TempErrorBoundary extends BdApi.React.PureComponent {
-            constructor(props) {
-              super(props);
-              this.state = { hasError: false };
+          const a = !global.XenoLib,
+            b = !global.ZeresPluginLibrary,
+            c = (a && b) || ((a || b) && (XenoLibOutdated || ZeresPluginLibraryOutdated)) || XenoLibOutdated || ZeresPluginLibraryOutdated,
+            d = (() => {
+              let d = '';
+              return a || b ? (d += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? ' and outdated' : ''} `) : (XenoLibOutdated || ZeresPluginLibraryOutdated) && (d += `Outdated `), (d += `${c ? 'Libraries' : 'Library'} `), d;
+            })(),
+            e = (() => {
+              let d = `The ${c ? 'libraries' : 'library'} `;
+              return a || XenoLibOutdated ? ((d += 'XenoLib '), (b || ZeresPluginLibraryOutdated) && (d += 'and ZeresPluginLibrary ')) : (b || ZeresPluginLibraryOutdated) && (d += 'ZeresPluginLibrary '), (d += `required for ${this.name} ${c ? 'are' : 'is'} ${a || b ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (a || b ? ' and/or outdated' : 'outdated') : ''}.`), d;
+            })(),
+            f = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
+            g = BdApi.findModuleByProps('Sizes', 'Weights'),
+            h = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
+            i = () => BdApi.getCore().alert(d, `${e}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${b || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}${a || XenoLibOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js"target="_blank">Click here to download XenoLib</a>' : ''}`);
+          if (!f || !h || !g) return i();
+          let j;
+          const k = (() => {
+            if (!global.pluginModule || !global.BDEvents) return;
+            if (a || XenoLibOutdated) {
+              const a = () => {
+                BDEvents.off('xenolib-loaded', a), f.popWithKey(j), pluginModule.reloadPlugin(this.name);
+              };
+              return BDEvents.on('xenolib-loaded', a), () => BDEvents.off('xenolib-loaded', a);
             }
-            componentDidCatch(err, inf) {
-              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`);
-              this.setState({ hasError: true });
-              if (typeof this.props.onError === 'function') this.props.onError(err);
+            const b = a => {
+              'ZeresPluginLibrary' !== a || (BDEvents.off('plugin-loaded', b), BDEvents.off('plugin-reloaded', b), f.popWithKey(j), pluginModule.reloadPlugin(this.name));
+            };
+            return BDEvents.on('plugin-loaded', b), BDEvents.on('plugin-reloaded', b), () => (BDEvents.off('plugin-loaded', b), BDEvents.off('plugin-reloaded', b));
+          })();
+          class l extends BdApi.React.PureComponent {
+            constructor(a) {
+              super(a), (this.state = { hasError: !1 });
+            }
+            componentDidCatch(a, b) {
+              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a);
             }
             render() {
-              if (this.state.hasError) return null;
-              return this.props.children;
+              return this.state.hasError ? null : this.props.children;
             }
           }
-          let modalId;
-          const onHeckWouldYouLookAtThat = (() => {
-            if (!global.pluginModule || !global.BDEvents) return;
-            if (XenoLibMissing) {
-              const listener = () => {
-                BDEvents.off('xenolib-loaded', listener);
-                ModalStack.popWithKey(modalId); /* make it easier on the user */
-                pluginModule.reloadPlugin(this.name);
-              };
-              BDEvents.on('xenolib-loaded', listener);
-              return () => BDEvents.off('xenolib-loaded', listener);
-            } else {
-              const onLoaded = e => {
-                if (e !== 'ZeresPluginLibrary') return;
-                BDEvents.off('plugin-loaded', onLoaded);
-                ModalStack.popWithKey(modalId); /* make it easier on the user */
-                pluginModule.reloadPlugin(this.name);
-              };
-              BDEvents.on('plugin-loaded', onLoaded);
-              return () => BDEvents.off('plugin-loaded', onLoaded);
-            }
-          })();
-          modalId = ModalStack.push(props => {
-            return BdApi.React.createElement(
-              TempErrorBoundary,
+          j = f.push(a =>
+            BdApi.React.createElement(
+              l,
               {
                 label: 'missing dependency modal',
                 onError: () => {
-                  ModalStack.popWithKey(modalId); /* smh... */
-                  onFail();
+                  f.popWithKey(j), i();
                 }
               },
               BdApi.React.createElement(
-                ConfirmationModal,
+                h,
                 Object.assign(
                   {
-                    header,
-                    children: [BdApi.React.createElement(TextElement, { color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to install ${(bothLibsMissing && 'them') || 'it'}.`] })],
-                    red: false,
+                    header: d,
+                    children: [BdApi.React.createElement(g, { color: g.Colors.PRIMARY, children: [`${e} Please click Download Now to download ${c ? 'them' : 'it'}.`] })],
+                    red: !1,
                     confirmText: 'Download Now',
                     cancelText: 'Cancel',
                     onConfirm: () => {
-                      onHeckWouldYouLookAtThat();
-                      const request = require('request');
-                      const fs = require('fs');
-                      const path = require('path');
-                      const waitForLibLoad = callback => {
-                        if (!global.BDEvents) return callback();
-                        const onLoaded = e => {
-                          if (e !== 'ZeresPluginLibrary') return;
-                          BDEvents.off('plugin-loaded', onLoaded);
-                          callback();
-                        };
-                        BDEvents.on('plugin-loaded', onLoaded);
-                      };
-                      const onDone = () => {
-                        if (!global.pluginModule || (!global.BDEvents && !global.XenoLib)) return;
-                        if (!global.BDEvents || global.XenoLib) pluginModule.reloadPlugin(this.name);
-                        else {
-                          const listener = () => {
-                            BDEvents.off('xenolib-loaded', listener);
-                            pluginModule.reloadPlugin(this.name);
+                      k();
+                      const a = require('request'),
+                        b = require('fs'),
+                        c = require('path'),
+                        d = a => {
+                          if (!global.BDEvents) return a();
+                          const b = c => {
+                            'ZeresPluginLibrary' !== c || (BDEvents.off('plugin-loaded', b), BDEvents.off('plugin-reloaded', b), a());
                           };
-                          BDEvents.on('xenolib-loaded', listener);
-                        }
-                      };
-                      const downloadXenoLib = () => {
-                        if (global.XenoLib) return onDone();
-                        request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (error, response, body) => {
-                          if (error) return onFail();
-                          onDone();
-                          fs.writeFile(path.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), body, () => {});
-                        });
-                      };
-                      if (!global.ZeresPluginLibrary) {
-                        request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
-                          if (error) return onFail();
-                          waitForLibLoad(downloadXenoLib);
-                          fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
-                        });
-                      } else downloadXenoLib();
+                          BDEvents.on('plugin-loaded', b), BDEvents.on('plugin-reloaded', b);
+                        },
+                        e = () => {
+                          if (!global.pluginModule || (!global.BDEvents && !global.XenoLib)) return;
+                          if ((global.XenoLib && !XenoLibOutdated) || !global.BDEvents) return pluginModule.reloadPlugin(this.name);
+                          const a = () => {
+                            BDEvents.off('xenolib-loaded', a), pluginModule.reloadPlugin(this.name);
+                          };
+                          BDEvents.on('xenolib-loaded', a);
+                        },
+                        f = () => (global.XenoLib && !XenoLibOutdated ? e() : void a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, f) => (a ? i() : void (e(), b.writeFile(c.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), f, () => {})))));
+                      !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, e, g) => (a ? i() : void (d(f), b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), g, () => {})))) : f();
                     }
                   },
-                  props
+                  a
                 )
               )
-            );
-          });
+            )
+          );
         }
 
         start() {}

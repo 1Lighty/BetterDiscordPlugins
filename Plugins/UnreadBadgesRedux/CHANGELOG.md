@@ -1,4 +1,7 @@
 # [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux") Changelog
+### 1.0.2
+- Heavily optimized the plugin, expect better performance if you have lots of servers
+
 ### 1.0.1
 - Fixed crash if XenoLib or ZeresPluginLib were missing
 
