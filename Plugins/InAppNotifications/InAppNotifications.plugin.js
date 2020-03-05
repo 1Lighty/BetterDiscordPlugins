@@ -41,7 +41,7 @@ var InAppNotifications = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.0',
+      version: '1.0.1',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -56,27 +56,27 @@ var InAppNotifications = (() => {
     ],
     changelog: [
       {
-        title: 'I now exist!',
-        type: 'added',
-        items: ['In-app notifications will show when someone sends a message!', "It's tied to your notification settings of Discord, which can be accessed by right clicking a server, channel, or muting a DM."]
-      },
-      { type: 'description', content: 'Preview:' },
-      { type: 'video', src: 'https://cdn.discordapp.com/attachments/389049952732446733/684075783890927714/F2nifRZ0ZWp6.mp4', thumbnail: 'https://media.discordapp.net/attachments/389049952732446733/684075783890927714/F2nifRZ0ZWp6.mp4?format=jpeg&width=360&height=89', height: 112 }
+        title: 'fixes',
+        type: 'fixed',
+        items: ['Emotes and custom emotes now show properly (not BD emotes tho lol)', 'Changed title to show channel name and guild name instead of category']
+      }
     ]
   };
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, TextElement, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, TextElement, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver } = DiscordModules;
 
     const LurkerStore = WebpackModules.getByProps('isLurking');
     const MuteStore = WebpackModules.getByProps('allowNoMessages');
     const isMentionedUtils = WebpackModules.getByProps('isRawMessageMentioned');
-    const NotificationUtils = WebpackModules.getByProps('makeTextChatNotification');
     const ParserModule = WebpackModules.getByProps('parseAllowLinks', 'parse');
     const MessageClasses = WebpackModules.getByProps('username', 'messageContent');
     const MarkupClassname = XenoLib.getClass('markup');
+    const Messages = (WebpackModules.getByProps('Messages') || {}).Messages;
+    const SysMessageUtils = WebpackModules.getByProps('getSystemMessageUserJoin', 'stringify');
+    const MessageParseUtils = (WebpackModules.getByProps('parseAndRebuild', 'default') || {}).default;
 
     return class InAppNotifications extends Plugin {
       constructor() {
@@ -156,6 +156,7 @@ var InAppNotifications = (() => {
       loadSettings(defaultSettings) {
         return PluginUtilities.loadSettings(this.name, Utilities.deepclone(this.defaultSettings ? this.defaultSettings : defaultSettings));
       }
+
       _shouldNotify(iAuthor, iChannel) {
         if (iChannel.isManaged()) return false;
         const guildId = iChannel.getGuildId();
@@ -167,12 +168,84 @@ var InAppNotifications = (() => {
       }
       shouldNotify(message, iChannel, iAuthor) {
         if (!DiscordAPI.currentUser || !iChannel || !iAuthor) return false;
+        /* dunno what the func name is as this is copied from discord, so I named it _shouldNotify */
         if (!this._shouldNotify(iAuthor, iChannel)) return false;
         if (DiscordAPI.currentChannel && DiscordAPI.currentChannel.id === iChannel.id) return false;
+        /* channel has notif settings set to all messages */
         if (MuteStore.allowAllMessages(iChannel)) return true;
         const everyoneSuppressed = MuteStore.isSuppressEveryoneEnabled(iChannel.guild_id);
         const rolesSuppressed = MuteStore.isSuppressRolesEnabled(iChannel.guild_id);
+        /* only if mentioned, but only if settings allow */
         return isMentionedUtils.isRawMessageMentioned(message, DiscordAPI.currentUser.id, everyoneSuppressed, rolesSuppressed);
+      }
+
+      getChannelName(iChannel, iAuthor) {
+        switch (iChannel.type) {
+          case DiscordConstants.ChannelTypes.GROUP_DM:
+            if ('' !== iChannel.name) return iChannel.name;
+            const recipients = iChannel.recipients.map(e => (e === iAuthor.id ? iAuthor : UserStore.getUser(e))).filter(e => e);
+            return recipients.length > 0 ? recipients.map(e => e.username).join(', ') : Messages.UNNAMED;
+          case DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT:
+          case DiscordConstants.ChannelTypes.GUILD_TEXT:
+            return '#' + iChannel.name;
+          default:
+            return iChannel.name;
+        }
+      }
+
+      getActivity(e, t, n, r) {
+        switch (e.type) {
+          case DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT:
+          case DiscordConstants.ChannelTypes.GUILD_TEXT:
+            return t;
+          case DiscordConstants.ChannelTypes.GROUP_DM:
+            return n;
+          case DiscordConstants.ChannelTypes.DM:
+          default:
+            return r;
+        }
+      }
+
+      makeTextChatNotification(iChannel, message, iAuthor) {
+        let author = UserNameResolver.getName(iChannel.guild_id, iChannel.id, iAuthor);
+        let channel = author;
+        switch (iChannel.type) {
+          case DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT:
+          case DiscordConstants.ChannelTypes.GUILD_TEXT:
+            const iGuild = GuildStore.getGuild(iChannel.guild_id);
+            if (message.type === DiscordConstants.MessageTypes.DEFAULT || iGuild) channel += ` (${this.getChannelName(iChannel)}, ${iGuild.name})`;
+            break;
+          case DiscordConstants.ChannelTypes.GROUP_DM:
+            const newChannel = this.getChannelName(iChannel, iAuthor);
+            if (!iChannel.isManaged() || !iAuthor.bot || channel !== newChannel) channel += ` (${newChannel})`;
+        }
+        let d = message.content;
+        if (message.activity && message.application) {
+          const targetMessage = message.activity.type === DiscordConstants.ActivityActionTypes.JOIN ? this.getActivity(iChannel, Messages.NOTIFICATION_MESSAGE_CREATE_GUILD_ACTIVITY_JOIN, Messages.NOTIFICATION_MESSAGE_CREATE_GROUP_DM_ACTIVITY_JOIN, Messages.NOTIFICATION_MESSAGE_CREATE_DM_ACTIVITY_JOIN) : this.getActivity(iChannel, Messages.NOTIFICATION_MESSAGE_CREATE_GUILD_ACTIVITY_SPECTATE, Messages.NOTIFICATION_MESSAGE_CREATE_GROUP_DM_ACTIVITY_SPECTATE, Messages.NOTIFICATION_MESSAGE_CREATE_DM_ACTIVITY_SPECTATE);
+          d = targetMessage.format({ user: author, game: message.application.name });
+        } else if (message.activity && message.activity.type === DiscordConstants.ActivityActionTypes.LISTEN) {
+          const targetMessage = this.getActivity(iChannel, Messages.NOTIFICATION_MESSAGE_CREATE_GUILD_ACTIVITY_LISTEN, Messages.NOTIFICATION_MESSAGE_CREATE_GROUP_DM_ACTIVITY_LISTEN, Messages.NOTIFICATION_MESSAGE_CREATE_DM_ACTIVITY_LISTEN);
+          d = targetMessage.format({ user: author });
+        } else if (message.type !== DiscordConstants.MessageTypes.DEFAULT) {
+          const content = SysMessageUtils.stringify(message);
+          if (!content) return null;
+          d = MessageParseUtils.unparse(content, iChannel.id, true);
+        }
+        if (!d.length && message.attachments.length) d = Messages.NOTIFICATION_BODY_ATTACHMENT.format({ filename: message.attachments[0].filename });
+        if (!d.length && message.embeds.length) {
+          const embed = message.embeds[0];
+          if (embed.description) d = embed.title ? embed.title + ': ' + embed.description : embed.description;
+          else if (embed.title) d = embed.title;
+          else if (embed.fields) {
+            const field = embed.fields[0];
+            d = field.name + ': ' + field.value;
+          }
+        }
+        return {
+          icon: iAuthor.getAvatarURL(),
+          title: channel,
+          content: d
+        };
       }
 
       MESSAGE_CREATE({ channelId, message }) {
@@ -180,8 +253,8 @@ var InAppNotifications = (() => {
         const iAuthor = UserStore.getUser(message.author.id);
         if (!iChannel || !iAuthor) return;
         if (!this.shouldNotify(message, iChannel, iAuthor)) return;
-        if (DiscordAPI.currentChannel && WindowInfo.isFocused() && channelId === DiscordAPI.currentChannel.id) return;
-        const notif = NotificationUtils.makeTextChatNotification(iChannel, message, iAuthor);
+        const notif = this.makeTextChatNotification(iChannel, message, iAuthor);
+        if (!notif) return; /* wah */
         this.showNotification(notif, iChannel);
       }
 
@@ -203,7 +276,7 @@ var InAppNotifications = (() => {
               },
               notif.title
             ),
-            React.createElement('div', { className: XenoLib.joinClassNames(MarkupClassname, MessageClasses.messageContent) }, ParserModule.parse(notif.body))
+            React.createElement('div', { className: XenoLib.joinClassNames(MarkupClassname, MessageClasses.messageContent) }, ParserModule.parse(notif.content, true, { channelId: iChannel.id }))
           ),
           {
             timeout: 5000,
@@ -259,8 +332,8 @@ var InAppNotifications = (() => {
       const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
-        o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.10') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.11') && (XenoLibOutdated = !0);
+        author = BdApi.getPlugin('XenoLib');
+      n(e, '1.2.10') && (ZeresPluginLibraryOutdated = !0), n(author, '1.3.11') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
