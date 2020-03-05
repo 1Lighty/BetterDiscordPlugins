@@ -1,4 +1,10 @@
 # [CrashRecovery](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery "CrashRecovery") Changelog
+### 0.1.4
+- Improved detection accuracy
+- Added failsafe in case something goes wrong when: initializing, starting or when trying to display the recover button
+- Added third step when trying to recover, as to not switch channels unless required, can be disabled in settings.
+- Plugin is no longer experimental
+
 ### 0.1.3
 - Fixed crash if XenoLib or ZeresPluginLib were missing
 

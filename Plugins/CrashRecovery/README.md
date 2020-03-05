@@ -1,5 +1,5 @@
 # CrashRecovery [![download](https://i.imgur.com/OAHgjZu.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery&dl=1 "CrashRecovery")
-THIS IS AN EXPERIMENTAL PLUGIN! In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.
+In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.
 ### Features
 If your Discord crashes when you open it, it'll attempt to "uncrash" it, and disable any plugin that is preventing recovery.  
 If it completels, it will tell you exactly what plugin may have caused the crash (if it can detect it).  
@@ -14,4 +14,5 @@ Unknown crash that may happen at random
 Startup crash + reenable auto disabled plugins due to crash
 ![startcrash](https://i.imgur.com/ZtkJG5N.png)
 ### Settings
-N/A
+##### Enable step 3
+Moves channel switch to a third and last step, otherwise it switches on step 2
