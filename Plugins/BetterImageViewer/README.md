@@ -1,11 +1,13 @@
 # BetterImageViewer [![download](https://i.imgur.com/OAHgjZu.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer&dl=1 "BetterImageViewer")
 Adds ability to go between images in the current channel with arrow keys, or on screen buttons, and has click to zoom. Also provides info about the image, who posted it and when.
 ### Features
-Adds left and right arrows when you open an image, shows you who sent the image and when, the images resolution, scaling and size, as well as number of cached images (and estimated in channel total).
-Can switch between images in the entire channel using the on screen buttons, or arrow keys.
-Click the users name to jump to the message containing the image.
-Right click the navigation buttons to quick jump to the last (or first) image.  
+Adds left and right arrows when you open an image, shows you who sent the image and when, the images resolution, scaling and size, as well as number of cached images (and estimated in channel total).  
+Can switch between images in the entire channel using the on screen buttons, or arrow keys.  
+Click the users name to jump to the message containing the image.  
+Right click the navigation buttons to quick jump to the last (or first) image.   
 Click and hold (or other) to zoom into the image.
+Use scroll wheel to change zoom level
+Hold shift and use scroll wheel to change zoom lens size
 ### Preview
 ![preview](https://i.imgur.com/oSSWG9u.png)  
 ![preview2](https://i.imgur.com/GOnWSog.png)  
