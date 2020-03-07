@@ -5,9 +5,9 @@ Adds left and right arrows when you open an image, shows you who sent the image 
 Can switch between images in the entire channel using the on screen buttons, or arrow keys.  
 Click the users name to jump to the message containing the image.  
 Right click the navigation buttons to quick jump to the last (or first) image.   
-Click and hold (or other) to zoom into the image.
-Use scroll wheel to change zoom level
-Hold shift and use scroll wheel to change zoom lens size
+Click and hold (or other) to zoom into the image.  
+Use scroll wheel to change zoom level.  
+Hold shift and use scroll wheel to change zoom lens size.
 ### Preview
 ![preview](https://i.imgur.com/oSSWG9u.png)  
 ![preview2](https://i.imgur.com/GOnWSog.png)  
