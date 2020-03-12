@@ -1099,6 +1099,7 @@ var XenoLib = (() => {
           this.resizeObserver.disconnect();
         }
         handleDispatch(e) {
+          if (this.state.leaving || this.state.closeFast) return;
           if (e.type === 'XL_NOTIFS_SETTINGS_UPDATE') {
             if (e.key !== UPDATEKEY) return;
             this._animationCancel();
@@ -1151,6 +1152,11 @@ var XenoLib = (() => {
           if (this.state.closeFast) return;
           this.resizeObserver.disconnect();
           this._animationCancel();
+          api.setState(state => {
+            const dt = state.data.find(m => m.id === this.props.id);
+            if (dt) dt.leaving = true;
+            return { data: state.data };
+          });
           this.setState({ closeFast: true });
         }
         handleResizeEvent() {
@@ -1211,17 +1217,19 @@ var XenoLib = (() => {
                     if (this.state.progress === -1) await next({ progress: 100 });
                     else await next({ progress: this.state.progress });
                   }
-                  if (this.state.progress !== 100 || !this.state.loading) return;
+                  if (this.state.progress < 100 || !this.state.loading) return;
                 }
                 if (this.state.hovered && !this.state.closeFast) return;
                 if (!this.state.closeFast && !LibrarySettings.notifications.timeoutReset) this._startProgressing = Date.now();
                 await next({ progress: 100 });
                 this.state.leaving = true;
-                api.setState(state => {
-                  const dt = state.data.find(m => m.id === this.props.id);
-                  if (dt) dt.leaving = true;
-                  return { data: state.data };
-                });
+                if (!this.state.closeFast) {
+                  api.setState(state => {
+                    const dt = state.data.find(m => m.id === this.props.id);
+                    if (dt) dt.leaving = true;
+                    return { data: state.data };
+                  });
+                }
                 this.props.onLeave();
                 await next({ opacity: 0, height: 0 });
                 api.setState(state => ({ data: state.data.filter(n => n.id !== this.props.id) }));
