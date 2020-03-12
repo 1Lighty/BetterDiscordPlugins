@@ -1,4 +1,4 @@
-//META{"name":"BetterImageViewer","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer"}*//
+//META{"name":"BetterImageViewer","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
 /*@cc_on
 @if (@_jscript)
 
@@ -37,21 +37,16 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.1',
+      version: '1.1.2',
       description: 'Adds ability to go between images in the current channel with arrow keys, or on screen buttons, and has click to zoom. Also provides info about the image, who posted it and when.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'IMAGE ZOOM IS HERE!',
+        title: 'Image zoom changes',
         type: 'added',
-        items: ['*SOME* people kept asking, so here you go.\nAdded image zoom, simply activate by click and holding on the image.', 'Use scroll wheel to zoom in and out, hold shift while scrolling to change lens size.', "If you prefer using a different plugin to handle zooming for you, that's fine too, there is a toggle to disable it in settings.", 'The click and hold can of course be easily changed in the settings to your prefered method of zooming.\n![zoommode](https://i.imgur.com/A8HjQb9.png)', 'There are other options too, for those that may want it!\n![moreoptions](https://i.imgur.com/JGNe7Re.png)']
-      },
-      {
-        title: 'post v1.1.0 update',
-        type: 'fixed',
-        items: ['Fixed breaking videos, lmao']
+        items: ['Improved performance when smoothing is disabled']
       }
     ],
     defaultConfig: [
@@ -199,7 +194,16 @@ var BetterImageViewer = (() => {
     let NoImageZoom = false;
     let overlayDOMNode;
 
-    const { ARROW_LEFT, ARROW_RIGHT } = DiscordConstants.KeyboardKeys;
+    const { ARROW_LEFT, ARROW_RIGHT } = (() => {
+      try {
+        const keys = DiscordConstants.KeyboardKeys;
+        if (!keys) throw 'KeyboardKeys is undefined';
+        return keys;
+      } catch (e) {
+        Logger.stacktrace('Failed to get KeyboardKeys', e);
+        return { ARROW_LEFT: 37, ARROW_RIGHT: 39 };
+      }
+    })();
     const Clickable = WebpackModules.getByDisplayName('Clickable');
 
     const ImageUtils = Object.assign({}, WebpackModules.getByProps('getImageSrc'), WebpackModules.getByProps('getRatio'));
@@ -245,7 +249,14 @@ var BetterImageViewer = (() => {
     }
     const ReactSpring = WebpackModules.getByProps('useTransition');
 
-    const Easing = WebpackModules.getByProps('Easing').Easing;
+    const Easing = (() => {
+      try {
+        return WebpackModules.getByProps('Easing').Easing;
+      } catch (e) {
+        Logger.stacktrace('Failed to get easing', e);
+        return null;
+      }
+    })();
 
     class Image extends (() => {
       const Image = WebpackModules.getByDisplayName('Image');
@@ -381,6 +392,42 @@ var BetterImageViewer = (() => {
         this.setState({ raw: fullSource });
         this.__BIV_updating = false;
       }
+      renderLens(ea, props) {
+        return React.createElement(
+          ReactSpring.animated.div,
+          {
+            style: {
+              width: props.panelWH,
+              height: props.panelWH,
+              left: props.panelX,
+              top: props.panelY,
+              opacity: ea.opacity
+            },
+            className: XenoLib.joinClassNames('BIV-zoom-lens', { 'BIV-zoom-lens-round': this.props.settings.round })
+          },
+          React.createElement(
+            this.props.settings.smoothing ? ReactSpring.animated.div : 'div',
+            {
+              style: {
+                position: 'absolute',
+                left: props.imgLeft,
+                top: props.imgTop
+              }
+            },
+            React.createElement(this.props.__BIV_animated ? (this.props.settings.smoothing ? ReactSpring.animated.video : 'video') : this.props.settings.smoothing ? ReactSpring.animated.img : 'img', {
+              src: this.props.__BIV_animated ? this.props.__BIV_src : this.state.raw,
+              width: props.imgWidth,
+              height: props.imgHeight,
+              style: this.props.settings.interp
+                ? undefined
+                : {
+                    imageRendering: 'pixelated'
+                  },
+              ...(this.props.__BIV_animated ? { autoPlay: true, muted: true, loop: true } : {})
+            })
+          )
+        );
+      }
       render() {
         const ret = super.render();
         ret.props.onMouseDown = this.handleMouseDown;
@@ -407,51 +454,18 @@ var BetterImageViewer = (() => {
                     },
                     className: 'BIV-zoom-backdrop'
                   }),
-                  React.createElement(
-                    ReactSpring.Spring,
-                    {
-                      native: true,
-                      from: { panelX: this.state.panelX[1], panelY: this.state.panelY[1], panelWH: this.state.panelWH[1], offsetX: this.state.offsetX[1], offsetY: this.state.offsetY[1], zoom: this.state.zoom[1], opacity: 0 },
-                      to: { panelX: this.state.panelX[0], panelY: this.state.panelY[0], panelWH: this.state.panelWH[0], offsetX: this.state.offsetX[0], offsetY: this.state.offsetY[0], zoom: this.state.zoom[0], opacity: 1 },
-                      immediate: !this.props.settings.smoothing,
-                      config: { mass: 1, tension: 1500, friction: 75, easing: Easing.linear, clamp: false }
-                    },
-                    e =>
-                      React.createElement(
-                        ReactSpring.animated.div,
+                  this.props.settings.smoothing
+                    ? React.createElement(
+                        ReactSpring.Spring,
                         {
-                          style: {
-                            width: e.panelWH,
-                            height: e.panelWH,
-                            left: e.panelX,
-                            top: e.panelY,
-                            opacity: ea.opacity
-                          },
-                          className: XenoLib.joinClassNames('BIV-zoom-lens', { 'BIV-zoom-lens-round': this.props.settings.round })
+                          native: true,
+                          from: { panelX: this.state.panelX[1], panelY: this.state.panelY[1], panelWH: this.state.panelWH[1], offsetX: this.state.offsetX[1], offsetY: this.state.offsetY[1], zoom: this.state.zoom[1], opacity: 0 },
+                          to: { panelX: this.state.panelX[0], panelY: this.state.panelY[0], panelWH: this.state.panelWH[0], offsetX: this.state.offsetX[0], offsetY: this.state.offsetY[0], zoom: this.state.zoom[0], opacity: 1 },
+                          config: { mass: 1, tension: 1750, friction: 75, easing: Easing ? Easing.linear : e => e, clamp: false }
                         },
-                        React.createElement(
-                          ReactSpring.animated.div,
-                          {
-                            style: {
-                              position: 'absolute',
-                              left: ReactSpring.to([e.zoom, e.offsetX, e.panelWH], (z, x, wh) => -x * z + wh / 2),
-                              top: ReactSpring.to([e.zoom, e.offsetY, e.panelWH], (z, y, wh) => -y * z + wh / 2)
-                            }
-                          },
-                          React.createElement(this.props.__BIV_animated ? ReactSpring.animated.video : ReactSpring.animated.img, {
-                            src: this.props.__BIV_animated ? this.props.__BIV_src : this.state.raw,
-                            width: e.zoom.to(e => e * this.props.width),
-                            height: e.zoom.to(e => e * this.props.height),
-                            style: this.props.settings.interp
-                              ? undefined
-                              : {
-                                  imageRendering: 'pixelated'
-                                },
-                            ...(this.props.__BIV_animated ? { autoPlay: true, muted: true, loop: true } : {})
-                          })
-                        )
+                        e => this.renderLens(ea, { ...e, imgLeft: ReactSpring.to([e.zoom, e.offsetX, e.panelWH], (z, x, wh) => -x * z + wh / 2), imgTop: ReactSpring.to([e.zoom, e.offsetY, e.panelWH], (z, y, wh) => -y * z + wh / 2), imgWidth: e.zoom.to(e => e * this.props.width), imgHeight: e.zoom.to(e => e * this.props.height) })
                       )
-                  )
+                    : this.renderLens(ea, { panelWH: this.state.panelWH[0], panelX: this.state.panelX[0], panelY: this.state.panelY[0], imgLeft: -this.state.offsetX[0] * this.state.zoom[0] + this.state.panelWH[0] / 2, imgTop: -this.state.offsetY[0] * this.state.zoom[0] + this.state.panelWH[0] / 2, imgWidth: this.state.zoom[0] * this.props.width, imgHeight: this.state.zoom[0] * this.props.height })
                 ]
               ),
               overlayDOMNode
@@ -1188,6 +1202,9 @@ var BetterImageViewer = (() => {
             } catch (e) {}
           }
         };
+        try {
+          ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
+        } catch (e) {}
       }
       onStart() {
         if (!overlayDOMNode) {
@@ -1444,7 +1461,9 @@ var BetterImageViewer = (() => {
       }
 
       async patchMessageAccessories(promiseState) {
-        const MessageAccessories = await ReactComponents.getComponentByName('MessageAccessories', `.${XenoLib.getSingleClass('embedWrapper container')}`);
+        const selector = `.${XenoLib.getSingleClass('embedWrapper container')}`;
+        const MessageAccessories = await ReactComponents.getComponentByName('MessageAccessories', selector);
+        if (!MessageAccessories.selector) MessageAccessories.selector = selector;
         if (promiseState.cancelled) return;
         Patcher.before(MessageAccessories.component.prototype, 'render', _this => {
           _this.__BIV_data = {
@@ -1681,24 +1700,25 @@ var BetterImageViewer = (() => {
 
   /* Finalize */
 
-  /* this new lib loader is lit */
   let ZeresPluginLibraryOutdated = false;
   let XenoLibOutdated = false;
   try {
-    if (global.BdApi && typeof BdApi.getPlugin === 'function' /* you never know with those retarded client mods */) {
-      const versionChecker = (a, b) => ((a = a.split('.').map(a => parseInt(a))), (b = b.split('.').map(a => parseInt(a))), !!(b[0] > a[0])) || !!(b[0] == a[0] && b[1] > a[1]) || !!(b[0] == a[0] && b[1] == a[1] && b[2] > a[2]);
-      const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion);
-      const iZeresPluginLibrary = BdApi.getPlugin('ZeresPluginLibrary');
-      const iXenoLib = BdApi.getPlugin('XenoLib');
-      if (isOutOfDate(iZeresPluginLibrary, '1.2.10')) ZeresPluginLibraryOutdated = true;
-      if (isOutOfDate(iXenoLib, '1.3.13')) XenoLibOutdated = true;
+    if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
+      const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
+        n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
+        e = BdApi.getPlugin('ZeresPluginLibrary'),
+        o = BdApi.getPlugin('XenoLib');
+      n(e, '1.2.11') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.14') && (XenoLibOutdated = !0);
     }
-  } catch (e) {
-    console.error('Error checking if libraries are out of date', e);
+  } catch (i) {
+    console.error('Error checking if libraries are out of date', i);
   }
 
   return !global.ZeresPluginLibrary || !global.XenoLib || ZeresPluginLibraryOutdated || XenoLibOutdated
     ? class {
+        constructor() {
+          this._XL_PLUGIN = true;
+        }
         getName() {
           return this.name.replace(/\s+/g, '');
         }
@@ -1713,135 +1733,79 @@ var BetterImageViewer = (() => {
         }
         stop() {}
         load() {
-          const XenoLibMissing = !global.XenoLib;
-          const zlibMissing = !global.ZeresPluginLibrary;
-          const bothLibsMissing = XenoLibMissing && zlibMissing;
-          const bothLibsShit = bothLibsMissing || ((XenoLibMissing || zlibMissing) && (XenoLibOutdated || ZeresPluginLibraryOutdated)) || XenoLibOutdated || ZeresPluginLibraryOutdated;
-          const header = (() => {
-            let ret = '';
-            if (XenoLibMissing || zlibMissing) ret += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? ' and outdated' : ''} `;
-            else if (XenoLibOutdated || ZeresPluginLibraryOutdated) ret += `Outdated `;
-            ret += `${bothLibsShit ? 'Libraries' : 'Library'} `;
-            return ret;
-          })();
-          const content = (() => {
-            let ret = `The ${bothLibsShit ? 'libraries' : 'library'} `;
-            if (XenoLibMissing || XenoLibOutdated) {
-              ret += 'XenoLib ';
-              if (zlibMissing || ZeresPluginLibraryOutdated) ret += 'and ZeresPluginLibrary ';
-            } else if (zlibMissing || ZeresPluginLibraryOutdated) ret += 'ZeresPluginLibrary ';
-            ret += `required for ${this.name} ${bothLibsShit ? 'are' : 'is'} ${XenoLibMissing || zlibMissing ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (XenoLibMissing || zlibMissing ? ' and/or outdated' : 'outdated') : ''}.`;
-            return ret;
-          })();
-          const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
-          const TextElement = BdApi.findModuleByProps('Sizes', 'Weights');
-          const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
-          const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${zlibMissing || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}${XenoLibMissing || XenoLibOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js"target="_blank">Click here to download XenoLib</a>' : ''}`);
-          if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
-          let modalId;
-          const onHeckWouldYouLookAtThat = (() => {
-            if (!global.pluginModule || !global.BDEvents) return;
-            if (XenoLibMissing || XenoLibOutdated) {
-              const listener = () => {
-                BDEvents.off('xenolib-loaded', listener);
-                ModalStack.popWithKey(modalId); /* make it easier on the user */
-                pluginModule.reloadPlugin(this.name);
-              };
-              BDEvents.on('xenolib-loaded', listener);
-              return () => BDEvents.off('xenolib-loaded', listener);
+          const a = BdApi.findModuleByProps('isModalOpen');
+          if (a && a.isModalOpen(`${this.name}_DEP_MODAL`)) return;
+          const b = !global.XenoLib,
+            c = !global.ZeresPluginLibrary,
+            d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
+            e = (() => {
+              let a = '';
+              return b || c ? (a += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? ' and outdated' : ''} `) : (XenoLibOutdated || ZeresPluginLibraryOutdated) && (a += `Outdated `), (a += `${d ? 'Libraries' : 'Library'} `), a;
+            })(),
+            f = (() => {
+              let a = `The ${d ? 'libraries' : 'library'} `;
+              return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
+            })(),
+            g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
+            h = BdApi.findModuleByProps('Sizes', 'Weights'),
+            i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
+            j = () => BdApi.getCore().alert(e, `${f}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${c || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}${b || XenoLibOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js"target="_blank">Click here to download XenoLib</a>' : ''}`);
+          if (!g || !i || !h) return j();
+          class k extends BdApi.React.PureComponent {
+            constructor(a) {
+              super(a), (this.state = { hasError: !1 });
             }
-            const onLibLoaded = e => {
-              if (e !== 'ZeresPluginLibrary') return;
-              BDEvents.off('plugin-loaded', onLibLoaded);
-              BDEvents.off('plugin-reloaded', onLibLoaded);
-              ModalStack.popWithKey(modalId); /* make it easier on the user */
-              pluginModule.reloadPlugin(this.name);
-            };
-            BDEvents.on('plugin-loaded', onLibLoaded);
-            BDEvents.on('plugin-reloaded', onLibLoaded);
-            return () => (BDEvents.off('plugin-loaded', onLibLoaded), BDEvents.off('plugin-reloaded', onLibLoaded));
-          })();
-          class TempErrorBoundary extends BdApi.React.PureComponent {
-            constructor(props) {
-              super(props);
-              this.state = { hasError: false };
-            }
-            componentDidCatch(err, inf) {
-              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`);
-              this.setState({ hasError: true });
-              if (typeof this.props.onError === 'function') this.props.onError(err);
+            componentDidCatch(a) {
+              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a);
             }
             render() {
-              if (this.state.hasError) return null;
-              return this.props.children;
+              return this.state.hasError ? null : this.props.children;
             }
           }
-          modalId = ModalStack.push(props => {
-            return BdApi.React.createElement(
-              TempErrorBoundary,
-              {
-                label: 'missing dependency modal',
-                onError: () => {
-                  ModalStack.popWithKey(modalId); /* smh... */
-                  onFail();
-                }
-              },
+          class l extends i {
+            submitModal() {
+              this.props.onConfirm();
+            }
+          }
+          let m = !1;
+          const n = g.push(
+            a =>
               BdApi.React.createElement(
-                ConfirmationModal,
-                Object.assign(
-                  {
-                    header,
-                    children: [BdApi.React.createElement(TextElement, { color: TextElement.Colors.PRIMARY, children: [`${content} Please click Download Now to download ${bothLibsShit ? 'them' : 'it'}.`] })],
-                    red: false,
-                    confirmText: 'Download Now',
-                    cancelText: 'Cancel',
-                    onConfirm: () => {
-                      onHeckWouldYouLookAtThat();
-                      const request = require('request');
-                      const fs = require('fs');
-                      const path = require('path');
-                      const waitForLibLoad = callback => {
-                        if (!global.BDEvents) return callback();
-                        const onLibLoaded = e => {
-                          if (e !== 'ZeresPluginLibrary') return;
-                          BDEvents.off('plugin-loaded', onLibLoaded);
-                          BDEvents.off('plugin-reloaded', onLibLoaded);
-                          callback();
-                        };
-                        BDEvents.on('plugin-loaded', onLibLoaded);
-                        BDEvents.on('plugin-reloaded', onLibLoaded);
-                      };
-                      const onDone = () => {
-                        if (!global.pluginModule || (!global.BDEvents && !global.XenoLib)) return;
-                        if ((global.XenoLib && !XenoLibOutdated) || !global.BDEvents /* yolo */) return pluginModule.reloadPlugin(this.name);
-                        const listener = () => {
-                          BDEvents.off('xenolib-loaded', listener);
-                          pluginModule.reloadPlugin(this.name);
-                        };
-                        BDEvents.on('xenolib-loaded', listener);
-                      };
-                      const downloadXenoLib = () => {
-                        if (global.XenoLib && !XenoLibOutdated) return onDone();
-                        request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (error, response, body) => {
-                          if (error) return onFail();
-                          onDone();
-                          fs.writeFile(path.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), body, () => {});
-                        });
-                      };
-                      if (!global.ZeresPluginLibrary || ZeresPluginLibraryOutdated) {
-                        request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
-                          if (error) return onFail();
-                          waitForLibLoad(downloadXenoLib);
-                          fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
-                        });
-                      } else downloadXenoLib();
-                    }
-                  },
-                  props
+                k,
+                {
+                  label: 'missing dependency modal',
+                  onError: () => {
+                    g.popWithKey(n), j();
+                  }
+                },
+                BdApi.React.createElement(
+                  l,
+                  Object.assign(
+                    {
+                      header: e,
+                      children: [BdApi.React.createElement(h, { color: h.Colors.PRIMARY, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] })],
+                      red: !1,
+                      confirmText: 'Download Now',
+                      cancelText: 'Cancel',
+                      onConfirm: () => {
+                        if (m) return;
+                        m = !0;
+                        const a = require('request'),
+                          b = require('fs'),
+                          c = require('path'),
+                          d = () => {
+                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a ? j() : void b.writeFile(c.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), e, () => {})));
+                          };
+                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, e, f) => (a ? j() : void (b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
+                      }
+                    },
+                    a
+                  )
                 )
-              )
-            );
-          });
+              ),
+            void 0,
+            `${this.name}_DEP_MODAL`
+          );
         }
 
         start() {}

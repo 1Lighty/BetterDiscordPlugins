@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.1.2
+- Improved performance when smoothing is disabled
+
 ### 1.1.0 & 1.1.1
 - *SOME* people kept asking, so here you go.
 - Added image zoom, simply activate by click and holding on the image.
