@@ -1,4 +1,9 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.11
+- Fixed not working on GIFVs like.. uh.. tennor and giphycat and stuff.
+- e621 and twitter embed images now save at full resolution. If you have a website embed that doesn't save properly or at full resolution, please [join my support server](https://discord.gg/NYvWdN5) and tell me about it so I can fix it.
+- Added a kewl progress notification so you can see its download progress (although it depends on your internet speed and the content size).
+
 ### 2.0.10
 - Fixed the append random option when a file conflicted not working properly.
 - Most of the changes are under the hood and functionally don't make too much of a difference.
