@@ -1,4 +1,4 @@
-//META{"name":"BetterTypingUsers","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/BetterTypingUsers/BetterTypingUsers.plugin.js","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterTypingUsers"}*//
+//META{"name":"BetterTypingUsers","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/BetterTypingUsers/BetterTypingUsers.plugin.js","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterTypingUsers","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
 /*@cc_on
 @if (@_jscript)
 
@@ -171,6 +171,11 @@ var BetterTypingUsers = (() => {
        we can only hope the user doesn't rename the plugin..
      */
     return class BetterTypingUsers extends Plugin {
+      constructor() {
+        try {
+          ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
+        } catch (e) {}
+      }
       onStart() {
         this.promises = { state: { cancelled: false } };
         this.patchAll();
@@ -182,6 +187,8 @@ var BetterTypingUsers = (() => {
           }
           `
         );
+        DiscordConstants.MAX_TYPING_USERS = 99;
+        /* theoretical max is 5 users typing at once.. welp */
       }
 
       onStop() {
@@ -227,25 +234,55 @@ var BetterTypingUsers = (() => {
         /*  modify BRCs behavior so it won't unexpectedly try to modify an entry that does not exist
             by simply limiting it to the max number of usernames visible in total
          */
-        Patcher.after(BetterRoleColors, 'filterTypingUsers', (_, __, ret) => ret.slice(0, this.settings.maxVisible));
+        Patcher.after(BetterRoleColors, 'filterTypingUsers', (_this, __, ret) => ret.slice(0, this.settings.maxVisible));
       }
 
       async patchTypingUsers(promiseState) {
         const TypingUsers = await ReactComponents.getComponentByName('TypingUsers', DiscordSelectors.Typing.typing);
+        if (!TypingUsers.selector) TypingUsers.selector = DiscordSelectors.Typing.typing;
         const TypingTextClassname = WebpackModules.getByProps('typing', 'text').text.split(' ')[0];
         if (promiseState.cancelled) return;
         if (!CTypingUsers) CTypingUsers = typingUsers.component; /* failsafe */
         /* use `instead` so that we modify the return before BetterRoleColors */
+        /*         Patcher.after(TypingUsers.component.prototype, 'componentDidUpdate', (_this, [props, state], ret) => {
+          const filtered1 = this.filterTypingUsers(_this.props.typingUsers);
+          const filtered2 = this.filterTypingUsers(props.typingUsers);
+          if (filtered1.length !== filtered2.length || _this.state.numLess === state.numLess) {
+            _this.state.numLess = 0;
+            _this.triedLess = false;
+            _this.triedMore = false;
+          }
+        }); */
         Patcher.instead(TypingUsers.component.prototype, 'render', (_this, _, orig) => {
+          /* if (!_this.state) _this.state = { numLess: 0 }; */
           const ret = orig();
+          if (!ret) {
+            /* _this.state.numLess = 0; */
+            return ret;
+          }
           const filtered = this.filterTypingUsers(_this.props.typingUsers);
           if (filtered.length <= 3) return ret;
+          /*           ret.ref = e => {
+            _this.__baseRef = e;
+            if (!e) return;
+            if (!_this.__textRef) return;
+            _this.maxWidth = parseInt(getComputedStyle(_this.__baseRef.parentElement).width) - (_this.__textRef.offsetLeft + parseInt(getComputedStyle(_this.__textRef)['margin-left']) - _this.__baseRef.offsetLeft);
+            if (_this.__textRef.scrollWidth > _this.maxWidth) {
+              if (_this.triedMore) return;
+              if (filtered.length - _this.state.numLess <= 3) return;
+              _this.setState({ numLess: _this.state.numLess + 1 });
+            }
+          }; */
           const typingUsers = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf(TypingTextClassname) !== -1);
           if (!typingUsers) return ret;
+          /*           if (typeof _this.state.numLess !== 'number') _this.state.numLess = 0;
+          typingUsers.ref = e => {
+            _this.__textRef = e;
+          }; */
           typingUsers.props.children = [];
           /* I don't think this method works for every language..? */
           for (let i = 0; i < filtered.length; i++) {
-            if (this.settings.maxVisible === i) {
+            if (this.settings.maxVisible /* filtered.length - _this.state.numLess */ === i) {
               const others = filtered.length - i;
               if (others === 1) typingUsers.props.children.push(this.strings.AND_1_OTHER);
               else typingUsers.props.children.push(Utilities.formatTString(this.strings.AND_X_OTHERS, { count: others }));
@@ -297,11 +334,10 @@ var BetterTypingUsers = (() => {
 
   let ZeresPluginLibraryOutdated = false;
   try {
-    if (global.BdApi && typeof BdApi.getPlugin === 'function' /* you never know with those retarded client mods */) {
-      const versionChecker = (a, b) => ((a = a.split('.').map(a => parseInt(a))), (b = b.split('.').map(a => parseInt(a))), !!(b[0] > a[0])) || !!(b[0] == a[0] && b[1] > a[1]) || !!(b[0] == a[0] && b[1] == a[1] && b[2] > a[2]);
-      const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion);
-      const iZeresPluginLibrary = BdApi.getPlugin('ZeresPluginLibrary');
-      if (isOutOfDate(iZeresPluginLibrary, '1.2.10')) ZeresPluginLibraryOutdated = true;
+    if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
+      const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
+        b = BdApi.getPlugin('ZeresPluginLibrary');
+      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.11') && (ZeresPluginLibraryOutdated = !0);
     }
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
@@ -309,6 +345,9 @@ var BetterTypingUsers = (() => {
 
   return !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
     ? class {
+        constructor() {
+          this._config = config;
+        }
         getName() {
           return this.name.replace(/\s+/g, '');
         }
@@ -323,94 +362,68 @@ var BetterTypingUsers = (() => {
         }
         stop() {}
         load() {
-          const header = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library';
-          const content = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`;
-          const ModalStack = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey');
-          const TextElement = BdApi.findModuleByProps('Sizes', 'Weights');
-          const ConfirmationModal = BdApi.findModule(m => m.defaultProps && m.key && m.key() === 'confirm-modal');
-          const onFail = () => BdApi.getCore().alert(header, `${content}<br/>Due to a slight mishap however, you'll have to download the library yourself.<br/><br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>`);
-          if (!ModalStack || !ConfirmationModal || !TextElement) return onFail();
-          class TempErrorBoundary extends BdApi.React.PureComponent {
-            constructor(props) {
-              super(props);
-              this.state = { hasError: false };
+          const a = BdApi.findModuleByProps('isModalOpen');
+          if (a && a.isModalOpen(`${this.name}_DEP_MODAL`)) return;
+          const b = !global.ZeresPluginLibrary,
+            c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
+            d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
+            e = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
+            f = BdApi.findModuleByProps('Sizes', 'Weights'),
+            g = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
+            h = () => BdApi.getCore().alert(c, `${d}<br/>Due to a slight mishap however, you'll have to download the libraries yourself.<br/>${b || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}`);
+          if (!e || !g || !f) return h();
+          class i extends BdApi.React.PureComponent {
+            constructor(a) {
+              super(a), (this.state = { hasError: !1 });
             }
-            componentDidCatch(err, inf) {
-              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`);
-              this.setState({ hasError: true });
-              if (typeof this.props.onError === 'function') this.props.onError(err);
+            componentDidCatch(a) {
+              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a);
             }
             render() {
-              if (this.state.hasError) return null;
-              return this.props.children;
+              return this.state.hasError ? null : this.props.children;
             }
           }
-          let modalId;
-          const onHeckWouldYouLookAtThat = (() => {
-            if (!global.pluginModule || !global.BDEvents) return () => {}; /* other client mods */
-            const onLibLoaded = e => {
-              if (e !== 'ZeresPluginLibrary') return;
-              BDEvents.off('plugin-loaded', onLibLoaded);
-              BDEvents.off('plugin-reloaded', onLibLoaded);
-              ModalStack.popWithKey(modalId); /* make it easier on the user */
-              pluginModule.reloadPlugin(this.getName());
-            };
-            BDEvents.on('plugin-loaded', onLibLoaded);
-            BDEvents.on('plugin-reloaded', onLibLoaded);
-            return () => (BDEvents.off('plugin-loaded', onLibLoaded), BDEvents.off('plugin-reloaded', onLibLoaded));
-          })();
-          modalId = ModalStack.push(props => {
-            return BdApi.React.createElement(
-              TempErrorBoundary,
-              {
-                label: 'missing/outdated dependency modal',
-                onError: () => {
-                  ModalStack.popWithKey(modalId); /* smh... */
-                  onFail();
-                }
-              },
+          class j extends g {
+            submitModal() {
+              this.props.onConfirm();
+            }
+          }
+          let k = !1;
+          const l = e.push(
+            a =>
               BdApi.React.createElement(
-                ConfirmationModal,
-                Object.assign(
-                  {
-                    header,
-                    children: [
-                      BdApi.React.createElement(TextElement, {
-                        color: TextElement.Colors.PRIMARY,
-                        children: [`${content} Please click Download Now to download it.`]
-                      })
-                    ],
-                    red: false,
-                    confirmText: 'Download Now',
-                    cancelText: 'Cancel',
-                    onConfirm: () => {
-                      onHeckWouldYouLookAtThat();
-                      const request = require('request');
-                      const fs = require('fs');
-                      const path = require('path');
-                      const onDone = () => {
-                        if (!global.pluginModule || !global.BDEvents) return;
-                        const onLoaded = e => {
-                          if (e !== 'ZeresPluginLibrary') return;
-                          BDEvents.off('plugin-loaded', onLoaded);
-                          BDEvents.off('plugin-reloaded', onLoaded);
-                          pluginModule.reloadPlugin(this.name);
-                        };
-                        BDEvents.on('plugin-loaded', onLoaded);
-                        BDEvents.on('plugin-reloaded', onLoaded);
-                      };
-                      request('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (error, response, body) => {
-                        if (error) return onFail();
-                        onDone();
-                        fs.writeFile(path.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), body, () => {});
-                      });
-                    }
-                  },
-                  props
+                i,
+                {
+                  label: 'missing dependency modal',
+                  onError: () => {
+                    e.popWithKey(l), h();
+                  }
+                },
+                BdApi.React.createElement(
+                  j,
+                  Object.assign(
+                    {
+                      header: c,
+                      children: [BdApi.React.createElement(f, { color: f.Colors.PRIMARY, children: [`${d} Please click Download Now to download it.`] })],
+                      red: !1,
+                      confirmText: 'Download Now',
+                      cancelText: 'Cancel',
+                      onConfirm: () => {
+                        if (k) return;
+                        k = !0;
+                        const a = require('request'),
+                          b = require('fs'),
+                          c = require('path');
+                        a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, d, e) => (a ? h() : void b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), e, () => {})));
+                      }
+                    },
+                    a
+                  )
                 )
-              )
-            );
-          });
+              ),
+            void 0,
+            `${this.name}_DEP_MODAL`
+          );
         }
 
         start() {}
