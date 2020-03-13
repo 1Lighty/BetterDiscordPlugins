@@ -830,14 +830,12 @@ var BetterImageViewer = (() => {
       }
       handleMessageDelete(e) {
         const { channelId, id: messageId } = e;
-        if (e['__\x4e\x4f\x552Prevent\x46\x41\x47\x47\x4f\x54']) return;
         stripDeletedMessage(channelId, messageId);
         if (messageId !== this.state.__BIV_data.messageId) return;
         this.handleMessageDeletes();
       }
       handlePurge(e) {
         const { channelId, ids: messageIds } = e;
-        if (e['__\x4e\x4f\x552Prevent\x46\x41\x47\x47\x4f\x54']) return;
         stripPurgedMessages(channelId, messageIds);
         if (channelId !== DiscordAPI.currentChannel.id || messageIds.indexOf(this.state.__BIV_data.messageId) === -1) return;
         for (const messageId of messageIds) {
@@ -1373,12 +1371,10 @@ var BetterImageViewer = (() => {
 
       handleMessageDelete(e) {
         const { channelId, id: messageId } = e;
-        if (e['__\x4e\x4f\x552Prevent\x46\x41\x47\x47\x4f\x54']) return;
         stripDeletedMessage(channelId, messageId);
       }
       handlePurge(e) {
         const { channelId, ids: messageIds } = e;
-        if (e['__\x4e\x4f\x552Prevent\x46\x41\x47\x47\x4f\x54']) return;
         stripPurgedMessages(channelId, messageIds);
       }
       handleWHChange({ value }) {
