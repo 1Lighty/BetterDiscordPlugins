@@ -172,6 +172,7 @@ var BetterTypingUsers = (() => {
      */
     return class BetterTypingUsers extends Plugin {
       constructor() {
+	super();
         try {
           ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
         } catch (e) {}
