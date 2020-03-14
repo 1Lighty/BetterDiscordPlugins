@@ -1,4 +1,7 @@
 # [InAppNotifications](https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications "InAppNotifications") Changelog
+### 1.0.2
+- Desktop notifications now don't show if Discord is focused, while in-app ones do.
+
 ### 1.0.1
 - Emotes and custom emotes now show properly (not BD emotes tho lol)
 - Changed title to show channel name and guild name instead of category
