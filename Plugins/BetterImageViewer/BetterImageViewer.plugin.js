@@ -37,16 +37,16 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.2',
+      version: '1.1.3',
       description: 'Adds ability to go between images in the current channel with arrow keys, or on screen buttons, and has click to zoom. Also provides info about the image, who posted it and when.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'Image zoom changes',
-        type: 'added',
-        items: ['Improved performance when smoothing is disabled']
+        title: 'fixed',
+        type: 'fixed',
+        items: ['Fixed not picking up embeds with multiple images', 'Added workaround for a rare patching error']
       }
     ],
     defaultConfig: [
@@ -236,13 +236,18 @@ var BetterImageViewer = (() => {
         });
       }
       if (Array.isArray(message.embeds)) {
-        message.embeds.forEach(({ image }) => {
-          if (!image) return;
+        const appendImage = image => {
           const { width, height, url: original, proxyURL: src } = image;
+          if (images.findIndex(e => e.src === src) !== -1) return;
           if (!src || (width <= 1 && height <= 1)) return;
           const max = ImageUtils.zoomFit(width, height);
           const placeholder = getPlaceholder(src, width, height, max.width, max.height);
           images.push({ width, height, original, src, placeholder });
+        };
+        message.embeds.forEach(({ image, images }) => {
+          if (!image && (!images || !images.length)) return;
+          if (images && images.length) for (const image of images) appendImage(image);
+          appendImage(image);
         });
       }
       return images;
@@ -1284,7 +1289,7 @@ var BetterImageViewer = (() => {
             position: absolute;
             white-space: nowrap;
           }
-          .BIV-info-wrapper > .primary-jw0I4K {
+          .BIV-info-wrapper > .${TextElement.Colors.PRIMARY} {
             display: flex;
             align-items: center;
           }
@@ -1310,7 +1315,7 @@ var BetterImageViewer = (() => {
           .BIV-hidden {
             opacity: 0;
           }
-          .BIV-info-wrapper .username-1A8OIy {
+          .BIV-info-wrapper .${XenoLib.getClass('header username')} {
             max-width: 900px;
             overflow-x: hidden;
             margin-right: 0.25rem;
@@ -1587,8 +1592,12 @@ var BetterImageViewer = (() => {
           if (!_this.state || _this.state.internalError) return;
           if (_this._headerRequest1) _this._headerRequest1.abort();
           if (_this._headerRequest2) _this._headerRequest2.abort();
-          _this._controlsVisibleTimeout.stop();
-          _this._controlsInactiveDelayedCall.cancel();
+          if (!_this._controlsVisibleTimeout) {
+            XenoLib.Notifications.warning(`[**${this.name}**] Something's not right.. Reloading self.`);
+            pluginModule.reloadPlugin(this.name);
+          }
+          if (_this._controlsVisibleTimeout) _this._controlsVisibleTimeout.stop();
+          if (_this._controlsInactiveDelayedCall) _this._controlsInactiveDelayedCall.cancel();
           window.removeEventListener('mousemove', _this.handleMouseMove);
         });
         const renderTableEntry = (val1, val2) => React.createElement('tr', {}, React.createElement('td', {}, val1), React.createElement('td', {}, val2));

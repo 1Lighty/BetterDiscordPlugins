@@ -1,4 +1,8 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.1.3
+- Fixed not picking up embeds with multiple images
+- Added workaround for a rare patching error
+
 ### 1.1.2
 - Improved performance when smoothing is disabled
 
