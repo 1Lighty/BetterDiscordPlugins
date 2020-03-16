@@ -41,7 +41,7 @@ var InAppNotifications = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.2',
+      version: '1.0.3',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -52,13 +52,50 @@ var InAppNotifications = (() => {
         id: 'dndIgnore',
         type: 'switch',
         value: true
+      },
+      {
+        name: 'Bar color',
+        id: 'color',
+        type: 'color',
+        value: '#4a90e2',
+        options: {
+          defaultColor: '#4a90e2'
+        }
+      },
+      {
+        name: 'Set bar color to top role color',
+        id: 'roleColor',
+        type: 'switch',
+        value: true
+      },
+      {
+        name: 'Calculate timeout by number of words',
+        note: 'Long text will stay for longer',
+        id: 'wpmTimeout',
+        type: 'switch',
+        value: true
+      },
+      {
+        name: 'Words per minute',
+        id: 'wordsPerMinute',
+        type: 'slider',
+        value: 300,
+        min: 300,
+        max: 900,
+        markers: Array.from(Array(13), (_, i) => i * 50 + 300),
+        stickToMarkers: true
       }
     ],
     changelog: [
       {
-        title: 'was requested',
+        title: 'Fixed',
+        type: 'fixed',
+        items: ['Fixed notification sound not playing if Discord was focused.', 'Large messages no longer go off screen.']
+      },
+      {
+        title: 'Added',
         type: 'added',
-        items: ["Desktop notifications now don't show if Discord is focused, while in-app ones do."]
+        items: ['Added a timeout based on number of words, the WPM can be changed between **300** and **900**, or can be turned off entirely and let all notifications stay for 5 seconds.', 'Added option to set the bar color to the authors top role color. Can be turned off.', 'Added option of setting a custom bar color. If you want to change the background color of the notification, peek into XenoLib settings.']
       }
     ]
   };
@@ -117,6 +154,24 @@ var InAppNotifications = (() => {
         } catch (e) {}
       }
       onStart() {
+        try {
+          /* do not, under any circumstances, let this kill the plugin */
+          const CUSTOM_RULES = XenoLib._.cloneDeep(WebpackModules.getByProps('RULES', 'ALLOW_LINKS_RULES').RULES);
+          for (let rule of Object.keys(CUSTOM_RULES)) CUSTOM_RULES[rule].raw = null;
+          for (let rule of ['paragraph', 'text', 'emoji']) CUSTOM_RULES[rule].raw = e => e.content;
+          for (let rule of ['autolink', 'br', 'link', 'newline', 'url']) delete CUSTOM_RULES[rule];
+          for (let rule of ['blockQuote', 'channel', 'codeBlock', 'em', 'inlineCode', 'mention', 'roleMention', 's', 'spoiler', 'strong', 'u']) CUSTOM_RULES[rule].raw = (e, t, n) => t(e.content, n);
+          CUSTOM_RULES.customEmoji.raw = e => e.name;
+          const astTools = WebpackModules.getByProps('flattenAst');
+          const SimpleMarkdown = WebpackModules.getByProps('parserFor', 'outputFor');
+          const parser = SimpleMarkdown.parserFor(CUSTOM_RULES);
+          const render = SimpleMarkdown.htmlFor(SimpleMarkdown.ruleOutput(CUSTOM_RULES, 'raw'));
+          this._timeUnparser = (e = '', r = true, a = {}) => render(astTools.constrainAst(astTools.flattenAst(parser(e, Object.assign({ inline: r }, a)))));
+        } catch (err) {
+          Logger.stacktrace('Failed to create custom unparser', err);
+          this._timeUnparser = null;
+        }
+
         this.errorCount = 0;
         Dispatcher.subscribe('MESSAGE_CREATE', this.MESSAGE_CREATE);
         this.patchAll();
@@ -145,6 +200,9 @@ var InAppNotifications = (() => {
           .IAN-message .${MarkupClassname.split(' ')[0]} {
             line-height: unset;
           }
+          .IAN-message .${MarkupClassname.split(' ')[0]} {
+            max-height: calc(100vh - 150px);
+          }
           .IAN-message .${MarkupClassname.split(' ')[0]}, .IAN-message .${MessageClasses.username.split(' ')[0]} {
             overflow: hidden
           }
@@ -161,6 +219,15 @@ var InAppNotifications = (() => {
       /* zlib uses reference to defaultSettings instead of a cloned object, which sets settings as default settings, messing everything up */
       loadSettings(defaultSettings) {
         return PluginUtilities.loadSettings(this.name, Utilities.deepclone(this.defaultSettings ? this.defaultSettings : defaultSettings));
+      }
+
+      buildSetting(data) {
+        if (data.type === 'color') {
+          const setting = new XenoLib.Settings.ColorPicker(data.name, data.note, data.value, data.onChange, data.options);
+          if (data.id) setting.id = data.id;
+          return setting;
+        }
+        return super.buildSetting(data);
       }
 
       _shouldNotify(iAuthor, iChannel) {
@@ -265,11 +332,35 @@ var InAppNotifications = (() => {
         if (!this.shouldNotify(message, iChannel, iAuthor)) return;
         const notif = this.makeTextChatNotification(iChannel, message, iAuthor);
         if (!notif) return; /* wah */
-        this.showNotification(notif, iChannel);
+        const member = GuildMemberStore.getMember(iChannel.guild_id, iAuthor.id);
+        this.showNotification(notif, iChannel, this.settings.roleColor && member && member.colorString);
       }
 
-      showNotification(notif, iChannel) {
-        const notificationId = XenoLib.Notifications.info(
+      calculateTime(text) {
+        let words = 0;
+        if (this._timeUnparser) {
+          try {
+            text = this._timeUnparser(text);
+          } catch (err) {
+            Logger.stacktrace(`Failed to unparse text ${text}`, err);
+            this._timeUnparser = null;
+          }
+        }
+        /* https://github.com/ngryman/reading-time */
+        function ansiWordBound(c) {
+          return ' ' === c || '\n' === c || '\r' === c || '\t' === c;
+        }
+        for (var i = 0; i < text.length; ) {
+          for (; i < text.length && !ansiWordBound(text[i]); i++);
+          words++;
+          for (; i < text.length && ansiWordBound(text[i]); i++);
+        }
+        return (words / this.settings.wordsPerMinute) * 60 * 1000;
+      }
+
+      showNotification(notif, iChannel, color) {
+        const timeout = this.settings.wpmTimeout ? Math.min(this.calculateTime(notif.title) + this.calculateTime(notif.content), 60000) : 0;
+        const notificationId = XenoLib.Notifications.show(
           React.createElement(
             'div',
             {
@@ -289,11 +380,12 @@ var InAppNotifications = (() => {
             React.createElement('div', { className: XenoLib.joinClassNames(MarkupClassname, MessageClasses.messageContent) }, ParserModule.parse(notif.content, true, { channelId: iChannel.id }))
           ),
           {
-            timeout: 5000,
+            timeout: Math.max(5000, timeout),
             onClick: () => {
               NavigationUtils.transitionTo(`/channels/${iChannel.guild_id || '@me'}/${iChannel.id}`);
               XenoLib.Notifications.remove(notificationId);
-            }
+            },
+            color: color || this.settings.color
           }
         );
       }
@@ -305,7 +397,7 @@ var InAppNotifications = (() => {
       }
 
       patchShouldNotify() {
-        Patcher.after(WebpackModules.getByProps('shouldNotify'), 'shouldNotify', () => (WindowInfo.isFocused() ? false : undefined));
+        Patcher.after(WebpackModules.getByProps('shouldDisplayNotifications'), 'shouldDisplayNotifications', () => (WindowInfo.isFocused() ? false : undefined));
       }
 
       /* PATCHES */

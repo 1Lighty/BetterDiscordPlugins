@@ -1,4 +1,11 @@
 # [InAppNotifications](https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications "InAppNotifications") Changelog
+### 1.0.3
+- Fixed notification sound not playing if Discord was focused.
+- Large messages no longer go off screen.
+- Added a timeout based on number of words, the WPM can be changed between **300** and **900**, or can be turned off entirely and let all notifications stay for 5 seconds.
+- Added option to set the bar color to the authors top role color. Can be turned off.
+- Added option of setting a custom bar color. If you want to change the background color of the notification, peek into XenoLib settings.
+
 ### 1.0.2
 - Desktop notifications now don't show if Discord is focused, while in-app ones do.
 
