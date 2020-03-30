@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.14',
+      version: '1.3.15',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'fixed',
-        items: ['To anyone who is curious, there was just some under the hood changes, nothing major.']
+        items: ['Fixed extra info on plugin cards not showing up.']
       }
     ],
     defaultConfig: [
@@ -539,7 +539,7 @@ var XenoLib = (() => {
         if (sourceLink) footerProps.children.push(websiteLink ? ' | ' : null, sourceLink);
         footerProps.children.push(websiteLink || sourceLink ? ' | ' : null, React.createElement('a', { className: 'bda-link', onClick: e => ContextMenuActions.openContextMenu(e, e => React.createElement('div', { className: DiscordClasses.ContextMenu.contextMenu }, XenoLib.createContextMenuGroup([XenoLib.createContextMenuItem('Paypal', () => window.open('https://paypal.me/lighty13')), XenoLib.createContextMenuItem('Ko-fi', () => window.open('https://ko-fi.com/lighty_')), XenoLib.createContextMenuItem('Patreon', () => window.open('https://www.patreon.com/lightyp'))]))) }, 'Donate'));
         footerProps.children.push(' | ', supportServerLink || React.createElement('a', { className: 'bda-link', onClick: () => (LayerManager.popLayer(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Support Server'));
-        footerProps.children.push(' | ', React.createElement('a', { className: 'bda-link', onClick: () => (_this.props.plugin.showChangelog ? _this.props.plugin.showChangelog() : Modals.showChangelogModal(_this.props.plugin.getName() + ' Changelog', _this.props.plugin.getVersion(), _this.props.plugin.getChanges())) }, 'Changelog'));
+        footerProps.children.push(' | ', React.createElement('a', { className: 'bda-link', onClick: () => (_this.props.addon.plugin.showChangelog ? _this.props.addon.plugin.showChangelog() : Modals.showChangelogModal(_this.props.addon.plugin.getName() + ' Changelog', _this.props.addon.plugin.getVersion(), _this.props.addon.plugin.getChanges())) }, 'Changelog'));
       };
       if (global.V2C_PluginCard) Patcher.after(V2C_PluginCard.prototype, 'render', handlePatch);
       if (global.V2C_ThemeCard) Patcher.after(V2C_ThemeCard.prototype, 'render', handlePatch);
@@ -551,7 +551,7 @@ var XenoLib = (() => {
         if (!PluginCard.selector) PluginCard.selector = '.bda-slist > .ui-switch-item';
         if (CancelledAsync) return;
         /* *laughs in evil* */
-        Patcher.after(PluginCard.component.prototype, 'render', handlePatch);
+        Patcher.after(PluginCard.component.prototype, 'render', handlePatch, { displayName: 'PluginCard' });
         PluginCard.forceUpdateAll();
       } /* I have a feeling I'm gonna get yelled at for doing this :eyes: */
       if (!global.V2C_PluginCard) patchRewriteCard();
@@ -1516,7 +1516,6 @@ var XenoLib = (() => {
         }
       }
       showChangelog(footer) {
-        return;
         XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog);
       }
       get name() {
