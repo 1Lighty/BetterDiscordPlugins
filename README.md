@@ -26,6 +26,6 @@ Show a notification in Discord when someone sends a message, just like on mobile
 ##  [MentionAliasesRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/MentionAliasesRedux "MentionAliasesRedux")
 Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.
 ## [SaveToRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/SaveToRedux "SaveToRedux")
-Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.
+Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly, as well as install plugins from direct links.
 ## [UnreadBadgesRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/UnreadBadgesRedux "UnreadBadgesRedux")
 Shows an unread badge on folders, server icons and channels, all toggleable with the count adjustable.
