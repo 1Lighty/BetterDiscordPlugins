@@ -1,4 +1,12 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.12
+- Fixed some site specific saving issues
+- Improved performance
+- Fixed not being able to save images, videos and files from search results
+- Fixed not being able to save from an attachment link
+- Github links that lead directly to a plugin or theme, or raw links to a plugin or theme can now be saved
+- You can now directly install plugins or themes from these links or sent attachments
+
 ### 2.0.11
 - Fixed not working on GIFVs like.. uh.. tennor and giphycat and stuff.
 - e621 and twitter embed images now save at full resolution. If you have a website embed that doesn't save properly or at full resolution, please [join my support server](https://discord.gg/NYvWdN5) and tell me about it so I can fix it.

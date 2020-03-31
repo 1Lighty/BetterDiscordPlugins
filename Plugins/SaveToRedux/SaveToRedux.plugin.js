@@ -10,14 +10,14 @@
 	// Put the user at ease by addressing them in the first person
 	shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
 	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-		shell.Popup('I\'m in the correct folder already.\nJust reload Discord with Ctrl+R.', 0, 'I\'m already installed', 0x40);
+		shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
 	} else if (!fs.FolderExists(pathPlugins)) {
 		shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
 	} else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
 		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
 		// Show the user where to put plugins in the future
 		shell.Exec('explorer ' + pathPlugins);
-		shell.Popup('I\'m installed!\nJust reload Discord with Ctrl+R.', 0, 'Successfully installed', 0x40);
+		shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
 	}
 	WScript.Quit();
 
@@ -41,21 +41,26 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.11',
-      description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly.',
+      version: '2.0.12',
+      description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'heck',
-        type: 'added',
-        items: ['Fixed not working on GIFVs like.. uh.. tennor and giphycat and stuff.', "e621 and twitter embed images now save at full resolution. If you have a website embed that doesn't save properly or at full resolution, please [join my support server](https://discord.gg/NYvWdN5) and tell me about it so I can fix it.", 'Added a kewl progress notification so you can see its download progress (although it depends on your internet speed and the content size).']
+        title: 'fixed',
+        type: 'fixed',
+        items: ['Fixed some site specific saving issues', 'Improved performance', 'Fixed not being able to save images, videos and files from search results', 'Fixed not being able to save from an attachment link']
       },
       {
-        type: 'video',
-        src: 'https://cdn.discordapp.com/attachments/389049952732446733/687717865033433089/bBahhK5GYQFR.mp4',
-        height: 161
+        title: 'New features',
+        type: 'added',
+        items: ['Github links that lead directly to a plugin or theme, or raw links to a plugin or theme can now be saved', 'You can now directly install plugins or themes from these links or sent attachments']
+      },
+      {
+        type: 'image',
+        src: 'https://cdn.discordapp.com/attachments/389049952732446733/694622056213512292/5jsZjnlrCBkz.png',
+        height: 166
       }
     ],
     defaultConfig: [
@@ -109,7 +114,7 @@ var SaveToRedux = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Settings, Modals, Utilities, WebpackModules, DiscordModules, DiscordClasses, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities } = Api;
-    const { React, ContextMenuActions, ReactDOM, GuildStore, DiscordConstants, Dispatcher, SwitchRow, EmojiUtils, RadioGroup } = DiscordModules;
+    const { React, ContextMenuActions, GuildStore, DiscordConstants, Dispatcher, SwitchRow, EmojiUtils, RadioGroup, EmojiInfo, ModalStack } = DiscordModules;
     const TextComponent = Utilities.getNestedProp(DiscordModules, 'TextElement.default');
     const getEmojiURL = Utilities.getNestedProp(WebpackModules.getByProps('getEmojiURL'), 'getEmojiURL');
     const showAlertModal = Utilities.getNestedProp(
@@ -135,7 +140,7 @@ var SaveToRedux = (() => {
       for (const domain of isTrustedDomain.domains) if (url.search(domain) !== -1) return true;
       return TrustStore.isTrustedDomain(url);
     };
-    isTrustedDomain.domains = [/\/\/steamuserimages-\w\.akamaihd\.net\//, /\/\/steamcdn-\w\.akamaihd\.net\//, /\/\/steamcommunity-\w\.akamaihd\.net\//, '//cdn.discordapp.com/', '//media.discordapp.net/', /\/\/images-ext-\d\.discordapp\.net\//, '//i.ytimg.com/', /\/\/static\d\.e621\.net\//, '//pbs.twimg.com/', '//preview.redd.it/', '//cdn.shopify.com/', '//discordapp.com/', '//i.imgur.com/', '//i.clouds.tf/', '//image.prntscr.com/', '//i.giphy.com/', '//media.tenor.co/'];
+    isTrustedDomain.domains = [/\/\/steamuserimages-\w\.akamaihd\.net\//, /\/\/steamcdn-\w\.akamaihd\.net\//, /\/\/steamcommunity-\w\.akamaihd\.net\//, '//cdn.discordapp.com/', '//media.discordapp.net/', /\/\/images-ext-\d\.discordapp\.net\//, '//i.ytimg.com/', /\/\/static\d\.e621\.net\//, /\/\/static\d\.e926\.net\//, '//pbs.twimg.com/', '//preview.redd.it/', '//cdn.shopify.com/', '//discordapp.com/', '//i.imgur.com/', '//i.clouds.tf/', '//image.prntscr.com/', '//i.giphy.com/', '//media.tenor.co/'];
 
     const MessageStrings = {
       UNTRUSTED_LINK: (() => {
@@ -272,6 +277,14 @@ var SaveToRedux = (() => {
       return '' === o ? l : n(l, '');
     }
 
+    /*
+
+    class ContextMenuItem extends (() => {
+      if (DiscordModules.ContextMenuItem) return DiscordModules.ContextMenuItem;
+
+      return class fuck{};
+    }) */
+
     const faultyVars = [];
     {
       const vars = { TextComponent, getEmojiURL, openItem, DelayedCall, FormItem, Messages, TextInput, AvatarModule, TrustStore };
@@ -283,15 +296,6 @@ var SaveToRedux = (() => {
     return class SaveToRedux extends Plugin {
       constructor() {
         super();
-        this.promises = {
-          state: { cancelled: false },
-          cancel() {
-            this.state.cancelled = true;
-          },
-          restore() {
-            this.state.cancelled = false;
-          }
-        };
         XenoLib.DiscordUtils.bindAll(this, ['handleContextMenu', 'formatFilename']);
         XenoLib.changeName(__filename, 'SaveToRedux');
         const oOnStart = this.onStart.bind(this);
@@ -318,24 +322,7 @@ var SaveToRedux = (() => {
           PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
           return XenoLib.Notifications.error(`[**${this.name}**] Plugin is in a broken state. Please update it, press CTRL + R or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });
         }
-        /* trigger settings migration */
-        if (typeof this.settings.folders !== 'undefined') {
-          const settings = Utilities.deepclone(this.defaultSettings);
-          const folders = [];
-          settings.saveOptions.fileNameType = this.settings.fileNameType;
-          settings.saveOptions.customFileName = this.settings.customFileName;
-          settings.saveOptions.randLength = this.settings.randLength;
-          settings.saveOptions.conflictingFilesHandle = this.settings.conflictingFilesHandle;
-          settings.misc.contextMenuOnBottom = this.settings.contextMenuOnBottom;
-          Object.values(this.settings.folders).forEach(folder => folders.push({ name: folder.name, path: folder.path }));
-          this.settings = settings;
-          this.folders = folders;
-          this.saveSettings();
-          this.saveFolders();
-        }
-        this.folders = XenoLib.loadData(this.name, 'folders', {
-          data: []
-        }).data;
+        this.folders = XenoLib.loadData(this.name, 'folders', { data: [] }).data;
         this.channelMessages = WebpackModules.find(m => m._channelMessages)._channelMessages;
         this.patchAll();
         PluginUtilities.addStyle(
@@ -394,24 +381,15 @@ var SaveToRedux = (() => {
       }
 
       async patchReactions(promiseState) {
-        const selector = `.${XenoLib.getSingleClass('reactionMe reactions')} > div:not(.${XenoLib.getSingleClass('reactionMe reactionBtn')})`;
-        const Reaction = await ReactComponents.getComponentByName('Reaction', selector);
-        if (!Reaction.selector) Reaction.selector = selector;
+        const Reaction = await ReactComponents.getComponentByName('Reaction', `.${XenoLib.getSingleClass('reactionMe reactions')} > div:not(.${XenoLib.getSingleClass('reactionMe reactionBtn')})`);
         if (promiseState.cancelled) return;
         const unpatch = Patcher.after(Reaction.component.prototype, 'render', (_this, _, ret) => {
           const oChildren = ret.props.children;
           ret.props.children = e => {
             try {
               const oChRet = oChildren(e);
-              const url = _this.props.emoji.id ? getEmojiURL({ id: _this.props.emoji.id, animated: _this.props.emoji.animated }) : WebpackModules.getByProps('getURL').getURL(_this.props.emoji.name);
-              XenoLib.createSharedContext(
-                () => {
-                  const submenu = this.constructMenu(url.split('?')[0], 'Reaction', _this.props.emoji.name);
-                  return XenoLib.createContextMenuGroup([submenu]);
-                },
-                oChRet.props,
-                'MESSAGE_REACTIONS'
-              );
+              const url = _this.props.emoji.id ? getEmojiURL({ id: _this.props.emoji.id, animated: _this.props.emoji.animated }) : EmojiInfo.getURL(_this.props.emoji.name);
+              XenoLib.createSharedContext(oChRet, 'MESSAGE_REACTIONS', () => XenoLib.createContextMenuGroup([this.constructMenu(url.split('?')[0], 'Reaction', _this.props.emoji.name)]));
               return oChRet;
             } catch (e) {
               Logger.stacktrace('Error in Reaction patch', e);
@@ -493,7 +471,7 @@ var SaveToRedux = (() => {
         return ret;
       }
 
-      formatURL(url, requiresSize, customName, fallbackExtension, proxiedUrl) {
+      formatURL(url, requiresSize, customName, fallbackExtension, proxiedUrl, failNum = 0) {
         // url = url.replace(/\/$/, '');
         if (requiresSize) url += '?size=2048';
         else if (url.indexOf('twimg.com/') !== -1)
@@ -501,7 +479,10 @@ var SaveToRedux = (() => {
             .replace(':small', ':orig')
             .replace(':medium', ':orig')
             .replace(':large', ':orig');
-        else if (url.indexOf('.e621.net/') !== -1) url = url.replace('preview/', '').replace('sample/', '');
+        else if (url.indexOf('.e621.net/') !== -1 || url.indexOf('.e926.net/') !== -1) {
+          if (failNum <= 1) url = url.replace('preview/', '').replace('sample/', '');
+          if (failNum === 1) url = url.replace(/.jpe?g/, '.png');
+        }
         const match = url.match(/(?:\/)([^\/]+?)(?:(?:\.)([^.\/?:]+)){0,1}(?:[^\w\/\.]+\w+){0,1}(?:(?:\?[^\/]+){0,1}|(?:\/){0,1})$/);
         let name = customName || match[1];
         let extension = match[2] || fallbackExtension;
@@ -533,10 +514,13 @@ var SaveToRedux = (() => {
           });
         const subItems = [];
         const folderSubMenus = [];
-        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl);
+        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', type === 'Plugin' || type === 'Theme' ? url.match(/[^\/]+\.(?:plugin|theme)/)[0] : customName, fallbackExtension, proxiedUrl);
         if (!formattedurl.extension) onNoExtension(formattedurl.url);
+        let notifId;
+        let downloadAttempts = 0;
+        const shouldDoMultiAttempts = url.indexOf('.e621.net/') !== -1 || url.indexOf('.e926.net/') !== -1;
         const downloadEx = (path, openOnSave) => {
-          const notifId = XenoLib.Notifications.info(`Downloading ${type}`, { timeout: 0, loading: true, progress: 0 });
+          if (!notifId) notifId = XenoLib.Notifications.info(`Downloading ${type}`, { timeout: 0, loading: true, progress: 0 });
           /* https://stackoverflow.com/questions/10420352/ */
           function humanFileSize(bytes, si, noUnit, unit) {
             const thresh = si ? 1000 : 1024;
@@ -574,13 +558,24 @@ var SaveToRedux = (() => {
                   .on('error', e => {
                     BdApi.showToast(`Failed to save! ${e}`, { type: 'error', timeout: 10000 });
                     XenoLib.Notifications.remove(notifId);
+                    notifId = undefined;
                   });
               } else if (res.statusCode == 404) {
+                if (shouldDoMultiAttempts && downloadAttempts < 2) {
+                  downloadAttempts++;
+                  const newUrl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, downloadAttempts).url;
+                  if (newUrl !== formattedurl.url) {
+                    formattedurl.url = newUrl;
+                    return downloadEx(path, openOnSave);
+                  }
+                }
                 BdApi.showToast('Image does not exist!', { type: 'error' });
                 XenoLib.Notifications.remove(notifId);
+                notifId = undefined;
               } else {
                 BdApi.showToast(`Unknown error. ${res.statusCode}`, { type: 'error' });
                 XenoLib.Notifications.remove(notifId);
+                notifId = undefined;
               }
             });
         };
@@ -900,7 +895,31 @@ var SaveToRedux = (() => {
                 if (!path) return BdApi.showToast('Maybe next time.');
                 saveFile(path, undefined, false, true);
               });
-          })
+          }),
+          type === 'Plugin'
+            ? XenoLib.createContextMenuItem(
+                `Install Plugin`,
+                () => {
+                  saveFile(BdApi.Plugins.folder + `/${formattedurl.fileName}`, undefined, false, true);
+                },
+                {
+                  /* onContextMenu: () => console.log('wee!'), tooltip: 'Right click to install and enable'  */
+                  tooltip: 'No overwrite warning'
+                }
+              )
+            : null,
+          type === 'Theme'
+            ? XenoLib.createContextMenuItem(
+                `Install Theme`,
+                () => {
+                  saveFile(BdApi.Themes.folder + `/${formattedurl.fileName}`, undefined, false, true);
+                },
+                {
+                  /* onContextMenu: () => console.log('wee!'), tooltip: 'Right click to install and enable'  */
+                  tooltip: 'No overwrite warning'
+                }
+              )
+            : null
         );
         return createSubMenu(`Save ${type} To`, subItems, () => {
           if (this.lastUsedFolder === -1) return BdApi.showToast('No folder has been used yet', { type: 'error' });
@@ -926,7 +945,7 @@ var SaveToRedux = (() => {
           if (url.indexOf('/a_') !== -1) url = url.replace('.webp', '.gif').replace('.png', '.gif');
           else url = url.replace('.webp', '.png');
         };
-        if (type === 'NATIVE_IMAGE' || type === 'MESSAGE_MAIN') {
+        if (type === 'NATIVE_IMAGE' || type === 'MESSAGE_MAIN' || type === 'MESSAGE_SEARCH_RESULT') {
           let src;
           if (type === 'NATIVE_IMAGE') {
             src = Utilities.getNestedProp(ret, 'props.children.props.href') || Utilities.getNestedProp(_this, 'props.href');
@@ -967,8 +986,14 @@ var SaveToRedux = (() => {
             // Logger.info('sauce', sauce, 'proxiedsauce', proxiedsauce);
             /* do not check if proxiedsauce is an image video or audio, it will always be video or image!
                an anchor element however is just a link which could be anything! so best we check it
+               special handler for github links, discord attachments and plugins
              */
-            if (!proxiedsauce && !(isImage(sauce) || isVideo(sauce) || isAudio(sauce))) return;
+            if (sauce && sauce.indexOf('//github.com/') !== -1 && (sauce.indexOf('.plugin.js') === sauce.length - 10 || sauce.indexOf('.theme.css') === sauce.length - 10)) {
+              const split = sauce.slice(sauce.indexOf('//github.com/') + 13).split('/');
+              split.splice(2, 1);
+              sauce = 'https://raw.githubusercontent.com/' + split.join('/');
+            }
+            if (!proxiedsauce && (!sauce || !(isImage(sauce) || isVideo(sauce) || isAudio(sauce) || sauce.indexOf('//cdn.discordapp.com/attachments/') !== -1 || sauce.indexOf('//raw.githubusercontent.com/') !== -1))) return;
             src = sauce;
             proxiedUrl = proxiedsauce;
             /* if src does not have an extension but the proxied URL does, use the proxied URL instead */
@@ -1006,7 +1031,8 @@ var SaveToRedux = (() => {
           } else if (url.indexOf('//discordapp.com/assets/') !== -1 && _this.props.target && _this.props.target.className.indexOf('emoji') !== -1) {
             const alt = _this.props.target.alt;
             if (alt) customName = alt.split(':')[1] || alt;
-          }
+          } else if (url.indexOf('.plugin.js') === url.length - 10) saveType = 'Plugin';
+          else if (url.indexOf('.theme.css') === url.length - 10) saveType = 'Theme';
           if (!Array.isArray(ret.props.children)) ret.props.children = [ret.props.children];
         } else if (type === 'GUILD_ICON_BAR') {
           saveType = 'Icon';
@@ -1049,7 +1075,7 @@ var SaveToRedux = (() => {
             _this.state.__STR_extension,
             proxiedUrl
           );
-          const group = XenoLib.createContextMenuGroup([submenu]);
+          const group = React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'savetoredux submenu', onError: () => XenoLib.Notifications.error(`[**${this.name}**] An issue has occured and the submenus had to be removed to avoid crashes. Sorry for the inconvenience. More info in console (CTRL + SHIFT + I, click console).`, { timeout: 10000 }) }, XenoLib.createContextMenuGroup([submenu]));
           const targetGroup = ret.props.children;
 
           if (this.settings.misc.contextMenuOnBottom) targetGroup.push(group);
@@ -1105,7 +1131,7 @@ var SaveToRedux = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.11') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.14') && (XenoLibOutdated = !0);
+      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.16') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
@@ -1115,6 +1141,7 @@ var SaveToRedux = (() => {
     ? class {
         constructor() {
           this._XL_PLUGIN = true;
+          this.start = this.load = this.handleMissingLib;
         }
         getName() {
           return this.name.replace(/\s+/g, '');
@@ -1126,12 +1153,12 @@ var SaveToRedux = (() => {
           return this.version;
         }
         getDescription() {
-          return this.description;
+          return this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
         }
         stop() {}
-        load() {
-          const a = BdApi.findModuleByProps('isModalOpen');
-          if (a && a.isModalOpen(`${this.name}_DEP_MODAL`)) return;
+        handleMissingLib() {
+          const a = BdApi.findModuleByProps('isModalOpenWithKey');
+          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
           const b = !global.XenoLib,
             c = !global.ZeresPluginLibrary,
             d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
@@ -1146,7 +1173,7 @@ var SaveToRedux = (() => {
             g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
             h = BdApi.findModuleByProps('Sizes', 'Weights'),
             i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            j = () => BdApi.getCore().alert(e, `${f}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${c || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}${b || XenoLibOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js"target="_blank">Click here to download XenoLib</a>' : ''}`);
+            j = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
           if (!g || !i || !h) return j();
           class k extends BdApi.React.PureComponent {
             constructor(a) {
@@ -1191,9 +1218,9 @@ var SaveToRedux = (() => {
                           b = require('fs'),
                           c = require('path'),
                           d = () => {
-                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a ? j() : void b.writeFile(c.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), e, () => {})));
+                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a || 200 !== d.statusCode ? (g.popWithKey(n), j()) : void b.writeFile(c.join(BdApi.Plugins.folder, '1XenoLib.plugin.js'), e, () => {})));
                           };
-                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, e, f) => (a ? j() : void (b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
+                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, e, f) => (a || 200 !== e.statusCode ? (g.popWithKey(n), j()) : void (b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
                       }
                     },
                     a
@@ -1204,7 +1231,6 @@ var SaveToRedux = (() => {
             `${this.name}_DEP_MODAL`
           );
         }
-        start() {}
         get [Symbol.toStringTag]() {
           return 'Plugin';
         }
