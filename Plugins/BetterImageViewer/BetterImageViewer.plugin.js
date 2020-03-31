@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.2.0',
+      version: '1.2.1',
       description: 'Move between images in the entire channel with arrow keys, zoom into the image by click and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -1249,7 +1249,8 @@ var BetterImageViewer = (() => {
         this.promises = { state: { cancelled: false } };
         if (PluginBrokenFatal) return this._startFailure('Plugin is in a broken state.');
         if (NoImageZoom) this._startFailure('Image zoom is broken.');
-        if (BdApi.getPlugin && BdApi.getPlugin('ImageZoom') && global.pluginCookie && pluginCookie['ImageZoom']) XenoLib.Notifications.warning(`[**${this.name}**] Using ImageZoom while having the zoom function in BetterImageViewer enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });
+        if (!NoImageZoom && BdApi.getPlugin('ImageZoom') && BdApi.Plugins.isEnabled('ImageZoom')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageZoom** while having the zoom function in **${this.name}** enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });
+	      if (BdApi.getPlugin('Better Image Popups') && BdApi.Plugins.isEnabled('Better Image Popups')) XenoLib.Notifications.warning(`[**${this.name}**] Using **Better Image Popups** with **${this.name}** is completely unsupported and will cause issues. **${this.name}** fully supersedes it in terms of features as well, please either disable **Better Image Popups** or delete it to avoid issues.`, { timeout: 0 })
         this.hiddenSettings = XenoLib.loadData(this.name, 'hidden', { panelWH: 500 });
         this.patchAll();
         Dispatcher.subscribe('MESSAGE_DELETE', this.handleMessageDelete);
