@@ -10,14 +10,14 @@
 	// Put the user at ease by addressing them in the first person
 	shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
 	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-		shell.Popup('I\'m in the correct folder already.\nJust reload Discord with Ctrl+R.', 0, 'I\'m already installed', 0x40);
+		shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
 	} else if (!fs.FolderExists(pathPlugins)) {
 		shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
 	} else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
 		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
 		// Show the user where to put plugins in the future
 		shell.Exec('explorer ' + pathPlugins);
-		shell.Popup('I\'m installed!\nJust reload Discord with Ctrl+R.', 0, 'Successfully installed', 0x40);
+		shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
 	}
 	WScript.Quit();
 
@@ -37,16 +37,16 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.3',
-      description: 'Adds ability to go between images in the current channel with arrow keys, or on screen buttons, and has click to zoom. Also provides info about the image, who posted it and when.',
+      version: '1.2.0',
+      description: 'Move between images in the entire channel with arrow keys, zoom into the image by click and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
-        type: 'fixed',
-        items: ['Fixed not picking up embeds with multiple images', 'Added workaround for a rare patching error']
+        title: 'improvements',
+        type: 'improved',
+        items: ['Image previews will take up as much space as possible, larger images will be easier to view.', 'Image pixel will always be the same size as a physical pixel, this means all images will look sharp no matter what scaling your Discord (and system) is set to.  Unless the image has been downscaled.', "Added a way to load the images at full resolution instead of downscaled.\n**Pro tip**: don't fucking enable this, you *WILL NOT* notice a god damn difference. You can also force it to load the full res by *CTRL + CLICK*ing the preview. When it's loading the full res image, the first resolution at bottom right will turn red."]
       }
     ],
     defaultConfig: [
@@ -89,6 +89,13 @@ var BetterImageViewer = (() => {
             id: 'infoSize',
             type: 'switch',
             value: true
+          },
+          {
+            name: 'Always load full resolution image',
+            note: "You won't notice a difference. You can also force it to load the full resolution image by ctrl + clicking the image preview. the first resolution on bottom right will turn red when it's enabled.",
+            id: 'loadFull',
+            type: 'switch',
+            value: false
           }
         ]
       },
@@ -206,7 +213,20 @@ var BetterImageViewer = (() => {
     })();
     const Clickable = WebpackModules.getByDisplayName('Clickable');
 
-    const ImageUtils = Object.assign({}, WebpackModules.getByProps('getImageSrc'), WebpackModules.getByProps('getRatio'));
+    const _ImageUtils = WebpackModules.getByProps('getImageSrc');
+    const ImageUtils = Object.assign({}, WebpackModules.getByProps('getImageSrc'), WebpackModules.getByProps('getRatio'), {
+      zoomFit: (e, t) => ImageUtils.fit(e, t, Math.ceil(Math.round(0.86 * window.innerWidth * devicePixelRatio)), Math.ceil(Math.round(0.8 * window.innerHeight * devicePixelRatio))),
+      getImageSrc: (e, t, n, r = 1, a = null) => {
+        var o = t;
+        var i = n;
+        if (r < 1) {
+          o = Math.round(t * r);
+          i = Math.round(n * r);
+        }
+        return ImageUtils.getSrcWithWidthAndHeight(e, t, n, o, i, a);
+      },
+      getSizedImageSrc: (e, t, n, r) => _ImageUtils.getSizedImageSrc(e, t, n, r)
+    });
 
     const TrustedStore = WebpackModules.getByProps('isTrustedDomain');
 
@@ -308,11 +328,15 @@ var BetterImageViewer = (() => {
         for (const prop in state) this.state[prop] = state[prop];
       }
       _handleSaveLensWHChange() {
-        Dispatcher.dispatch({ type: 'BIV_LENS_WH_CHANGE', value: this.state.panelWH[0] });
+        Dispatcher.dirtyDispatch({ type: 'BIV_LENS_WH_CHANGE', value: this.state.panelWH[0] });
         this._WHCS = true;
       }
       handleMouseDown(e) {
         if (e.button !== DiscordConstants.MouseButtons.PRIMARY) return;
+        if (e.ctrlKey) {
+          Dispatcher.dirtyDispatch({ type: 'BIV_LOAD_FULLRES' });
+          return;
+        }
         if (this.state.zooming) return this.setState({ zooming: false });
         else if (this.props.settings.enableMode === 2) return; /* scroll to toggle */
         this.state;
@@ -380,8 +404,11 @@ var BetterImageViewer = (() => {
           }
         }
       }
-      getRawImage() {
+      getRawImage(failed) {
         if (this.__BIV_updating || this.props.__BIV_animated) return;
+        if (typeof this.__BIV_failNum !== 'number') this.__BIV_failNum = 0;
+        if (failed) this.__BIV_failNum++;
+        else this.__BIV_failNum = 0;
         this.__BIV_updating = true;
         const src = this.props.src;
         const fullSource = (() => {
@@ -389,7 +416,7 @@ var BetterImageViewer = (() => {
           const SaveToRedux = BdApi.getPlugin && BdApi.getPlugin('SaveToRedux');
           const needsSize = src.substr(src.indexOf('?')).indexOf('size=') !== -1;
           try {
-            if (SaveToRedux) return SaveToRedux.formatURL(split, needsSize, '', '').url;
+            if (SaveToRedux && !PluginUpdater.defaultComparator(SaveToRedux.version, '2.0.12')) return SaveToRedux.formatURL(this.props.__BIV_original || '', needsSize, '', '', split, this.__BIV_failNum).url;
           } catch (_) {}
           return split + (needsSize ? '?size=2048' : '');
         })();
@@ -420,6 +447,7 @@ var BetterImageViewer = (() => {
               }
             },
             React.createElement(this.props.__BIV_animated ? (this.props.settings.smoothing ? ReactSpring.animated.video : 'video') : this.props.settings.smoothing ? ReactSpring.animated.img : 'img', {
+              onError: _ => this.getRawImage(true),
               src: this.props.__BIV_animated ? this.props.__BIV_src : this.state.raw,
               width: props.imgWidth,
               height: props.imgHeight,
@@ -511,6 +539,7 @@ var BetterImageViewer = (() => {
           Logger.warn('LazyImage render returned null!', new Error()); /* should not occur */
           return ret;
         }
+        ret.props.__BIV_original = this.props.__BIV_original;
         ret.props.children = e =>
           React.createElement('img', {
             className: e.className || undefined,
@@ -623,7 +652,8 @@ var BetterImageViewer = (() => {
           controlsVisible: false,
           imageSize: null,
           originalImageSize: null,
-          basicImageInfo: null
+          basicImageInfo: null,
+          showFullRes: false
         };
         XenoLib._.bindAll(this, ['handleMessageCreate', 'handleMessageDelete', 'handlePurge', 'handleKeyDown', 'handlePrevious', 'handleNext', 'handleMouseEnter', 'handleMouseLeave', 'handleFastJump']);
         if (props.__BIV_index === -1) {
@@ -867,7 +897,7 @@ var BetterImageViewer = (() => {
         const targetIdx = filtered.findIndex(m => m.id === (subsidiaryMessageId ? subsidiaryMessageId : this.state.__BIV_data.messageId));
         if (targetIdx === -1) Logger.warn('Unknown message\n', new Error());
         const isNearingEdge = next ? filtered.length - (targetIdx + 1) < 5 : targetIdx + 1 < 5;
-        this.setState({ isNearingEdge });
+        this.setState({ isNearingEdge, showFullRes: false });
         if (keyboardMode === -1 || isNearingEdge) {
           /* search required, wait for user input if none of these are tripped */
           if (keyboardMode || this._maxImages < 2 || this.state.controlsHovered) {
@@ -982,6 +1012,7 @@ var BetterImageViewer = (() => {
         const currentImage = this._imageCounter[this.state.__BIV_data.messageId] + (this.state.__BIV_data.images.length - 1 - this.state.__BIV_index);
         ret.props.children[0].type = LazyImage;
         ret.props.children[0].props.id = message.id + currentImage;
+        ret.props.children[0].props.__BIV_original = this.props.original;
         const iMember = DiscordAPI.currentGuild && GuildMemberStore.getMember(DiscordAPI.currentGuild.id, message.author.id);
         ret.props.children.push(
           ReactDOM.createPortal(
@@ -1356,18 +1387,14 @@ var BetterImageViewer = (() => {
       }
 
       onStop() {
-        if (overlayDOMNode) overlayDOMNode.remove();
         this.promises.state.cancelled = true;
         Patcher.unpatchAll();
         Dispatcher.unsubscribe('MESSAGE_DELETE', this.handleMessageDelete);
         Dispatcher.unsubscribe('MESSAGE_DELETE_BULK', this.handlePurge);
         Dispatcher.unsubscribe('BIV_LENS_WH_CHANGE', this.handleWHChange);
         PluginUtilities.removeStyle(this.short + '-CSS');
-      }
-
-      /* zlib uses reference to defaultSettings instead of a cloned object, which sets settings as default settings, messing everything up */
-      loadSettings(defaultSettings) {
-        return PluginUtilities.loadSettings(this.name, Utilities.deepclone(this.defaultSettings ? this.defaultSettings : defaultSettings));
+        if (overlayDOMNode) overlayDOMNode.remove();
+        overlayDOMNode = null;
       }
 
       saveHiddenSettings() {
@@ -1390,10 +1417,11 @@ var BetterImageViewer = (() => {
       /* PATCHES */
 
       patchAll() {
-        Utilities.suppressErrors(this.patchMessageAccessories.bind(this), 'MessageAccessories patch')(this.promises.state);
-        this.patchLazyImageZoomable();
-        this.patchImageModal();
-        this.patchLazyImage();
+        Utilities.suppressErrors(this.patchMessageAccessories.bind(this), 'MessageAccessories patches')(this.promises.state);
+        Utilities.suppressErrors(this.patchLazyImageZoomable.bind(this), 'LazyImageZoomable patches')();
+        Utilities.suppressErrors(this.patchImageModal.bind(this), 'ImageModal patches')();
+        Utilities.suppressErrors(this.patchLazyImage.bind(this), 'LazyImage patches')();
+        Utilities.suppressErrors(this.patchImageScaling.bind(this), 'image scaling patches')();
       }
 
       patchLazyImageZoomable() {
@@ -1402,58 +1430,66 @@ var BetterImageViewer = (() => {
             _this.onZoom = (e, n) => {
               e.preventDefault();
               if (e.currentTarget instanceof HTMLElement) e.currentTarget.blur();
+              e = null;
               const original = _this.props.original || _this.props.src;
               ModalStack.push(e => {
-                return React.createElement(
-                  /* this safety net should prevent any major issues or crashes, in theory */
-                  ErrorCatcher,
-                  {
-                    label: 'Image modal',
-                    onError: (_, level) => {
-                      if (level < 2) XenoLib.Notifications.error(`[${this.name}] Internal error, options will not show. If you repeatedly see this, join my support server, open up console (CTRL + SHIFT + I > click console) and screenshot any errors.`, { timeout: 0 });
-                      if (level > 1) e.onClose();
-                    },
-                    fallback: [
-                      React.createElement(
-                        ImageModal,
-                        Object.assign(
-                          {
-                            original,
-                            src: _this.props.src,
-                            width: _this.props.width,
-                            height: _this.props.height,
-                            animated: _this.props.animated,
-                            children: _this.props.children,
-                            placeholder: n.placeholder,
-                            isTrusted: TrustedStore.isTrustedDomain(original),
-                            onClickUntrusted: _this.onClickUntrusted
-                          },
-                          e
-                        )
-                      )
-                    ]
-                  },
-                  React.createElement(
-                    RichImageModal,
-                    Object.assign(
-                      {
-                        original,
-                        src: _this.props.src,
-                        width: _this.props.width,
-                        height: _this.props.height,
-                        animated: _this.props.animated,
-                        children: _this.props.children,
-                        placeholder: n.placeholder,
-                        isTrusted: TrustedStore.isTrustedDomain(original),
-                        onClickUntrusted: _this.onClickUntrusted,
-                        __BIV_data: _this.props.__BIV_data,
-                        __BIV_index: _this.props.__BIV_data ? _this.props.__BIV_data.images.findIndex(m => m.src === _this.props.src) : -1,
-                        settings: this.settings
+                try {
+                  return React.createElement(
+                    /* this safety net should prevent any major issues or crashes, in theory */
+                    ErrorCatcher,
+                    {
+                      label: 'Image modal',
+                      onError: (_, level) => {
+                        if (level < 2) XenoLib.Notifications.error(`[${this.name}] Internal error, options will not show. If you repeatedly see this, join my support server, open up console (CTRL + SHIFT + I > click console) and screenshot any errors.`, { timeout: 0 });
+                        if (level > 1) e.onClose();
                       },
-                      e
+                      fallback: [
+                        React.createElement(
+                          ImageModal,
+                          Object.assign(
+                            {
+                              original,
+                              src: _this.props.src,
+                              width: _this.props.width,
+                              height: _this.props.height,
+                              animated: _this.props.animated,
+                              children: _this.props.children,
+                              placeholder: n.placeholder,
+                              isTrusted: TrustedStore.isTrustedDomain(original),
+                              onClickUntrusted: _this.onClickUntrusted
+                            },
+                            e
+                          )
+                        )
+                      ]
+                    },
+                    React.createElement(
+                      RichImageModal,
+                      Object.assign(
+                        {
+                          original,
+                          src: _this.props.src,
+                          width: _this.props.width,
+                          height: _this.props.height,
+                          animated: _this.props.animated,
+                          children: _this.props.children,
+                          placeholder: n.placeholder,
+                          isTrusted: TrustedStore.isTrustedDomain(original),
+                          onClickUntrusted: _this.onClickUntrusted,
+                          __BIV_data: _this.props.__BIV_data,
+                          __BIV_index: _this.props.__BIV_data ? _this.props.__BIV_data.images.findIndex(m => m.src === _this.props.src) : -1,
+                          settings: this.settings
+                        },
+                        e
+                      )
                     )
-                  )
-                );
+                  );
+                } catch (err) {
+                  /* juuuuust in case, modal crashes can be brutal */
+                  Logger.stacktrace('Error creating image modal', err);
+                  e.onClose();
+                  return null;
+                }
               });
             };
             _this.onZoom.__BIV_patched = true;
@@ -1475,12 +1511,15 @@ var BetterImageViewer = (() => {
         Patcher.before(MessageAccessories.component.prototype, 'renderEmbeds', _this => {
           if (!_this.renderEmbed.__BIV_patched) {
             const oRenderEmbed = _this.renderEmbed;
-            _this.renderEmbed = (e, n) => {
+            _this.renderEmbed = function(e, n) {
               const oRenderImageComponent = n.renderImageComponent;
-              n.renderImageComponent = a => {
-                a.__BIV_data = _this.__BIV_data;
-                return oRenderImageComponent(a);
-              };
+              if (!oRenderImageComponent.__BIV_patched) {
+                n.renderImageComponent = function(a) {
+                  a.__BIV_data = _this.__BIV_data;
+                  return oRenderImageComponent(a);
+                };
+                n.renderImageComponent.__BIV_patched = true;
+              }
               return oRenderEmbed(e, n);
             };
             _this.renderEmbed.__BIV_patched = true;
@@ -1488,15 +1527,18 @@ var BetterImageViewer = (() => {
         });
         Patcher.after(MessageAccessories.component.prototype, 'renderAttachments', (_this, _, ret) => {
           if (!ret) return;
-          ret.forEach(attachment => {
-            const props = Utilities.getNestedProp(attachment, 'props.children.props');
-            if (!props) return;
+          for (let attachment of ret) {
+            let props = Utilities.getNestedProp(attachment, 'props.children.props');
+            if (!props) continue;
             const oRenderImageComponent = props.renderImageComponent;
-            props.renderImageComponent = e => {
+            props.renderImageComponent = function(e) {
               e.__BIV_data = _this.__BIV_data;
               return oRenderImageComponent(e);
             };
-          });
+            attachment = null;
+            props = null;
+          }
+          ret = null;
         });
         MessageAccessories.forceUpdateAll();
       }
@@ -1516,7 +1558,7 @@ var BetterImageViewer = (() => {
         /* https://stackoverflow.com/questions/10420352/ */
         function humanFileSize(bytes, si) {
           const thresh = si ? 1000 : 1024;
-          if (Math.abs(bytes) < thresh) return `${bytes}} B`;
+          if (Math.abs(bytes) < thresh) return `${bytes} B`;
           const units = si ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'] : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
           let u = -1;
           do {
@@ -1526,6 +1568,7 @@ var BetterImageViewer = (() => {
           return `${bytes.toFixed(1)} ${units[u]}`;
         }
         Patcher.after(ImageModal.prototype, 'requestImageInfo', (_this, [props, equalRatio]) => {
+          const original = (props && props.original) || _this.props.original;
           const src = (props && props.src) || _this.props.src;
           const width = (props && props.width) || _this.props.width;
           const height = (props && props.height) || _this.props.height;
@@ -1534,7 +1577,7 @@ var BetterImageViewer = (() => {
             const SaveToRedux = BdApi.getPlugin && BdApi.getPlugin('SaveToRedux');
             const needsSize = src.substr(src.indexOf('?')).indexOf('size=') !== -1;
             try {
-              if (SaveToRedux) return SaveToRedux.formatURL(split, needsSize, '', '').url;
+              if (SaveToRedux) return SaveToRedux.formatURL(original || '', needsSize, '', '', split).url;
             } catch (_) {}
             return split + (needsSize ? '?size=2048' : '');
           })();
@@ -1563,7 +1606,7 @@ var BetterImageViewer = (() => {
             const width = (props && props.width) || _this.props.width;
             const height = (props && props.height) || _this.props.height;
             const max = ImageUtils.zoomFit(width, height);
-            const scaledRatio = getRatio(width, height, max.width, max.height) * window.devicePixelRatio;
+            const scaledRatio = getRatio(width, height, max.width, max.height);
             const finalRatio = scaledRatio < 1 ? scaledRatio : 1;
             if (settings.infoResolution || settings.infoScale) {
               _this.setState({
@@ -1587,18 +1630,38 @@ var BetterImageViewer = (() => {
           _this._controlsInactiveDelayedCall.delay();
           _this.handleMouseMove = XenoLib._.throttle(_this.handleMouseMove.bind(_this), 500);
           window.addEventListener('mousemove', _this.handleMouseMove);
+          Dispatcher.subscribe(
+            'BIV_LOAD_FULLRES',
+            (_this._fullresHandler = () => {
+              if (_this.state.showFullRes) return;
+              _this.setState({
+                showFullRes: true
+              });
+            })
+          );
         });
         Patcher.after(ImageModal.prototype, 'componentWillUnmount', _this => {
           if (!_this.state || _this.state.internalError) return;
           if (_this._headerRequest1) _this._headerRequest1.abort();
           if (_this._headerRequest2) _this._headerRequest2.abort();
           if (!_this._controlsVisibleTimeout) {
-            XenoLib.Notifications.warning(`[**${this.name}**] Something's not right.. Reloading self.`);
-            pluginModule.reloadPlugin(this.name);
+            /* since the BdApi is like a child on cocaine, I'll just wrap it in a try catch */
+            let reloadFailed = false;
+            try {
+              BdApi.Plugins.reload(this.name);
+            } catch (e) {
+              try {
+                pluginModule.reloadPlugin(this.name);
+              } catch (e) {
+                reloadFailed = true;
+              }
+            }
+            XenoLib.Notifications.warning(`[**${this.name}**] Something's not right.. ${reloadFailed ? 'Reloading self failed..' : 'Reloading self.'}`);
           }
           if (_this._controlsVisibleTimeout) _this._controlsVisibleTimeout.stop();
           if (_this._controlsInactiveDelayedCall) _this._controlsInactiveDelayedCall.cancel();
           window.removeEventListener('mousemove', _this.handleMouseMove);
+          Dispatcher.unsubscribe('BIV_LOAD_FULLRES', _this._fullresHandler);
         });
         const renderTableEntry = (val1, val2) => React.createElement('tr', {}, React.createElement('td', {}, val1), React.createElement('td', {}, val2));
         Patcher.after(ImageModal.prototype, 'render', (_this, _, ret) => {
@@ -1608,8 +1671,12 @@ var BetterImageViewer = (() => {
               controlsVisible: false,
               imageSize: null,
               originalImageSize: null,
-              basicImageInfo: null
+              basicImageInfo: null,
+              showFullRes: false
             };
+          if (this.settings.ui.loadFull) _this.state.showFullRes = true;
+          const imageProps = Utilities.getNestedProp(ret, 'props.children.0.props');
+          if (imageProps) imageProps.__BIV_full_res = _this.state.showFullRes;
           if (_this.state.internalError) return;
           const settings = this.settings.ui;
           const debug = this.settings.behavior.debug;
@@ -1626,7 +1693,7 @@ var BetterImageViewer = (() => {
                 {
                   className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug }, TextElement.Colors.PRIMARY)
                 },
-                React.createElement('table', {}, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? `${basicImageInfo.width}x${basicImageInfo.height}` : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale || debug ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
+                React.createElement('table', {}, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? TextElement.Colors.RED : undefined }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale || debug ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
               ),
               overlayDOMNode
             )
@@ -1646,6 +1713,10 @@ var BetterImageViewer = (() => {
           } else if (state.readyState !== _this.state.readyState && animated) _this.observeVisibility();
           else if (!animated) _this.unobserveVisibility();
         });
+        Patcher.instead(LazyImage.prototype, 'getSrc', (_this, [ratio, forcePng], orig) => {
+          if (_this.props.__BIV_full_res) return _this.props.src;
+          return orig(ratio, forcePng);
+        });
         Patcher.after(LazyImage.prototype, 'render', (_this, _, ret) => {
           if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || _this.props.__BIV_isVideo || !ret) return;
           if (_this.props.animated && ret.props.children) {
@@ -1660,10 +1731,23 @@ var BetterImageViewer = (() => {
           ret.props.settings = this.settings.zoom;
           ret.props.__BIV_animated = _this.props.animated;
           ret.props.hiddenSettings = this.hiddenSettings;
+          const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
+          ret.props.width = ret.props.width * scale;
+          ret.props.height = ret.props.height * scale;
         });
         Patcher.after(WebpackModules.getByDisplayName('LazyVideo').prototype, 'render', (_, __, ret) => {
           if (!ret) return;
           ret.props.__BIV_isVideo = true;
+        });
+      }
+
+      patchImageScaling() {
+        Patcher.instead(WebpackModules.getByProps('zoomFit'), 'zoomFit', (_, [e, t]) => ImageUtils.zoomFit(e, t));
+        Patcher.instead(_ImageUtils, 'getImageSrc', (_, args) => ImageUtils.getImageSrc(...args));
+        Patcher.before(_ImageUtils, 'getSizedImageSrc', (_, args) => {
+          const toAdd = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
+          args[1] *= toAdd;
+          args[2] *= toAdd;
         });
       }
 
@@ -1713,7 +1797,7 @@ var BetterImageViewer = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.11') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.14') && (XenoLibOutdated = !0);
+      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.16') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
@@ -1723,6 +1807,7 @@ var BetterImageViewer = (() => {
     ? class {
         constructor() {
           this._XL_PLUGIN = true;
+          this.start = this.load = this.handleMissingLib;
         }
         getName() {
           return this.name.replace(/\s+/g, '');
@@ -1734,12 +1819,12 @@ var BetterImageViewer = (() => {
           return this.version;
         }
         getDescription() {
-          return this.description;
+          return this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
         }
         stop() {}
-        load() {
-          const a = BdApi.findModuleByProps('isModalOpen');
-          if (a && a.isModalOpen(`${this.name}_DEP_MODAL`)) return;
+        handleMissingLib() {
+          const a = BdApi.findModuleByProps('isModalOpenWithKey');
+          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
           const b = !global.XenoLib,
             c = !global.ZeresPluginLibrary,
             d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
@@ -1754,7 +1839,7 @@ var BetterImageViewer = (() => {
             g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
             h = BdApi.findModuleByProps('Sizes', 'Weights'),
             i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            j = () => BdApi.getCore().alert(e, `${f}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${c || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}${b || XenoLibOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js"target="_blank">Click here to download XenoLib</a>' : ''}`);
+            j = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
           if (!g || !i || !h) return j();
           class k extends BdApi.React.PureComponent {
             constructor(a) {
@@ -1799,9 +1884,9 @@ var BetterImageViewer = (() => {
                           b = require('fs'),
                           c = require('path'),
                           d = () => {
-                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a ? j() : void b.writeFile(c.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), e, () => {})));
+                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a || 200 !== d.statusCode ? (g.popWithKey(n), j()) : void b.writeFile(c.join(BdApi.Plugins.folder, '1XenoLib.plugin.js'), e, () => {})));
                           };
-                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, e, f) => (a ? j() : void (b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
+                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, e, f) => (a || 200 !== e.statusCode ? (g.popWithKey(n), j()) : void (b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
                       }
                     },
                     a
@@ -1812,8 +1897,6 @@ var BetterImageViewer = (() => {
             `${this.name}_DEP_MODAL`
           );
         }
-
-        start() {}
         get [Symbol.toStringTag]() {
           return 'Plugin';
         }

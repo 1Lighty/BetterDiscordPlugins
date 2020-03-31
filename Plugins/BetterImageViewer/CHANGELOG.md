@@ -1,4 +1,10 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.2.0
+- Image previews will take up as much space as possible, larger images will be easier to view.
+- Image pixel will always be the same size as a physical pixel, this means all images will look sharp no matter what scaling your Discord (and system) is set to. Unless the image has been downscaled.
+- Added a way to load the images at full resolution instead of downscaled.  
+**Pro tip**: don't fucking enable this, you *WILL NOT* notice a god damn difference. You can also force it to load the full res by *CTRL + CLICK*ing the preview. When it's loading the full res image, the first resolution at bottom right will turn red.
+
 ### 1.1.3
 - Fixed not picking up embeds with multiple images
 - Added workaround for a rare patching error
