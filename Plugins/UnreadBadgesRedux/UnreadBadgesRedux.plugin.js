@@ -10,14 +10,14 @@
 	// Put the user at ease by addressing them in the first person
 	shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
 	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-		shell.Popup('I\'m in the correct folder already.\nJust reload Discord with Ctrl+R.', 0, 'I\'m already installed', 0x40);
+		shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
 	} else if (!fs.FolderExists(pathPlugins)) {
 		shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
 	} else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
 		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
 		// Show the user where to put plugins in the future
 		shell.Exec('explorer ' + pathPlugins);
-		shell.Popup('I\'m installed!\nJust reload Discord with Ctrl+R.', 0, 'Successfully installed', 0x40);
+		shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
 	}
 	WScript.Quit();
 
@@ -41,16 +41,16 @@ var UnreadBadgesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.3',
+      version: '1.0.4',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'darn',
+        title: 'fixed',
         type: 'fixed',
-        items: ['Temp fixed a bug caused by ZLib, making the badges not show']
+        items: ['Fixed badge not showing on folders on Discord canary']
       }
     ],
     defaultConfig: [
@@ -159,7 +159,7 @@ var UnreadBadgesRedux = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { Settings, Utilities, WebpackModules, DiscordModules, ColorConverter, ReactComponents, Patcher, PluginUtilities } = Api;
+    const { Settings, Utilities, WebpackModules, DiscordModules, ColorConverter, ReactComponents, Patcher, PluginUtilities, Logger, ReactTools, ModalStack } = Api;
     const { React, ChannelStore } = DiscordModules;
 
     const ReactSpring = WebpackModules.getByProps('useTransition');
@@ -203,6 +203,7 @@ var UnreadBadgesRedux = (() => {
       const channels = AltChannelStore.getChannels(guildId);
       let count = 0;
       for (const { channel } of channels.SELECTABLE) {
+        /* isChannelMuted is SLOW! */
         if (includeMuted || (!MuteModule.isChannelMuted(channel.guild_id, channel.id) && (!channel.parent_id || !MuteModule.isChannelMuted(channel.guild_id, channel.parent_id)))) count += UnreadStore.getUnreadCount(channel.id);
       }
       return count;
@@ -235,6 +236,19 @@ var UnreadBadgesRedux = (() => {
       constructor() {
         super();
         XenoLib.changeName(__filename, 'UnreadBadgesRedux');
+        const oOnStart = this.onStart.bind(this);
+        this.onStart = () => {
+          try {
+            oOnStart();
+          } catch (e) {
+            Logger.stacktrace('Failed to start!', e);
+            PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
+            XenoLib.Notifications.error(`[**${this.name}**] Failed to start! Please update it, press CTRL + R, or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });
+            try {
+              this.onStop();
+            } catch (e) {}
+          }
+        };
         try {
           ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
         } catch (e) {}
@@ -258,11 +272,6 @@ var UnreadBadgesRedux = (() => {
         Patcher.unpatchAll();
         PluginUtilities.removeStyle(this.short + '-CSS');
         this.forceUpdateAll();
-      }
-
-      /* zlib uses reference to defaultSettings instead of a cloned object, which sets settings as default settings, messing everything up */
-      loadSettings(defaultSettings) {
-        return PluginUtilities.loadSettings(this.name, Utilities.deepclone(this.defaultSettings ? this.defaultSettings : defaultSettings));
       }
 
       buildSetting(data) {
@@ -350,11 +359,8 @@ var UnreadBadgesRedux = (() => {
       }
 
       async patchGuildFolder(promiseState) {
-        const selector = `.${XenoLib.getSingleClass('folder wrapper', true)}`;
-        const GuildFolder = await ReactComponents.getComponentByName('GuildFolder', selector);
-        if (!GuildFolder.selector) GuildFolder.selector = selector;
-        if (promiseState.cancelled) return;
         const settings = this.settings;
+        const FolderStore = WebpackModules.getByProps('isFolderExpanded');
         function BlobMaskWrapper(e) {
           e.__UBR_unread_count = StoresModule.useStateFromStores([UnreadStore, MuteModule], () => {
             if ((e.__UBR_folder_expanded && settings.misc.expandedFolders) || !settings.misc.folders) return 0;
@@ -369,6 +375,35 @@ var UnreadBadgesRedux = (() => {
           return React.createElement(e.__UBR_old_type, e);
         }
         BlobMaskWrapper.displayName = 'BlobMask';
+        const GuildFolderMemo = WebpackModules.find(m => m.type && m.type.toString().indexOf('.ContextMenuTypes.GUILD_ICON_FOLDER') !== -1);
+        if (GuildFolderMemo) {
+          Patcher.after(GuildFolderMemo, 'type', (_, [props], ret) => {
+            const mask = Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'BlobMask');
+            if (!mask) return;
+            mask.props.__UBR_old_type = mask.type;
+            mask.props.__UBR_guildIds = props.guildIds;
+            mask.props.__UBR_folder_expanded = FolderStore.isFolderExpanded(props.folderId);
+            mask.type = BlobMaskWrapper;
+          });
+          const instance = ReactTools.getOwnerInstance(document.querySelector('.wrapper-21YSNc'));
+          if (!instance) return;
+          const unpatch = Patcher.after(instance, 'render', (_, __, ret) => {
+            unpatch();
+            if (!ret) return;
+            ret.key = `GETGOOD${Math.random()}`;
+            const oRef = ret.props.setFolderRef;
+            ret.props.setFolderRef = (e, n) => {
+              _.forceUpdate();
+              return oRef(e, n);
+            };
+          });
+          instance.forceUpdate();
+          return;
+        }
+        const selector = `.${XenoLib.getSingleClass('folder wrapper', true)}`;
+        const GuildFolder = await ReactComponents.getComponentByName('GuildFolder', selector);
+        if (!GuildFolder.selector) GuildFolder.selector = selector;
+        if (promiseState.cancelled) return;
         Patcher.after(GuildFolder.component.prototype, 'render', (_this, _, ret) => {
           const mask = Utilities.findInTree(ret, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
           if (!mask) return;
@@ -445,6 +480,7 @@ var UnreadBadgesRedux = (() => {
           if (typeof _this.props.__UBR_unread_count !== 'number') return;
           if (!_this.state.unreadBadgeMask) return;
           _this.state.unreadBadgeMask.destroy();
+          _this.state.unreadBadgeMask = null;
         });
         Patcher.after(BlobMask.component.prototype, 'componentDidUpdate', (_this, [{ __UBR_unread_count }]) => {
           if (typeof _this.props.__UBR_unread_count !== 'number' || _this.props.__UBR_unread_count === __UBR_unread_count) return;
@@ -483,7 +519,8 @@ var UnreadBadgesRedux = (() => {
               height: 24,
               rx: 12,
               ry: 12,
-              transform: unreadCountMaskSpring.to([0, 1], [-20, 0]).to(e => `translate(${e} ${-e})`),
+              opacity: unreadCountMaskSpring.to([0, 0.5, 1], [0, 0, 1]),
+              transform: unreadCountMaskSpring.to([0, 1], [-16, 0]).to(e => `translate(${e} ${-e})`),
               fill: 'black'
             })
           );
@@ -494,10 +531,10 @@ var UnreadBadgesRedux = (() => {
                 className: LowerBadgeClassname,
                 animatedStyle: {
                   opacity: unreadCountMaskSpring.to([0, 0.5, 1], [0, 0, 1]),
-                  transform: unreadCountMaskSpring.to(e => `translate(${-20 + 20 * e} ${-20 + 20 * e})`)
+                  transform: unreadCountMaskSpring.to(e => `translate(${-20 + 20 * e} ${-1 * (16 - 16 * e)})`)
                 }
               },
-              BadgesModule.NumberBadge({ count: counter, color: this.settings.misc.backgroundColor, style: { color: this.settings.misc.textColor } })
+              React.createElement(BadgesModule.NumberBadge, { count: counter, color: this.settings.misc.backgroundColor, style: { color: this.settings.misc.textColor } })
             )
           );
         });
@@ -554,7 +591,7 @@ var UnreadBadgesRedux = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.11') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.14') && (XenoLibOutdated = !0);
+      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.16') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
@@ -564,6 +601,7 @@ var UnreadBadgesRedux = (() => {
     ? class {
         constructor() {
           this._XL_PLUGIN = true;
+          this.start = this.load = this.handleMissingLib;
         }
         getName() {
           return this.name.replace(/\s+/g, '');
@@ -575,12 +613,12 @@ var UnreadBadgesRedux = (() => {
           return this.version;
         }
         getDescription() {
-          return this.description;
+          return this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
         }
         stop() {}
-        load() {
-          const a = BdApi.findModuleByProps('isModalOpen');
-          if (a && a.isModalOpen(`${this.name}_DEP_MODAL`)) return;
+        handleMissingLib() {
+          const a = BdApi.findModuleByProps('isModalOpenWithKey');
+          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
           const b = !global.XenoLib,
             c = !global.ZeresPluginLibrary,
             d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
@@ -595,7 +633,7 @@ var UnreadBadgesRedux = (() => {
             g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
             h = BdApi.findModuleByProps('Sizes', 'Weights'),
             i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            j = () => BdApi.getCore().alert(e, `${f}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${c || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}${b || XenoLibOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js"target="_blank">Click here to download XenoLib</a>' : ''}`);
+            j = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
           if (!g || !i || !h) return j();
           class k extends BdApi.React.PureComponent {
             constructor(a) {
@@ -640,9 +678,9 @@ var UnreadBadgesRedux = (() => {
                           b = require('fs'),
                           c = require('path'),
                           d = () => {
-                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a ? j() : void b.writeFile(c.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), e, () => {})));
+                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a || 200 !== d.statusCode ? (g.popWithKey(n), j()) : void b.writeFile(c.join(BdApi.Plugins.folder, '1XenoLib.plugin.js'), e, () => {})));
                           };
-                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, e, f) => (a ? j() : void (b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
+                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, e, f) => (a || 200 !== e.statusCode ? (g.popWithKey(n), j()) : void (b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
                       }
                     },
                     a
@@ -653,7 +691,6 @@ var UnreadBadgesRedux = (() => {
             `${this.name}_DEP_MODAL`
           );
         }
-        start() {}
         get [Symbol.toStringTag]() {
           return 'Plugin';
         }

@@ -1,4 +1,7 @@
 # [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux") Changelog
+### 1.0.4
+- Fixed badge not showing on folders on Discord canary
+
 ### 1.0.3
 - Temp fixed a bug caused by ZLib, making the badges not show
 
