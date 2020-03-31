@@ -1,4 +1,7 @@
 # [InAppNotifications](https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications "InAppNotifications") Changelog
+### 1.0.4
+- Fixed unparser erroring out and not calculating the timeout properly.
+
 ### 1.0.3
 - Fixed notification sound not playing if Discord was focused.
 - Large messages no longer go off screen.

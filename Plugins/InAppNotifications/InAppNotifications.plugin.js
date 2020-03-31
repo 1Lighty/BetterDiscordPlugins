@@ -1,4 +1,4 @@
-//META{"name":"InAppNotifications","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/InAppNotifications/InAppNotifications.plugin.js","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications"}*//
+//META{"name":"InAppNotifications","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/InAppNotifications/InAppNotifications.plugin.js","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
 /*@cc_on
 @if (@_jscript)
 
@@ -10,14 +10,14 @@
 	// Put the user at ease by addressing them in the first person
 	shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
 	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-		shell.Popup('I\'m in the correct folder already.\nJust reload Discord with Ctrl+R.', 0, 'I\'m already installed', 0x40);
+		shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
 	} else if (!fs.FolderExists(pathPlugins)) {
 		shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
 	} else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
 		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
 		// Show the user where to put plugins in the future
 		shell.Exec('explorer ' + pathPlugins);
-		shell.Popup('I\'m installed!\nJust reload Discord with Ctrl+R.', 0, 'Successfully installed', 0x40);
+		shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
 	}
 	WScript.Quit();
 
@@ -41,7 +41,7 @@ var InAppNotifications = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.3',
+      version: '1.0.4',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -84,18 +84,21 @@ var InAppNotifications = (() => {
         max: 900,
         markers: Array.from(Array(13), (_, i) => i * 50 + 300),
         stickToMarkers: true
+      },
+      {
+        type: 'note'
       }
     ],
     changelog: [
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed notification sound not playing if Discord was focused.', 'Large messages no longer go off screen.']
+        items: ['Fixed unparser erroring out and not calculating the timeout properly.']
       },
       {
-        title: 'Added',
+        title: '',
         type: 'added',
-        items: ['Added a timeout based on number of words, the WPM can be changed between **300** and **900**, or can be turned off entirely and let all notifications stay for 5 seconds.', 'Added option to set the bar color to the authors top role color. Can be turned off.', 'Added option of setting a custom bar color. If you want to change the background color of the notification, peek into XenoLib settings.']
+        items: ["Since some people are still confused, I'll put this here.", 'You can hover your mouse over the notification to stop the timer.', 'Right click the x button to dismiss all notifications.', 'You can change the position and remove the backdrop filter blur style as well as the backdrop color in XenoLib settings.', 'If you disable the backdrop effect and want to change the background color of the notification, simply use this custom CSS ```js\n.xenoLib-notification-content {\n   background: #474747;\n}```']
       }
     ]
   };
@@ -115,6 +118,15 @@ var InAppNotifications = (() => {
     const SysMessageUtils = WebpackModules.getByProps('getSystemMessageUserJoin', 'stringify');
     const MessageParseUtils = (WebpackModules.getByProps('parseAndRebuild', 'default') || {}).default;
     const CUser = WebpackModules.getByPrototypes('getAvatarSource', 'isLocalBot');
+
+    class ExtraText extends Settings.SettingField {
+      constructor(name, note) {
+        super(name, note, null, TextElement.default, {
+          color: TextElement.Colors.PRIMARY,
+          children: 'To change the position or backdrop background color of the notifications, check XenoLib settings.'
+        });
+      }
+    }
 
     return class InAppNotifications extends Plugin {
       constructor() {
@@ -158,9 +170,9 @@ var InAppNotifications = (() => {
           /* do not, under any circumstances, let this kill the plugin */
           const CUSTOM_RULES = XenoLib._.cloneDeep(WebpackModules.getByProps('RULES', 'ALLOW_LINKS_RULES').RULES);
           for (let rule of Object.keys(CUSTOM_RULES)) CUSTOM_RULES[rule].raw = null;
-          for (let rule of ['paragraph', 'text', 'emoji']) CUSTOM_RULES[rule].raw = e => e.content;
+          for (let rule of ['paragraph', 'text', 'codeBlock', 'emoji', 'inlineCode']) CUSTOM_RULES[rule].raw = e => e.content;
           for (let rule of ['autolink', 'br', 'link', 'newline', 'url']) delete CUSTOM_RULES[rule];
-          for (let rule of ['blockQuote', 'channel', 'codeBlock', 'em', 'inlineCode', 'mention', 'roleMention', 's', 'spoiler', 'strong', 'u']) CUSTOM_RULES[rule].raw = (e, t, n) => t(e.content, n);
+          for (let rule of ['blockQuote', 'channel', 'em', 'mention', 'roleMention', 's', 'spoiler', 'strong', 'u']) CUSTOM_RULES[rule].raw = (e, t, n) => t(e.content, n);
           CUSTOM_RULES.customEmoji.raw = e => e.name;
           const astTools = WebpackModules.getByProps('flattenAst');
           const SimpleMarkdown = WebpackModules.getByProps('parserFor', 'outputFor');
@@ -226,6 +238,8 @@ var InAppNotifications = (() => {
           const setting = new XenoLib.Settings.ColorPicker(data.name, data.note, data.value, data.onChange, data.options);
           if (data.id) setting.id = data.id;
           return setting;
+        } else if (data.type === 'note') {
+          return new ExtraText('', '');
         }
         return super.buildSetting(data);
       }
@@ -446,8 +460,8 @@ var InAppNotifications = (() => {
       const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
-        author = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.11') && (ZeresPluginLibraryOutdated = !0), n(author, '1.3.14') && (XenoLibOutdated = !0);
+        o = BdApi.getPlugin('XenoLib');
+      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.16') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
@@ -457,6 +471,7 @@ var InAppNotifications = (() => {
     ? class {
         constructor() {
           this._XL_PLUGIN = true;
+          this.start = this.load = this.handleMissingLib;
         }
         getName() {
           return this.name.replace(/\s+/g, '');
@@ -468,12 +483,12 @@ var InAppNotifications = (() => {
           return this.version;
         }
         getDescription() {
-          return this.description;
+          return this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
         }
         stop() {}
-        load() {
-          const a = BdApi.findModuleByProps('isModalOpen');
-          if (a && a.isModalOpen(`${this.name}_DEP_MODAL`)) return;
+        handleMissingLib() {
+          const a = BdApi.findModuleByProps('isModalOpenWithKey');
+          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
           const b = !global.XenoLib,
             c = !global.ZeresPluginLibrary,
             d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
@@ -488,7 +503,7 @@ var InAppNotifications = (() => {
             g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
             h = BdApi.findModuleByProps('Sizes', 'Weights'),
             i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            j = () => BdApi.getCore().alert(e, `${f}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${c || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}${b || XenoLibOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js"target="_blank">Click here to download XenoLib</a>' : ''}`);
+            j = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
           if (!g || !i || !h) return j();
           class k extends BdApi.React.PureComponent {
             constructor(a) {
@@ -533,9 +548,9 @@ var InAppNotifications = (() => {
                           b = require('fs'),
                           c = require('path'),
                           d = () => {
-                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a ? j() : void b.writeFile(c.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), e, () => {})));
+                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a || 200 !== d.statusCode ? (g.popWithKey(n), j()) : void b.writeFile(c.join(BdApi.Plugins.folder, '1XenoLib.plugin.js'), e, () => {})));
                           };
-                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, e, f) => (a ? j() : void (b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
+                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, e, f) => (a || 200 !== e.statusCode ? (g.popWithKey(n), j()) : void (b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
                       }
                     },
                     a
@@ -546,7 +561,6 @@ var InAppNotifications = (() => {
             `${this.name}_DEP_MODAL`
           );
         }
-        start() {}
         get [Symbol.toStringTag]() {
           return 'Plugin';
         }
