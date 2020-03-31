@@ -41,16 +41,16 @@ var MentionAliasesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.7',
+      version: '2.0.8',
       description: 'Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MentionAliasesRedux/MentionAliasesRedux.plugin.js'
     },
     changelog: [
       {
-        title: "bug b' gone",
+        title: 'sad',
         type: 'fixed',
-        items: ['Fixed le crash']
+        items: ['Temporarily disabled faulty patches']
       }
     ],
     defaultConfig: [
@@ -705,8 +705,8 @@ var MentionAliasesRedux = (() => {
         Utilities.suppressErrors(this.patchUserPopouts.bind(this), 'UserPopout patch')(this.promises.state);
         Utilities.suppressErrors(this.patchUserModals.bind(this), 'UserProfileBody patch')(this.promises.state);
         Utilities.suppressErrors(this.patchMemberListItem.bind(this), 'MemberListItem patch')(this.promises.state);
-        Utilities.suppressErrors(this.patchPrivateChannel.bind(this), 'PrivateChannel patch')(this.promises.state);
-        Utilities.suppressErrors(this.patchPeopleListItem.bind(this), 'FriendRow patch')(this.promises.state);
+        //Utilities.suppressErrors(this.patchPrivateChannel.bind(this), 'PrivateChannel patch')(this.promises.state);
+        //Utilities.suppressErrors(this.patchPeopleListItem.bind(this), 'FriendRow patch')(this.promises.state);
         Utilities.suppressErrors(this.patchMutualFriends.bind(this), 'MutualFriends patch')(this.promises.state);
         Utilities.suppressErrors(this.patchChannelTextArea.bind(this), 'ChannelTextArea patch')(this.promises.state);
         Utilities.suppressErrors(this.patchMessageUsername.bind(this), 'MessageUsername patch')(this.promises.state);
@@ -789,6 +789,7 @@ var MentionAliasesRedux = (() => {
         const PrivateChannel = await ReactComponents.getComponentByName('PrivateChannel', `.${XenoLib.getSingleClass('closeButton channel', true)}`);
         if (promiseState.cancelled) return;
         const TypePatch = function(e) {
+          console.log(e);
           const ret = e.__oldTypeMA(e);
           const nameAndDecorators = Utilities.getNestedProp(ret, 'props.children.props.children.1.props.children.0.props.children');
           if (!nameAndDecorators) return ret;

@@ -1,4 +1,7 @@
 # [MentionAliasesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=MentionAliasesRedux "MentionAliasesRedux") Changelog
+### 2.0.8
+- Temporarily disabled faulty patches
+
 ### 2.0.7
 - Fixed le crash
 
