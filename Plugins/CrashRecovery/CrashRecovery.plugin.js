@@ -10,14 +10,14 @@
 	// Put the user at ease by addressing them in the first person
 	shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
 	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-		shell.Popup('I\'m in the correct folder already.\nJust reload Discord with Ctrl+R.', 0, 'I\'m already installed', 0x40);
+		shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
 	} else if (!fs.FolderExists(pathPlugins)) {
 		shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
 	} else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
 		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
 		// Show the user where to put plugins in the future
 		shell.Exec('explorer ' + pathPlugins);
-		shell.Popup('I\'m installed!\nJust reload Discord with Ctrl+R.', 0, 'Successfully installed', 0x40);
+		shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
 	}
 	WScript.Quit();
 
@@ -41,7 +41,7 @@ var CrashRecovery = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.1.4',
+      version: '0.1.5',
       description: 'In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
@@ -50,7 +50,7 @@ var CrashRecovery = (() => {
       {
         title: 'misc changes',
         type: 'fixed',
-        items: ['Improved detection accuracy', 'Added failsafe in case something goes wrong when: initializing, starting or when trying to display the recover button', 'Added third step when trying to recover, as to not switch channels unless required, can be disabled in settings.', 'Plugin is no longer experimental']
+        items: ['Fixed startup error in console']
       }
     ],
     defaultConfig: [
@@ -110,9 +110,18 @@ var CrashRecovery = (() => {
             setTimeout(() => {
               XenoLib.Notifications.danger(`${this.autoDisabledPlugins.length} ${this.autoDisabledPlugins.length > 1 ? 'plugins have' : 'plugin has'} been reenabled due to the crash disabling ${this.autoDisabledPlugins.length > 1 ? 'them' : 'it'}`, { timeout: 10000 });
               this.autoDisabledPlugins.forEach(({ name }) => {
-                pluginModule.stopPlugin(name);
-                pluginCookie[name] = true;
-                pluginModule.startPlugin(name);
+                try {
+                  pluginModule.stopPlugin(name);
+                  pluginCookie[name] = true;
+                  pluginModule.startPlugin(name);
+                } catch (err) {
+                  try {
+                    pluginCookie[name] = false;
+                    pluginModule.stopPlugin(name);
+                  } catch (err) {
+                    /* bruh idk */
+                  }
+                }
               });
               pluginModule.savePluginData();
               this.autoDisabledPlugins = [];
@@ -132,7 +141,7 @@ var CrashRecovery = (() => {
         if (!document.querySelector(`.${XenoLib.getSingleClass('errorPage')}`))
           this.__safeClearTimeout = setTimeout(() => {
             if (global.bdpluginErrors && global.bdpluginErrors.length) {
-              global.bdpluginErrors = [];
+              global.bdpluginErrors.splice(0, global.bdpluginErrors.length);
               Logger.info('Cleared global.bdpluginErrors');
             }
           }, 7500);
@@ -141,10 +150,6 @@ var CrashRecovery = (() => {
         this.promises.state.cancelled = true;
         Patcher.unpatchAll();
         if (this.notificationId) XenoLib.Notifications.remove(this.notificationId);
-      }
-      /* zlib uses reference to defaultSettings instead of a cloned object, which sets settings as default settings, messing everything up */
-      loadSettings(defaultSettings) {
-        return PluginUtilities.loadSettings(this.name, Utilities.deepclone(this.defaultSettings ? this.defaultSettings : defaultSettings));
       }
 
       queryResponsiblePlugins(stack) {
@@ -212,7 +217,7 @@ var CrashRecovery = (() => {
               return;
             }
             this.suspectedPlugin2 = this.autoDisabledPlugins.shift().name;
-            global.bdpluginErrors = [];
+            global.bdpluginErrors.splice(0, global.bdpluginErrors.length);
           }, 750);
         }
         if (this.setStateTimeout) return;
@@ -374,7 +379,7 @@ var CrashRecovery = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.11') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.14') && (XenoLibOutdated = !0);
+      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.16') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
@@ -384,6 +389,7 @@ var CrashRecovery = (() => {
     ? class {
         constructor() {
           this._XL_PLUGIN = true;
+          this.start = this.load = this.handleMissingLib;
         }
         getName() {
           return this.name.replace(/\s+/g, '');
@@ -395,12 +401,12 @@ var CrashRecovery = (() => {
           return this.version;
         }
         getDescription() {
-          return this.description;
+          return this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
         }
         stop() {}
-        load() {
-          const a = BdApi.findModuleByProps('isModalOpen');
-          if (a && a.isModalOpen(`${this.name}_DEP_MODAL`)) return;
+        handleMissingLib() {
+          const a = BdApi.findModuleByProps('isModalOpenWithKey');
+          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
           const b = !global.XenoLib,
             c = !global.ZeresPluginLibrary,
             d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
@@ -415,7 +421,7 @@ var CrashRecovery = (() => {
             g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
             h = BdApi.findModuleByProps('Sizes', 'Weights'),
             i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            j = () => BdApi.getCore().alert(e, `${f}<br/>Due to a slight mishap however, you'll have to download the libraries yourself. After opening the links, do CTRL + S to download the library.<br/>${c || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}${b || XenoLibOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js"target="_blank">Click here to download XenoLib</a>' : ''}`);
+            j = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
           if (!g || !i || !h) return j();
           class k extends BdApi.React.PureComponent {
             constructor(a) {
@@ -460,9 +466,9 @@ var CrashRecovery = (() => {
                           b = require('fs'),
                           c = require('path'),
                           d = () => {
-                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a ? j() : void b.writeFile(c.join(window.ContentManager.pluginsFolder, '1XenoLib.plugin.js'), e, () => {})));
+                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a || 200 !== d.statusCode ? (g.popWithKey(n), j()) : void b.writeFile(c.join(BdApi.Plugins.folder, '1XenoLib.plugin.js'), e, () => {})));
                           };
-                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, e, f) => (a ? j() : void (b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
+                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, e, f) => (a || 200 !== e.statusCode ? (g.popWithKey(n), j()) : void (b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
                       }
                     },
                     a
@@ -473,7 +479,6 @@ var CrashRecovery = (() => {
             `${this.name}_DEP_MODAL`
           );
         }
-        start() {}
         get [Symbol.toStringTag]() {
           return 'Plugin';
         }

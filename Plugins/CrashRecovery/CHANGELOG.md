@@ -1,4 +1,7 @@
 # [CrashRecovery](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery "CrashRecovery") Changelog
+### 0.1.5
+- Fixed startup error in console
+
 ### 0.1.4
 - Improved detection accuracy
 - Added failsafe in case something goes wrong when: initializing, starting or when trying to display the recover button
