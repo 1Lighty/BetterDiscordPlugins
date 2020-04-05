@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.2.2
+- Fixed jpeg images having their EXIF rotation applied when you tried to zoom. (Thank you person that reported this issue on my server, you know who you are <3)
+
 ### 1.2.0
 - Image previews will take up as much space as possible, larger images will be easier to view.
 - Image pixel will always be the same size as a physical pixel, this means all images will look sharp no matter what scaling your Discord (and system) is set to. Unless the image has been downscaled.

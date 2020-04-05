@@ -1,5 +1,5 @@
 # BetterImageViewer [![download](https://i.imgur.com/OAHgjZu.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer&dl=1 "BetterImageViewer")
-Move between images in the entire channel with arrow keys, zoom into the image by click and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.
+Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.
 ### Features
 Adds left and right arrows when you open an image, shows you who sent the image and when, the images resolution, scaling and size, as well as number of cached images (and estimated in channel total).  
 Can switch between images in the entire channel using the on screen buttons, or arrow keys.  

@@ -37,16 +37,16 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.2.1',
-      description: 'Move between images in the entire channel with arrow keys, zoom into the image by click and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
+      version: '1.2.2',
+      description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'improvements',
-        type: 'improved',
-        items: ['Image previews will take up as much space as possible, larger images will be easier to view.', 'Image pixel will always be the same size as a physical pixel, this means all images will look sharp no matter what scaling your Discord (and system) is set to.  Unless the image has been downscaled.', "Added a way to load the images at full resolution instead of downscaled.\n**Pro tip**: don't fucking enable this, you *WILL NOT* notice a god damn difference. You can also force it to load the full res by *CTRL + CLICK*ing the preview. When it's loading the full res image, the first resolution at bottom right will turn red."]
+        title: 'fixed',
+        type: 'fixed',
+        items: ['Fixed jpeg images having their EXIF rotation applied when you tried to zoom. (Thank you person that reported this issue on my server, you know who you are <3)']
       }
     ],
     defaultConfig: [
@@ -413,10 +413,12 @@ var BetterImageViewer = (() => {
         const src = this.props.src;
         const fullSource = (() => {
           const split = src.split('?')[0];
+          /* a user experienced some issues due to EXIF data */
+          const isJpeg = split.indexOf('//media.discordapp.net/attachments/') !== -1 && split.search(/.jpe?g$/i) !== -1;
           const SaveToRedux = BdApi.getPlugin && BdApi.getPlugin('SaveToRedux');
           const needsSize = src.substr(src.indexOf('?')).indexOf('size=') !== -1;
           try {
-            if (SaveToRedux && !PluginUpdater.defaultComparator(SaveToRedux.version, '2.0.12')) return SaveToRedux.formatURL(this.props.__BIV_original || '', needsSize, '', '', split, this.__BIV_failNum).url;
+            if (SaveToRedux && !PluginUpdater.defaultComparator(SaveToRedux.version, '2.0.12')) return SaveToRedux.formatURL((!isJpeg && this.props.__BIV_original) || '', needsSize, '', '', split, this.__BIV_failNum).url;
           } catch (_) {}
           return split + (needsSize ? '?size=2048' : '');
         })();
@@ -1250,7 +1252,7 @@ var BetterImageViewer = (() => {
         if (PluginBrokenFatal) return this._startFailure('Plugin is in a broken state.');
         if (NoImageZoom) this._startFailure('Image zoom is broken.');
         if (!NoImageZoom && BdApi.getPlugin('ImageZoom') && BdApi.Plugins.isEnabled('ImageZoom')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageZoom** while having the zoom function in **${this.name}** enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });
-	      if (BdApi.getPlugin('Better Image Popups') && BdApi.Plugins.isEnabled('Better Image Popups')) XenoLib.Notifications.warning(`[**${this.name}**] Using **Better Image Popups** with **${this.name}** is completely unsupported and will cause issues. **${this.name}** fully supersedes it in terms of features as well, please either disable **Better Image Popups** or delete it to avoid issues.`, { timeout: 0 })
+        if (BdApi.getPlugin('Better Image Popups') && BdApi.Plugins.isEnabled('Better Image Popups')) XenoLib.Notifications.warning(`[**${this.name}**] Using **Better Image Popups** with **${this.name}** is completely unsupported and will cause issues. **${this.name}** fully supersedes it in terms of features as well, please either disable **Better Image Popups** or delete it to avoid issues.`, { timeout: 0 });
         this.hiddenSettings = XenoLib.loadData(this.name, 'hidden', { panelWH: 500 });
         this.patchAll();
         Dispatcher.subscribe('MESSAGE_DELETE', this.handleMessageDelete);

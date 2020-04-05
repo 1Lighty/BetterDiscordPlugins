@@ -9,7 +9,7 @@ If you like these plugins, consider donating!
 
 [![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L3L01A2WY) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/lighty13)
 ## [BetterImageViewer](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/BetterImageViewer "BetterImageViewer")
-Move between images in the entire channel with arrow keys, zoom into the image by click and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.
+Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.
 
 ## [BetterTypingUsers](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/BetterTypingUsers "BetterTypingUsers")
 Replaces "Several people are typing" with who is actually typing, plus "x others" if it can't fit. Number of shown people typing can be changed.
