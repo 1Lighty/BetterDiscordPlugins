@@ -1,4 +1,7 @@
 # [CrashRecovery](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery "CrashRecovery") Changelog
+### 0.1.6
+- Removed usage of soon to be deprecated globals.
+
 ### 0.1.5
 - Fixed startup error in console
 

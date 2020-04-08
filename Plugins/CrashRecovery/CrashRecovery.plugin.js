@@ -41,7 +41,7 @@ var CrashRecovery = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.1.5',
+      version: '0.1.6',
       description: 'In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
@@ -50,7 +50,7 @@ var CrashRecovery = (() => {
       {
         title: 'misc changes',
         type: 'fixed',
-        items: ['Fixed startup error in console']
+        items: ['Removed usage of soon to be deprecated globals.']
       }
     ],
     defaultConfig: [
@@ -70,7 +70,7 @@ var CrashRecovery = (() => {
     const { React, Dispatcher, FlexChild: Flex, GuildStore } = DiscordModules;
 
     const DelayedCall = (WebpackModules.getByProps('DelayedCall') || {}).DelayedCall;
-    const ElectronDiscordModule = WebpackModules.getByProps('cleanupDisplaySleep');
+    const ElectronDiscordModule = WebpackModules.getByProps('cleanupDisplaySleep') || { cleanupDisplaySleep: DiscordModules.DiscordConstants.NOOP };
 
     return class CrashRecovery extends Plugin {
       constructor() {
@@ -100,33 +100,13 @@ var CrashRecovery = (() => {
         this.attempts = 0;
         this.promises = { state: { cancelled: false } };
         if (!DelayedCall) return this._startFailure('DelayedCall missing, plugin cannot function.');
+        if (ElectronDiscordModule.cleanupDisplaySleep === DiscordModules.DiscordConstants.NOOP) XenoLib.Notifications.error(`[**${this.name}**] cleanupDisplaySleep is missing.`);
         delete this.onCrashRecoveredDelayedCall;
         this.onCrashRecoveredDelayedCall = new DelayedCall(1000, () => {
           XenoLib.Notifications.remove(this.notificationId);
           this.notificationId = null;
           if (this.disabledPlugins) XenoLib.Notifications.danger(`${this.disabledPlugins.map(e => e)} ${this.disabledPlugins.length > 1 ? 'have' : 'has'} been disabled to recover from the crash`, { timeout: 0 });
           if (this.suspectedPlugin) XenoLib.Notifications.danger(`${this.suspectedPlugin} ${this.suspectedPlugin2 !== this.suspectedPlugin && this.suspectedPlugin2 ? 'or ' + this.suspectedPlugin2 : ''} is suspected of causing the crash.`, { timeout: 10000 });
-          if (this.autoDisabledPlugins && this.autoDisabledPlugins.length) {
-            setTimeout(() => {
-              XenoLib.Notifications.danger(`${this.autoDisabledPlugins.length} ${this.autoDisabledPlugins.length > 1 ? 'plugins have' : 'plugin has'} been reenabled due to the crash disabling ${this.autoDisabledPlugins.length > 1 ? 'them' : 'it'}`, { timeout: 10000 });
-              this.autoDisabledPlugins.forEach(({ name }) => {
-                try {
-                  pluginModule.stopPlugin(name);
-                  pluginCookie[name] = true;
-                  pluginModule.startPlugin(name);
-                } catch (err) {
-                  try {
-                    pluginCookie[name] = false;
-                    pluginModule.stopPlugin(name);
-                  } catch (err) {
-                    /* bruh idk */
-                  }
-                }
-              });
-              pluginModule.savePluginData();
-              this.autoDisabledPlugins = [];
-            }, 1000);
-          }
           this.disabledPlugins = null;
           this.suspectedPlugin = null;
           this.suspectedPlugin2 = null;
@@ -138,13 +118,6 @@ var CrashRecovery = (() => {
           Logger.info('Corrected incorrectly placed containers');
         });
         this.patchAll();
-        if (!document.querySelector(`.${XenoLib.getSingleClass('errorPage')}`))
-          this.__safeClearTimeout = setTimeout(() => {
-            if (global.bdpluginErrors && global.bdpluginErrors.length) {
-              global.bdpluginErrors.splice(0, global.bdpluginErrors.length);
-              Logger.info('Cleared global.bdpluginErrors');
-            }
-          }, 7500);
       }
       onStop() {
         this.promises.state.cancelled = true;
@@ -166,8 +139,20 @@ var CrashRecovery = (() => {
             }
             if (onDispatchEventFound && /Object\.callback.*(?:\\|\/|VM\d+ )MessageLoggerV2\.plugin\.js/.test(match[i])) continue;
             if (pluginName === '0PluginLibrary' || pluginName === this.name) continue;
-            const bbdplugin = Object.values(bdplugins).find(m => m.filename.startsWith(pluginName));
+
+            let bbdplugin = null;
+            if (!BdApi.Plugins.get(pluginName)) {
+              /*
+               * go away Zack
+               */
+              for (const path in require.cache) {
+                const module = require.cache[path];
+                if (!module || !module.exports || !module.exports.plugin || module.exports.filename.indexOf(pluginName) !== 0) continue;
+                bbdplugin = module.exports;
+              }
+            }
             const name = (bbdplugin && bbdplugin.name) || pluginName;
+            bbdplugin = null;
             if (this.disabledPlugins && this.disabledPlugins.indexOf(name) !== -1) return { name: name };
             plugins.push(name);
           }
@@ -192,7 +177,6 @@ var CrashRecovery = (() => {
 
       handleCrash(_this, stack, isRender) {
         this.onCrashRecoveredDelayedCall.cancel();
-        if (this.__safeClearTimeout) clearTimeout(this.__safeClearTimeout), (this.__safeClearTimeout = 0);
         if (!isRender) {
           _this.setState({
             error: { stack }
@@ -210,16 +194,6 @@ var CrashRecovery = (() => {
           this.cleanupDiscord();
           if (responsiblePlugins) this.suspectedPlugin = responsiblePlugins.shift();
         }
-        if (!this.attempts && !this.autoDisabledPlugins) {
-          setTimeout(() => {
-            this.autoDisabledPlugins = Utilities.deepclone(global.bdpluginErrors);
-            if (!this.autoDisabledPlugins || !this.autoDisabledPlugins.length) {
-              return;
-            }
-            this.suspectedPlugin2 = this.autoDisabledPlugins.shift().name;
-            global.bdpluginErrors.splice(0, global.bdpluginErrors.length);
-          }, 750);
-        }
         if (this.setStateTimeout) return;
         if (this.attempts >= 10 || ((this.settings.useThirdStep ? this.attempts >= 3 : this.attempts >= 2) && (!responsiblePlugins || !responsiblePlugins[0]))) {
           XenoLib.Notifications.update(this.notificationId, { content: 'Failed to recover from crash', loading: false });
@@ -231,7 +205,7 @@ var CrashRecovery = (() => {
           XenoLib.Notifications.update(this.notificationId, { content: `Failed, switching channels` });
         } else if (this.attempts >= 2) {
           try {
-            pluginModule.disablePlugin(responsiblePlugins[0]);
+            BdApi.Plugins.disable(responsiblePlugins[0]);
           } catch (e) {}
           XenoLib.Notifications.update(this.notificationId, { content: `Failed, suspecting ${responsiblePlugins[0]} for recovery failure` });
           if (!this.disabledPlugins) this.disabledPlugins = [];
@@ -319,8 +293,7 @@ var CrashRecovery = (() => {
                   this.disabledPlugins.length > 1 ? ' have' : ' has',
                   ' been disabled in an attempt to recover'
                 )
-              : false,
-            global.bdpluginErrors && global.bdpluginErrors.length ? React.createElement('div', {}, global.bdpluginErrors.length, ' plugins have been disabled by BBD due to the crash') : null
+              : false
           ];
         });
         const ErrorBoundaryInstance = ReactTools.getOwnerInstance(document.querySelector(`.${XenoLib.getSingleClass('errorPage')}`) || document.querySelector('#app-mount > svg:first-of-type'), { include: ['ErrorBoundary'] });
