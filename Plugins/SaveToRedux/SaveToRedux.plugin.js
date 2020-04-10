@@ -41,7 +41,7 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.12',
+      version: '2.0.13',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -50,17 +50,12 @@ var SaveToRedux = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed some site specific saving issues', 'Improved performance', 'Fixed not being able to save images, videos and files from search results', 'Fixed not being able to save from an attachment link']
+        items: ['Fixed `Install Plugin` or `Install Theme` failing if you had `Append server name or DM name to image/file name` enabled.']
       },
       {
-        title: 'New features',
-        type: 'added',
-        items: ['Github links that lead directly to a plugin or theme, or raw links to a plugin or theme can now be saved', 'You can now directly install plugins or themes from these links or sent attachments']
-      },
-      {
-        type: 'image',
-        src: 'https://cdn.discordapp.com/attachments/389049952732446733/694622056213512292/5jsZjnlrCBkz.png',
-        height: 166
+        title: 'Changes',
+        type: 'improved',
+        items: ['Themes and plugins will no longer have their name modified by your settings, they are permanently blacklisted and will always keep their original name unless you specifically save it with a different name.']
       }
     ],
     defaultConfig: [
@@ -471,7 +466,7 @@ var SaveToRedux = (() => {
         return ret;
       }
 
-      formatURL(url, requiresSize, customName, fallbackExtension, proxiedUrl, failNum = 0) {
+      formatURL(url, requiresSize, customName, fallbackExtension, proxiedUrl, failNum = 0, forceKeepOriginal = false) {
         // url = url.replace(/\/$/, '');
         if (requiresSize) url += '?size=2048';
         else if (url.indexOf('twimg.com/') !== -1)
@@ -492,7 +487,8 @@ var SaveToRedux = (() => {
         } else if (url.indexOf('//i.giphy.com/media/') !== -1) name = url.match(/\/\/i\.giphy\.com\/media\/([^\/]+)\//)[1];
         let forceSaveAs = false;
         try {
-          name = this.formatFilename(name, undefined, undefined, extension, true);
+          if (!forceKeepOriginal) name = this.formatFilename(name, undefined, undefined, extension, true);
+          else name = sanitizeFileName(name, { extLength: extension ? 255 - (extension.length + 1) : 255 });
         } catch (e) {
           if (e !== 'CUST_ERROR_1') throw e;
           forceSaveAs = true;
@@ -514,7 +510,7 @@ var SaveToRedux = (() => {
           });
         const subItems = [];
         const folderSubMenus = [];
-        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', type === 'Plugin' || type === 'Theme' ? url.match(/[^\/]+\.(?:plugin|theme)/)[0] : customName, fallbackExtension, proxiedUrl);
+        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, 0, type === 'Theme' || type === 'Plugin');
         if (!formattedurl.extension) onNoExtension(formattedurl.url);
         let notifId;
         let downloadAttempts = 0;
@@ -563,7 +559,7 @@ var SaveToRedux = (() => {
               } else if (res.statusCode == 404) {
                 if (shouldDoMultiAttempts && downloadAttempts < 2) {
                   downloadAttempts++;
-                  const newUrl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, downloadAttempts).url;
+                  const newUrl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, downloadAttempts, type === 'Theme' || type === 'Plugin').url;
                   if (newUrl !== formattedurl.url) {
                     formattedurl.url = newUrl;
                     return downloadEx(path, openOnSave);
@@ -603,10 +599,10 @@ var SaveToRedux = (() => {
         const saveAs = (folder, onOk) => {
           let val = formattedurl.name;
           let inputRef = null;
-          let delayedCall = new DelayedCall(350, () => {
+          /*           let delayedCall = new DelayedCall(350, () => {
             inputRef.props.value = val = sanitizeFileName(val, 255 - (formattedurl.extension ? formattedurl.extension.length + 1 : 0));
             inputRef.forceUpdate();
-          });
+          }); */
           Modals.showModal(
             'Save as...',
             React.createElement(

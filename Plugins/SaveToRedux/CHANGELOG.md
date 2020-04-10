@@ -1,4 +1,8 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.0.13
+- Fixed `Install Plugin` or `Install Theme` failing if you had `Append server name or DM name to image/file name` enabled.
+- Themes and plugins will no longer have their name modified by your settings, they are permanently blacklisted and will always keep their original name unless you specifically save it with a different name.
+
 ### 2.0.12
 - Fixed some site specific saving issues
 - Improved performance
