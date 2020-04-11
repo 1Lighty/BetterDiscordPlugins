@@ -41,7 +41,7 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.0.13',
+      version: '2.0.14',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -50,12 +50,7 @@ var SaveToRedux = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed `Install Plugin` or `Install Theme` failing if you had `Append server name or DM name to image/file name` enabled.']
-      },
-      {
-        title: 'Changes',
-        type: 'improved',
-        items: ['Themes and plugins will no longer have their name modified by your settings, they are permanently blacklisted and will always keep their original name unless you specifically save it with a different name.']
+        items: ['Fixed plugin being broken.']
       }
     ],
     defaultConfig: [
@@ -110,7 +105,7 @@ var SaveToRedux = (() => {
   const buildPlugin = ([Plugin, Api]) => {
     const { Settings, Modals, Utilities, WebpackModules, DiscordModules, DiscordClasses, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities } = Api;
     const { React, ContextMenuActions, GuildStore, DiscordConstants, Dispatcher, SwitchRow, EmojiUtils, RadioGroup, EmojiInfo, ModalStack } = DiscordModules;
-    const TextComponent = Utilities.getNestedProp(DiscordModules, 'TextElement.default');
+    const TextComponent = WebpackModules.getByDisplayName('Text');
     const getEmojiURL = Utilities.getNestedProp(WebpackModules.getByProps('getEmojiURL'), 'getEmojiURL');
     const showAlertModal = Utilities.getNestedProp(
       WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/)),
@@ -220,7 +215,7 @@ var SaveToRedux = (() => {
         else this.forceUpdate();
       }
       render() {
-        return React.createElement(TextComponent, { color: TextComponent.Colors.PRIMARY }, this.props.formatFilename('unknown', this.state.date, this.state.rand), '.png');
+        return React.createElement(TextComponent, { }, this.props.formatFilename('unknown', this.state.date, this.state.rand), '.png');
       }
     }
 
