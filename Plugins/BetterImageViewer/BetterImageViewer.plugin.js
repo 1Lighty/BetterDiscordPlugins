@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.2.2',
+      version: '1.2.3',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,7 @@ var BetterImageViewer = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed jpeg images having their EXIF rotation applied when you tried to zoom. (Thank you person that reported this issue on my server, you know who you are <3)']
+        items: ['Fixed startup error.'/*, 'Images in chat should look sharper if your zoom/scaling is not 100% in Discord and Windows. They have been corrected.'*/]
       }
     ],
     defaultConfig: [
@@ -195,7 +195,7 @@ var BetterImageViewer = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, Patcher, PluginUtilities, PluginUpdater, Structs } = Api;
-    const { React, ReactDOM, ModalStack, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, TextElement, MessageStore, APIModule, NavigationUtils } = DiscordModules;
+    const { React, ReactDOM, ModalStack, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, MessageStore, APIModule, NavigationUtils, SelectedGuildStore } = DiscordModules;
 
     let PluginBrokenFatal = false;
     let NoImageZoom = false;
@@ -212,6 +212,7 @@ var BetterImageViewer = (() => {
       }
     })();
     const Clickable = WebpackModules.getByDisplayName('Clickable');
+    const TextElement = WebpackModules.getByDisplayName('Text');
 
     const _ImageUtils = WebpackModules.getByProps('getImageSrc');
     const ImageUtils = Object.assign({}, WebpackModules.getByProps('getImageSrc'), WebpackModules.getByProps('getRatio'), {
@@ -1052,10 +1053,9 @@ var BetterImageViewer = (() => {
                 },
                 this.props.settings.ui.imageIndex || this.props.settings.behavior.debug
                   ? React.createElement(
-                      TextElement.default,
+                      TextElement,
                       {
-                        color: TextElement.Colors.PRIMARY,
-                        weight: TextElement.Weights.SEMIBOLD
+                        className: 'BIV-text-bold'
                       },
                       'Image ',
                       currentImage,
@@ -1079,10 +1079,9 @@ var BetterImageViewer = (() => {
                     className: 'BIV-info-wrapper'
                   },
                   React.createElement(
-                    TextElement.default,
+                    TextElement,
                     {
-                      color: TextElement.Colors.PRIMARY,
-                      className: CozyClassname
+                      className: XenoLib.joinClassNames(CozyClassname, 'BIV-info-wrapper-text')
                     },
                     React.createElement(
                       'span',
@@ -1111,7 +1110,7 @@ var BetterImageViewer = (() => {
                       React.createElement(
                         'div',
                         {
-                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
+                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.ERROR)
                         },
                         React.createElement(
                           Tooltip,
@@ -1125,7 +1124,7 @@ var BetterImageViewer = (() => {
                       React.createElement(
                         'div',
                         {
-                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.YELLOW)
+                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.STATUS_YELLOW)
                         },
                         React.createElement(
                           Tooltip,
@@ -1167,7 +1166,7 @@ var BetterImageViewer = (() => {
                       ? React.createElement(
                           'div',
                           {
-                            className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
+                            className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.ERROR)
                           },
                           React.createElement(
                             Tooltip,
@@ -1182,7 +1181,7 @@ var BetterImageViewer = (() => {
                       React.createElement(
                         'div',
                         {
-                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
+                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.ERROR)
                         },
                         React.createElement(
                           Tooltip,
@@ -1196,7 +1195,7 @@ var BetterImageViewer = (() => {
                       React.createElement(
                         'div',
                         {
-                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.RED)
+                          className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.ERROR)
                         },
                         React.createElement(
                           Tooltip,
@@ -1323,7 +1322,7 @@ var BetterImageViewer = (() => {
             position: absolute;
             white-space: nowrap;
           }
-          .BIV-info-wrapper > .${TextElement.Colors.PRIMARY} {
+          .BIV-info-wrapper > .BIV-info-wrapper-text {
             display: flex;
             align-items: center;
           }
@@ -1376,7 +1375,8 @@ var BetterImageViewer = (() => {
             position: absolute;
             overflow: hidden;
             cursor: none;
-            border: 1px solid #0092ff;
+            border: solid #0092ff;
+            border-width: thin;
           }
           .BIV-zoom-lens-round {
             border-radius: 50%;
@@ -1384,6 +1384,9 @@ var BetterImageViewer = (() => {
           }
           .BIV-zoom-backdrop {
             background: rgba(0, 0, 0, 0.4);
+          }
+          .BIV-text-bold {
+            font-weight: 600;
           }
         `
         );
@@ -1694,9 +1697,9 @@ var BetterImageViewer = (() => {
               React.createElement(
                 'div',
                 {
-                  className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug }, TextElement.Colors.PRIMARY)
+                  className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug })
                 },
-                React.createElement('table', {}, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? TextElement.Colors.RED : undefined }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale || debug ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
+                React.createElement('table', {}, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? TextElement.Colors.ERROR : undefined }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale || debug ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
               ),
               overlayDOMNode
             )
@@ -1707,6 +1710,36 @@ var BetterImageViewer = (() => {
       patchLazyImage() {
         if (NoImageZoom) return;
         const LazyImage = WebpackModules.getByDisplayName('LazyImage');
+        const SectionStore = WebpackModules.find(m => m.getSection && !m.getProps);
+        const NO_SIDEBAR = 0.666178623635432;
+        const SEARCH_SIDEBAR = 0.3601756956193265;
+        const MEMBERS_SIDEBAR = 0.49048316246120055;
+        // Patcher.instead(LazyImage.prototype, 'handleSidebarChange', (_this, [forced]) => {
+        //   const { state } = _this;
+        //   if (!DiscordAPI.currentChannel) {
+        //     state.__BIV_sidebarMultiplier = null;
+        //     return;
+        //   }
+        //   const section = SectionStore.getSection();
+        //   let newMultiplier;
+        //   if (section === 'SEARCH') newMultiplier = SEARCH_SIDEBAR;
+        //   else if (section !== 'MEMBERS' || (!SelectedGuildStore.getGuildId() && DiscordAPI.currentChannel.type !== 'GROUP_DM')) newMultiplier = NO_SIDEBAR;
+        //   else newMultiplier = MEMBERS_SIDEBAR;
+        //   if (!forced && newMultiplier !== state.__BIV_sidebarMultiplier) _this.setState({ __BIV_sidebarMultiplier: newMultiplier });
+        //   else state.__BIV_sidebarMultiplier = newMultiplier;
+        // });
+        // Patcher.after(LazyImage.prototype, 'componentDidMount', _this => {
+        //   if (typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) {
+        //     _this.handleSidebarChange = null;
+        //     return;
+        //   }
+        //   _this.handleSidebarChange = _this.handleSidebarChange.bind(_this);
+        //   SectionStore.addChangeListener(_this.handleSidebarChange);
+        // });
+        // Patcher.after(LazyImage.prototype, 'componentWillUnmount', _this => {
+        //   if (!_this.handleSidebarChange) return;
+        //   SectionStore.removeChangeListener(_this.handleSidebarChange);
+        // });
         Patcher.instead(LazyImage.prototype, 'componentDidUpdate', (_this, [props, state]) => {
           /* custom handler, original one caused issues with GIFs not animating */
           const animated = LazyImage.isAnimated(_this.props);
@@ -1716,12 +1749,26 @@ var BetterImageViewer = (() => {
           } else if (state.readyState !== _this.state.readyState && animated) _this.observeVisibility();
           else if (!animated) _this.unobserveVisibility();
         });
+        // Patcher.before(LazyImage.prototype, 'getRatio', _this => {
+        //   if (typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) return;
+        //   if (typeof _this.state.__BIV_sidebarType === 'undefined') _this.handleSidebarChange(true);
+        //   if (_this.state.__BIV_sidebarMultiplier === null) return;
+        //   const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
+        //   _this.props.maxWidth = Math.max(Math.min(innerWidth * devicePixelRatio * _this.state.__BIV_sidebarMultiplier * (1 + (1 - devicePixelRatio)), _this.props.width * scale), 400);
+        //   _this.props.maxHeight = Math.max(Math.min(innerHeight * devicePixelRatio * 0.6777027027027027, _this.props.height * scale), 300);
+        // });
         Patcher.instead(LazyImage.prototype, 'getSrc', (_this, [ratio, forcePng], orig) => {
           if (_this.props.__BIV_full_res) return _this.props.src;
           return orig(ratio, forcePng);
         });
         Patcher.after(LazyImage.prototype, 'render', (_this, _, ret) => {
-          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || _this.props.__BIV_isVideo || !ret) return;
+          if (!ret) return;
+          /* fix scaling issues for all images */
+          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || _this.props.__BIV_isVideo) return;
+          /* but not for the public release */
+          const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
+          ret.props.width = ret.props.width * scale;
+          ret.props.height = ret.props.height * scale;
           if (_this.props.animated && ret.props.children) {
             /* dirty */
             try {
@@ -1734,9 +1781,6 @@ var BetterImageViewer = (() => {
           ret.props.settings = this.settings.zoom;
           ret.props.__BIV_animated = _this.props.animated;
           ret.props.hiddenSettings = this.hiddenSettings;
-          const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
-          ret.props.width = ret.props.width * scale;
-          ret.props.height = ret.props.height * scale;
         });
         Patcher.after(WebpackModules.getByDisplayName('LazyVideo').prototype, 'render', (_, __, ret) => {
           if (!ret) return;
@@ -1800,7 +1844,7 @@ var BetterImageViewer = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.16') && (XenoLibOutdated = !0);
+      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.17') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
