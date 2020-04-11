@@ -1,4 +1,8 @@
 # [InAppNotifications](https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications "InAppNotifications") Changelog
+### 1.0.5
+- Fixed settings not showing anything.
+- Lowered the minimum WPM setting to be 50 instead of 300, for you slower readers. If the notifications go away too fast, just enable `Calculate timeout by number of words` and lower the `Words Per Minute` slider in settings.
+
 ### 1.0.4
 - Fixed unparser erroring out and not calculating the timeout properly.
 

@@ -41,7 +41,7 @@ var InAppNotifications = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.4',
+      version: '1.0.5',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -80,9 +80,9 @@ var InAppNotifications = (() => {
         id: 'wordsPerMinute',
         type: 'slider',
         value: 300,
-        min: 300,
+        min: 50,
         max: 900,
-        markers: Array.from(Array(13), (_, i) => i * 50 + 300),
+        markers: Array.from(Array(18), (_, i) => (i + 1) * 50),
         stickToMarkers: true
       },
       {
@@ -93,7 +93,12 @@ var InAppNotifications = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed unparser erroring out and not calculating the timeout properly.']
+        items: ['Fixed settings not showing anything.']
+      },
+      {
+        title: 'Misc changes',
+        type: 'added',
+        items: ['Lowered the minimum WPM setting to be 50 instead of 300, for you slower readers. If the notifications go away too fast, just enable `Calculate timeout by number of words` and lower the `Words Per Minute` slider in settings.']
       },
       {
         title: '',
@@ -106,7 +111,7 @@ var InAppNotifications = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, TextElement, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver } = DiscordModules;
 
     const LurkerStore = WebpackModules.getByProps('isLurking');
     const MuteStore = WebpackModules.getByProps('allowNoMessages');
@@ -118,11 +123,11 @@ var InAppNotifications = (() => {
     const SysMessageUtils = WebpackModules.getByProps('getSystemMessageUserJoin', 'stringify');
     const MessageParseUtils = (WebpackModules.getByProps('parseAndRebuild', 'default') || {}).default;
     const CUser = WebpackModules.getByPrototypes('getAvatarSource', 'isLocalBot');
+    const TextElement = WebpackModules.getByDisplayName('Text');
 
     class ExtraText extends Settings.SettingField {
       constructor(name, note) {
-        super(name, note, null, TextElement.default, {
-          color: TextElement.Colors.PRIMARY,
+        super(name, note, null, TextElement, {
           children: 'To change the position or backdrop background color of the notifications, check XenoLib settings.'
         });
       }
@@ -461,7 +466,7 @@ var InAppNotifications = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.16') && (XenoLibOutdated = !0);
+      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.17') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
