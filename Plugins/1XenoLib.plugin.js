@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.16',
+      version: '1.3.17',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'fixed',
-        items: ['Removed usage of soon to be deprecated globals.', 'Fixed random notification bounce, again. For real this time.', 'Fixed oversized close button on notifications.', 'Changed right click behavior of the close button on notifications to just close all notifications outright. Left click still only closes 1.']
+        items: ['Changelogs work once more.', '`Backdrop color` has been changed to `Background color` and now applies the color regardless of if the backdrop filter is enabled. Do keep in mind that themes can override the color if backdrop filter is disabled.']
       }
     ],
     defaultConfig: [
@@ -74,7 +74,7 @@ var XenoLib = (() => {
             value: true
           },
           {
-            name: 'Backdrop color',
+            name: 'Background color',
             id: 'backdropColor',
             type: 'color',
             value: '#3e4346',
@@ -96,7 +96,7 @@ var XenoLib = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions, TextElement, FlexChild, Titles, Changelog: ChangelogModal } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Titles, Changelog: ChangelogModal } = DiscordModules;
 
     let CancelledAsync = false;
     const DefaultLibrarySettings = {};
@@ -563,11 +563,13 @@ var XenoLib = (() => {
       Logger.stacktrace('Failed to patch V2C_*Card or AddonCard (BBD rewrite)', e);
     }
 
+    const TextElement = WebpackModules.getByDisplayName('Text');
+
     /* shared between FilePicker and ColorPicker */
     const MultiInputClassname = XenoLib.joinClassNames(Utilities.getNestedProp(DiscordClasses, 'BasicInputs.input.value'), XenoLib.getClass('multiInput'));
     const MultiInputFirstClassname = XenoLib.getClass('multiInputFirst');
     const MultiInputFieldClassname = XenoLib.getClass('multiInputField');
-    const ErrorMessageClassname = XenoLib.joinClassNames('xenoLib-error-text', XenoLib.getClass('errorMessage'), Utilities.getNestedProp(TextElement, 'Colors.RED'));
+    const ErrorMessageClassname = XenoLib.joinClassNames('xenoLib-error-text', XenoLib.getClass('errorMessage'), Utilities.getNestedProp(TextElement, 'Colors.ERROR'));
     const ErrorClassname = XenoLib.getClass('input error');
 
     try {
@@ -936,7 +938,7 @@ var XenoLib = (() => {
         }
       }
       const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (LayerManager.popLayer(), ModalStack.pop(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Join my support server'), FancyParser('! Or consider donating via [Paypal](https://paypal.me/lighty13), [Ko-fi](https://ko-fi.com/lighty_) or [Patreon](https://www.patreon.com/lightyp)!')];
-      ModalStack.push(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement.default, { size: TextElement.Sizes.SMALL, color: TextElement.Colors.PRIMARY, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement.default, { size: TextElement.Sizes.SMALL, color: TextElement.Colors.PRIMARY }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
+      ModalStack.push(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12 }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
     };
 
     /* NOTIFICATIONS START */
@@ -1313,13 +1315,13 @@ var XenoLib = (() => {
                     'div',
                     {
                       className: 'xenoLib-notification-content',
-                      style: LibrarySettings.notifications.backdrop
-                        ? {
-                            backdropFilter: 'blur(5px)',
-                            background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), 0.3),
-                            border: 'none'
+                      style: 
+                        {
+                            backdropFilter: LibrarySettings.notifications.backdrop ? 'blur(5px)' : undefined,
+                            background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), LibrarySettings.notifications.backdrop ? 0.3 : 1.0),
+                            border: LibrarySettings.notifications.backdrop ? 'none' : undefined
                           }
-                        : undefined,
+                        ,
                       ref: e => {
                         if (!LibrarySettings.notifications.backdrop || !e) return;
                         e.style.setProperty('backdrop-filter', e.style.backdropFilter, 'important');
