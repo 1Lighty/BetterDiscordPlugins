@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.2.3
+- Fixed startup error.
+
 ### 1.2.2
 - Fixed jpeg images having their EXIF rotation applied when you tried to zoom. (Thank you person that reported this issue on my server, you know who you are <3)
 
