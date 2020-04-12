@@ -172,7 +172,7 @@ var BetterTypingUsers = (() => {
      */
     return class BetterTypingUsers extends Plugin {
       constructor() {
-	super();
+        super();
         try {
           ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
         } catch (e) {}
@@ -338,7 +338,7 @@ var BetterTypingUsers = (() => {
     if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
       const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
         b = BdApi.getPlugin('ZeresPluginLibrary');
-      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.11') && (ZeresPluginLibraryOutdated = !0);
+      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.14') && (ZeresPluginLibraryOutdated = !0);
     }
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
@@ -348,6 +348,7 @@ var BetterTypingUsers = (() => {
     ? class {
         constructor() {
           this._config = config;
+          this.start = this.load = this.handleMissingLib;
         }
         getName() {
           return this.name.replace(/\s+/g, '');
@@ -359,19 +360,19 @@ var BetterTypingUsers = (() => {
           return this.version;
         }
         getDescription() {
-          return this.description;
+          return this.description + ' You are missing ZeresPluginLibrary for this plugin, please enable the plugin and click Download Now.';
         }
         stop() {}
-        load() {
-          const a = BdApi.findModuleByProps('isModalOpen');
-          if (a && a.isModalOpen(`${this.name}_DEP_MODAL`)) return;
+        handleMissingLib() {
+          const a = BdApi.findModuleByProps('isModalOpenWithKey');
+          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
           const b = !global.ZeresPluginLibrary,
             c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
             d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
             e = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
-            f = BdApi.findModuleByProps('Sizes', 'Weights'),
+            f = BdApi.findModuleByDisplayName('Text'),
             g = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            h = () => BdApi.getCore().alert(c, `${d}<br/>Due to a slight mishap however, you'll have to download the libraries yourself.<br/>${b || ZeresPluginLibraryOutdated ? '<br/><a href="http://betterdiscord.net/ghdl/?url=https://github.com/rauenzi/BDPluginLibrary/blob/master/release/0PluginLibrary.plugin.js"target="_blank">Click here to download ZeresPluginLibrary</a>' : ''}`);
+            h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
           if (!e || !g || !f) return h();
           class i extends BdApi.React.PureComponent {
             constructor(a) {
@@ -405,7 +406,7 @@ var BetterTypingUsers = (() => {
                   Object.assign(
                     {
                       header: c,
-                      children: [BdApi.React.createElement(f, { color: f.Colors.PRIMARY, children: [`${d} Please click Download Now to download it.`] })],
+                      children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
                       red: !1,
                       confirmText: 'Download Now',
                       cancelText: 'Cancel',
@@ -415,7 +416,7 @@ var BetterTypingUsers = (() => {
                         const a = require('request'),
                           b = require('fs'),
                           c = require('path');
-                        a('https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js', (a, d, e) => (a ? h() : void b.writeFile(c.join(window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), e, () => {})));
+                        a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, d, f) => (a || 200 !== d.statusCode ? (e.popWithKey(l), h()) : void b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {})));
                       }
                     },
                     a
@@ -426,8 +427,6 @@ var BetterTypingUsers = (() => {
             `${this.name}_DEP_MODAL`
           );
         }
-
-        start() {}
         get [Symbol.toStringTag]() {
           return 'Plugin';
         }

@@ -215,7 +215,7 @@ var SaveToRedux = (() => {
         else this.forceUpdate();
       }
       render() {
-        return React.createElement(TextComponent, { }, this.props.formatFilename('unknown', this.state.date, this.state.rand), '.png');
+        return React.createElement(TextComponent, {}, this.props.formatFilename('unknown', this.state.date, this.state.rand), '.png');
       }
     }
 
@@ -1162,7 +1162,7 @@ var SaveToRedux = (() => {
               return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
             })(),
             g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
-            h = BdApi.findModuleByProps('Sizes', 'Weights'),
+            h = BdApi.findModuleByDisplayName('Text'),
             i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
             j = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
           if (!g || !i || !h) return j();
@@ -1198,7 +1198,7 @@ var SaveToRedux = (() => {
                   Object.assign(
                     {
                       header: e,
-                      children: [BdApi.React.createElement(h, { color: h.Colors.PRIMARY, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] })],
+                      children: [BdApi.React.createElement(h, { size: h.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] })],
                       red: !1,
                       confirmText: 'Download Now',
                       cancelText: 'Cancel',

@@ -1315,13 +1315,11 @@ var XenoLib = (() => {
                     'div',
                     {
                       className: 'xenoLib-notification-content',
-                      style: 
-                        {
-                            backdropFilter: LibrarySettings.notifications.backdrop ? 'blur(5px)' : undefined,
-                            background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), LibrarySettings.notifications.backdrop ? 0.3 : 1.0),
-                            border: LibrarySettings.notifications.backdrop ? 'none' : undefined
-                          }
-                        ,
+                      style: {
+                        backdropFilter: LibrarySettings.notifications.backdrop ? 'blur(5px)' : undefined,
+                        background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), LibrarySettings.notifications.backdrop ? 0.3 : 1.0),
+                        border: LibrarySettings.notifications.backdrop ? 'none' : undefined
+                      },
                       ref: e => {
                         if (!LibrarySettings.notifications.backdrop || !e) return;
                         e.style.setProperty('backdrop-filter', e.style.backdropFilter, 'important');
@@ -1603,7 +1601,7 @@ var XenoLib = (() => {
             c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
             d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
             e = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
-            f = BdApi.findModuleByProps('Sizes', 'Weights'),
+            f = BdApi.findModuleByDisplayName('Text'),
             g = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
             h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
           if (!e || !g || !f) return h();
@@ -1639,7 +1637,7 @@ var XenoLib = (() => {
                   Object.assign(
                     {
                       header: c,
-                      children: [BdApi.React.createElement(f, { color: f.Colors.PRIMARY, children: [`${d} Please click Download Now to download it.`] })],
+                      children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
                       red: !1,
                       confirmText: 'Download Now',
                       cancelText: 'Cancel',
