@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.2.3',
+      version: '1.2.4',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,7 @@ var BetterImageViewer = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed startup error.'/*, 'Images in chat should look sharper if your zoom/scaling is not 100% in Discord and Windows. They have been corrected.'*/]
+        items: ['Fixed image info being black.' /*, 'Images in chat should look sharper if your zoom/scaling is not 100% in Discord and Windows. They have been corrected.'*/]
       }
     ],
     defaultConfig: [
@@ -1697,7 +1697,7 @@ var BetterImageViewer = (() => {
               React.createElement(
                 'div',
                 {
-                  className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug })
+                  className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug }, TextElement.Colors.STANDARD)
                 },
                 React.createElement('table', {}, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? TextElement.Colors.ERROR : undefined }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale || debug ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
               ),
@@ -1884,7 +1884,7 @@ var BetterImageViewer = (() => {
               return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
             })(),
             g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
-            h = BdApi.findModuleByProps('Sizes', 'Weights'),
+            h = BdApi.findModuleByDisplayName('Text'),
             i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
             j = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
           if (!g || !i || !h) return j();
@@ -1920,7 +1920,7 @@ var BetterImageViewer = (() => {
                   Object.assign(
                     {
                       header: e,
-                      children: [BdApi.React.createElement(h, { color: h.Colors.PRIMARY, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] })],
+                      children: [BdApi.React.createElement(h, { size: h.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] })],
                       red: !1,
                       confirmText: 'Download Now',
                       cancelText: 'Cancel',

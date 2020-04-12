@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.2.4
+- Fixed image info being black.
+
 ### 1.2.3
 - Fixed startup error.
 
