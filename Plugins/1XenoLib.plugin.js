@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.17',
+      version: '1.3.18',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'fixed',
-        items: ['Changelogs work once more.', '`Backdrop color` has been changed to `Background color` and now applies the color regardless of if the backdrop filter is enabled. Do keep in mind that themes can override the color if backdrop filter is disabled.']
+        items: ['Fixed notifications not working.', 'Fixed parser error.']
       }
     ],
     defaultConfig: [
@@ -854,7 +854,7 @@ var XenoLib = (() => {
     const FancyParser = (() => {
       const ParsersModule = WebpackModules.getByProps('parseAllowLinks', 'parse');
       try {
-        const DeepClone = WebpackModules.getByRegex(/function\(\w\)\{var \w=\{\},\w=\w,\w=Array\.isArray\(\w\),\w=0;for\(\w=\w\?\w:\w\[Symbol\.iterator\]\(\);;\)\{var \w;if\(\w\)\{\w/);
+        const DeepClone = WebpackModules.getByString('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(');
         const ReactParserRules = WebpackModules.getByRegex(/function\(\){return \w}$/);
         const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES', 'ALLOW_LINKS_RULES').ALLOW_LINKS_RULES, ReactParserRules()]);
         FANCY_PANTS_PARSER_RULES.image = WebpackModules.getByProps('defaultParse').defaultRules.image;
@@ -972,7 +972,98 @@ var XenoLib = (() => {
         }
         return true;
       };
-      const zustand = WebpackModules.getByRegex(/\w\(function\(\){return \w\(\w\)},\[\]\),\w\?\w:\w\.currentSlice},\w\]}/);
+      /* https://github.com/react-spring/zustand
+       * MIT License
+       *
+       * Copyright (c) 2019 Paul Henschel
+       *
+       * Permission is hereby granted, free of charge, to any person obtaining a copy
+       * of this software and associated documentation files (the "Software"), to deal
+       * in the Software without restriction, including without limitation the rights
+       * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+       * copies of the Software, and to permit persons to whom the Software is
+       * furnished to do so, subject to the following conditions:
+       *
+       * The above copyright notice and this permission notice shall be included in all
+       * copies or substantial portions of the Software.
+       *
+       * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+       * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+       * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+       * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+       * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+       * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+       * SOFTWARE.
+       */
+      function zustand(createState) {
+        var state;
+        var listeners = new Set();
+        const setState = partial => {
+          var partialState = typeof partial === 'function' ? partial(state) : partial;
+          if (partialState !== state) {
+            state = Object.assign({}, state, partialState);
+            listeners.forEach(function (listener) {
+              return listener();
+            });
+          }
+        };
+        const getState = () => state;
+        const getSubscriber = (listener, selector, equalityFn) => {
+          if (selector === void 0) selector = getState;
+          if (equalityFn === void 0) equalityFn = Object.is;
+          return { currentSlice: selector(state), equalityFn: equalityFn, errored: false, listener: listener, selector: selector, unsubscribe: function unsubscribe() {} };
+        };
+        var subscribe = function subscribe(subscriber) {
+          function listener() {
+            // Selector or equality function could throw but we don't want to stop
+            // the listener from being called.
+            // https://github.com/react-spring/zustand/pull/37
+            try {
+              var newStateSlice = subscriber.selector(state);
+              if (!subscriber.equalityFn(subscriber.currentSlice, newStateSlice)) subscriber.listener((subscriber.currentSlice = newStateSlice));
+            } catch (error) {
+              subscriber.errored = true;
+              subscriber.listener(null, error);
+            }
+          }
+
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        };
+        const apiSubscribe = (listener, selector, equalityFn) => subscribe(getSubscriber(listener, selector, equalityFn));
+        const destroy = () => listeners.clear();
+        const useStore = (selector, equalityFn) => {
+          if (selector === void 0) selector = getState;
+          if (equalityFn === void 0) equalityFn = Object.is;
+          var forceUpdate = React.useReducer(c => c + 1, 0)[1];
+          var subscriberRef = React.useRef();
+          if (!subscriberRef.current) {
+            subscriberRef.current = getSubscriber(forceUpdate, selector, equalityFn);
+            subscriberRef.current.unsubscribe = subscribe(subscriberRef.current);
+          }
+          var subscriber = subscriberRef.current;
+          var newStateSlice;
+          var hasNewStateSlice = false; // The selector or equalityFn need to be called during the render phase if
+          // they change. We also want legitimate errors to be visible so we re-run
+          // them if they errored in the subscriber.
+          if (subscriber.selector !== selector || subscriber.equalityFn !== equalityFn || subscriber.errored) {
+            // Using local variables to avoid mutations in the render phase.
+            newStateSlice = selector(state);
+            hasNewStateSlice = !equalityFn(subscriber.currentSlice, newStateSlice);
+          } // Syncing changes in useEffect.
+          React.useLayoutEffect(function () {
+            if (hasNewStateSlice) subscriber.currentSlice = newStateSlice;
+            subscriber.selector = selector;
+            subscriber.equalityFn = equalityFn;
+            subscriber.errored = false;
+          });
+          React.useLayoutEffect(() => subscriber.unsubscribe, []);
+          return hasNewStateSlice ? newStateSlice : subscriber.currentSlice;
+        };
+        const api = { setState: setState, getState: getState, subscribe: apiSubscribe, destroy: destroy };
+        state = createState(setState, getState, api);
+        return [useStore, api];
+      }
       const [useStore, api] = zustand(e => ({ data: [] }));
       const defaultOptions = {
         loading: false,
