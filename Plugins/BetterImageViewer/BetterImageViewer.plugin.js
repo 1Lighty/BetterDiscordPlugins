@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.0',
+      version: '1.3.1',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -1075,12 +1075,12 @@ var BetterImageViewer = (() => {
         for (const prop of ImageProps) this.props[prop] = this.state[prop];
         const message = this.state.__BIV_data && this.getMessage(this.state.__BIV_data.messageId);
         const ret = super.render();
+        if (this.state.internalError || (!message && this.state.__BIV_data)) return ret;
         if (!message) {
           if (!this.__couldNotFindMessage) XenoLib.Notifications.error(`[**${config.info.name}**] Something went wrong.. Could not find associated message for current image.`, { timeout: 7500 });
           this.__couldNotFindMessage = true;
           return ret;
         } else this.__couldNotFindMessage = false;
-        if (this.state.internalError) return ret;
         const currentImage = this._imageCounter[this.state.__BIV_data.messageId] + (this.state.__BIV_data.images.length - 1 - this.state.__BIV_index);
         ret.props.children[0].type = LazyImage;
         ret.props.children[0].props.id = message.id + currentImage;
@@ -1839,11 +1839,11 @@ var BetterImageViewer = (() => {
         });
         Patcher.after(LazyImage.prototype, 'render', (_this, _, ret) => {
           if (!ret) return;
+          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || _this.props.__BIV_isVideo) return;
           /* fix scaling issues for all images */
           const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
           ret.props.width = ret.props.width * scale;
           ret.props.height = ret.props.height * scale;
-          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || _this.props.__BIV_isVideo) return;
           if (_this.props.animated && ret.props.children) {
             /* dirty */
             try {
