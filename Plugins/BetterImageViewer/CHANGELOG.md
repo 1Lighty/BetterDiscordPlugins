@@ -1,4 +1,15 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.3.0
+- Fixed images being clipped at the bottom if there isn't enough screen height.
+- Fixed image zoom jitter when changing zoom level, or changing lens size.
+- Fixed error being thrown when you update the plugin and don't switch channels before opening an image.
+- Fixed some objects and strings escaping to the DOM tree.
+- Fixed possible Discord crashers.
+- Fixed sometimes getting locked in place if you opened an image but there is only 1 image available, and search not triggering.
+- Fixed forward search being jank and skipping tons of messages, or not working well at all.
+- Improved image zoom performance (hopefully).
+- Plugin should now inherit search options. Say you search for `from:Lighty` and you open an image from the search results, the plugin will inherit that option so when you navigate between the images, it will only display images that match those search options.
+
 ### 1.2.4
 - Fixed image info being black.
 

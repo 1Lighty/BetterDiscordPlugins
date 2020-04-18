@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.2.4',
+      version: '1.3.0',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,12 @@ var BetterImageViewer = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed image info being black.' /*, 'Images in chat should look sharper if your zoom/scaling is not 100% in Discord and Windows. They have been corrected.'*/]
+        items: ["Fixed images being clipped at the bottom if there isn't enough screen height.", 'Fixed image zoom jitter when changing zoom level, or changing lens size.', "Fixed error being thrown when you update the plugin and don't switch channels before opening an image.", 'Fixed some objects and strings escaping to the DOM tree.', 'Fixed possible Discord crashers.', 'Fixed changelog not being big enough for some people.', 'Fixed sometimes getting locked in place if you opened an image but there is only 1 image available, and search not triggering.', 'Fixed forward search being jank and skipping tons of messages, or not working well at all.']
+      },
+      {
+        title: 'improved',
+        type: 'improved',
+        items: ['Improved image zoom performance (hopefully).', 'Plugin should now inherit search options. Say you search for `from:Lighty` and you open an image from the search results, the plugin will inherit that option so when you navigate between the images, it will only display images that match those search options.']
       }
     ],
     defaultConfig: [
@@ -195,7 +200,7 @@ var BetterImageViewer = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, Patcher, PluginUtilities, PluginUpdater, Structs } = Api;
-    const { React, ReactDOM, ModalStack, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, MessageStore, APIModule, NavigationUtils, SelectedGuildStore } = DiscordModules;
+    const { React, ReactDOM, ModalStack, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, MessageStore, APIModule, NavigationUtils, ChannelStore } = DiscordModules;
 
     let PluginBrokenFatal = false;
     let NoImageZoom = false;
@@ -215,7 +220,7 @@ var BetterImageViewer = (() => {
     const TextElement = WebpackModules.getByDisplayName('Text');
 
     const _ImageUtils = WebpackModules.getByProps('getImageSrc');
-    const ImageUtils = Object.assign({}, WebpackModules.getByProps('getImageSrc'), WebpackModules.getByProps('getRatio'), {
+    const ImageUtils = Object.assign({}, WebpackModules.getByProps('getImageSrc') || {}, WebpackModules.getByProps('getRatio') || {}, {
       zoomFit: (e, t) => ImageUtils.fit(e, t, Math.ceil(Math.round(0.86 * window.innerWidth * devicePixelRatio)), Math.ceil(Math.round(0.8 * window.innerHeight * devicePixelRatio))),
       getImageSrc: (e, t, n, r = 1, a = null) => {
         var o = t;
@@ -268,7 +273,7 @@ var BetterImageViewer = (() => {
         message.embeds.forEach(({ image, images }) => {
           if (!image && (!images || !images.length)) return;
           if (images && images.length) for (const image of images) appendImage(image);
-          appendImage(image);
+          if (image) appendImage(image);
         });
       }
       return images;
@@ -293,19 +298,22 @@ var BetterImageViewer = (() => {
     })() {
       constructor(props) {
         super(props);
-        this.state = { zooming: false, visible: false, panelWH: [props.hiddenSettings.panelWH, props.hiddenSettings.panelWH], panelX: [0, 0], panelY: [0, 0], offsetX: [0, 0], offsetY: [0, 0], zoom: [1.5, 1.5] };
+        this.state = { zooming: false, visible: false, panelWH: props.__BIV_hiddenSettings.panelWH, zoom: 1.5 };
         XenoLib._.bindAll(this, ['handleMouseDown', 'handleMouseUp', 'handleMouseWheel']);
-        this._handleMouseMove = this.handleMouseMove.bind(this);
-        this.handleMouseMove = e => this.state.zooming && this._handleMouseMove(e.clientX, e.clientY);
-        this._handleSaveLensWHChangeDC = new TimingModule.DelayedCall(1000, this._handleSaveLensWHChange.bind(this));
-        this._WHCS = true;
-        this.handleSaveLensWHChange = () => {
-          this._WHCS = false;
-          this._handleSaveLensWHChangeDC();
-        };
+        try {
+          this._handleMouseMove = this.handleMouseMove.bind(this);
+          this.handleMouseMove = e => this.state.zooming && this._handleMouseMove(e.clientX, e.clientY);
+          this._handleSaveLensWHChangeDC = new TimingModule.DelayedCall(1000, this._handleSaveLensWHChange.bind(this));
+          this._controller = new ReactSpring.Controller({ panelX: 0, panelY: 0, panelWH: 0, offsetX: 0, offsetY: 0, zoom: 1.5 });
+        } catch (err) {
+          Logger.stacktrace(`Failed constructing Image`, err);
+          XenoLib.Notifications.error(`[**${config.info.name}**] Image zoom has encountered an error and has been temporarily disabled to prevent Discord from crashing. More info in console.`, { timeout: 0 });
+          this.__BIV_crash = true;
+        }
       }
       componentDidMount() {
         if (super.componentDidMount) super.componentDidMount();
+        if (this.__BIV_crash) return;
         window.addEventListener('mouseup', this.handleMouseUp);
         window.addEventListener('mousemove', this.handleMouseMove);
         window.addEventListener('mousewheel', this.handleMouseWheel);
@@ -313,24 +321,31 @@ var BetterImageViewer = (() => {
       }
       componentWillUnmount() {
         if (super.componentWillUnmount) super.componentWillUnmount();
+        if (this.__BIV_crash) return;
         window.removeEventListener('mouseup', this.handleMouseUp);
         window.removeEventListener('mousemove', this.handleMouseMove);
         window.removeEventListener('mousewheel', this.handleMouseWheel);
         this._handleSaveLensWHChangeDC.cancel();
         this._handleSaveLensWHChange();
+        this._controller.destroy();
+        this._controller = null;
       }
       componentDidUpdate(prevProps, prevState, snapshot) {
         if (super.componentDidUpdate) super.componentDidUpdate(prevProps, prevState, snapshot);
+        if (this.__BIV_crash) return;
         if (this.props.src !== prevProps.src) {
+          this.state.zoom = 1.5;
+          this.updateController({ zoom: 1.5, immediate: !this.state.zooming });
           this.getRawImage();
+          if (this.state.zooming) this.setState({ zooming: false });
         }
       }
-      setStateImmediate(state) {
-        for (const prop in state) this.state[prop] = state[prop];
+      updateController(props, noStart = false) {
+        this._controller.update({ ...props, immediate: !this.props.__BIV_settings.smoothing || props.immediate, config: { mass: 1, tension: 1750, friction: 75, easing: Easing ? Easing.linear : e => e, clamp: false } });
+        if (!noStart) this._controller.start();
       }
       _handleSaveLensWHChange() {
-        Dispatcher.dirtyDispatch({ type: 'BIV_LENS_WH_CHANGE', value: this.state.panelWH[0] });
-        this._WHCS = true;
+        Dispatcher.dirtyDispatch({ type: 'BIV_LENS_WH_CHANGE', value: this.state.panelWH });
       }
       handleMouseDown(e) {
         if (e.button !== DiscordConstants.MouseButtons.PRIMARY) return;
@@ -339,24 +354,23 @@ var BetterImageViewer = (() => {
           return;
         }
         if (this.state.zooming) return this.setState({ zooming: false });
-        else if (this.props.settings.enableMode === 2) return; /* scroll to toggle */
-        this.state;
-        this.setStateImmediate({ zooming: true, visible: true });
+        else if (this.props.__BIV_settings.enableMode === 2) return; /* scroll to toggle */
         this._handleMouseMove(e.clientX, e.clientY, true);
+        this.setState({ zooming: true, visible: true });
         e.preventDefault();
       }
       handleMouseUp() {
         /* click and hold mode */
-        if (this.props.settings.enableMode !== 0) return;
+        if (this.props.__BIV_settings.enableMode !== 0) return;
         this.setState({ zooming: false });
       }
       handleMouseMove(cx, cy, start) {
-        if (!this.props.settings.outOfBounds) {
+        if (!this.props.__BIV_settings.outOfBounds) {
           cx = Math.min(this._ref.offsetLeft + this._ref.offsetWidth, Math.max(this._ref.offsetLeft, cx));
           cy = Math.min(this._ref.offsetTop + this._ref.offsetHeight, Math.max(this._ref.offsetTop, cy));
         }
-        let panelWH = this.state.panelWH[0];
-        if (!this.props.settings.outOfScreen) {
+        let panelWH = this.state.panelWH;
+        if (!this.props.__BIV_settings.outOfScreen) {
           if (Structs.Screen.height < Structs.Screen.width && panelWH > Structs.Screen.height) panelWH = Structs.Screen.height - 2;
           else if (Structs.Screen.height > Structs.Screen.width && panelWH > Structs.Screen.width) panelWH = Structs.Screen.width - 2;
         }
@@ -364,44 +378,46 @@ var BetterImageViewer = (() => {
         const offsetY = cy - this._ref.offsetTop;
         let panelX = cx - panelWH / 2;
         let panelY = cy - panelWH / 2;
-        if (!this.props.settings.outOfScreen) {
+        if (!this.props.__BIV_settings.outOfScreen) {
           if (panelX < 0) panelX = 0;
           else if (panelX + panelWH > Structs.Screen.width) panelX = Structs.Screen.width - (panelWH + 2);
           if (panelY < 0) panelY = 0;
           else if (panelY + panelWH > Structs.Screen.height) panelY = Structs.Screen.height - (panelWH + 2);
         }
-        this.setState({ panelX: [panelX, start ? panelX : this.state.panelX[1]], panelY: [panelY, start ? panelY : this.state.panelY[1]], offsetX: [offsetX, start ? offsetX : this.state.offsetX[1]], offsetY: [offsetY, start ? offsetY : this.state.offsetY[1]], zoom: [this.state.zoom[0], start ? this.state.zoom[0] : this.state.zoom[1]], panelWH: [panelWH, start ? panelWH : this.state.panelWH[1]] });
+        this.updateController({ panelX, panelY, offsetX, offsetY, panelWH, immediate: start });
       }
       handleMouseWheel(e) {
         /* scroll to toggle mode */
-        const scrollToggle = this.props.settings.enableMode === 2;
+        const scrollToggle = this.props.__BIV_settings.enableMode === 2;
         if ((!scrollToggle || (scrollToggle && e.shiftKey)) && !this.state.zooming) return;
         if (e.deltaY < 0) {
           if (e.shiftKey) {
-            this.state.panelWH[0] *= 1.1;
-            if (Structs.Screen.height > Structs.Screen.width && this.state.panelWH[0] > (this.props.settings.outOfScreen ? Structs.Screen.height * 2 : Structs.Screen.height)) this.state.panelWH[0] = this.props.settings.outOfScreen ? Structs.Screen.height * 2 : Structs.Screen.height - 2;
-            else if (Structs.Screen.height < Structs.Screen.width && this.state.panelWH[0] > (this.props.settings.outOfScreen ? Structs.Screen.width * 2 : Structs.Screen.width)) this.state.panelWH[0] = this.props.settings.outOfScreen ? Structs.Screen.width * 2 : Structs.Screen.width - 2;
-            this.state.panelWH[0] = Math.ceil(this.state.panelWH[0]);
+            this.state.panelWH *= 1.1;
+            if (Structs.Screen.height > Structs.Screen.width && this.state.panelWH > (this.props.__BIV_settings.outOfScreen ? Structs.Screen.height * 2 : Structs.Screen.height)) this.state.panelWH = this.props.__BIV_settings.outOfScreen ? Structs.Screen.height * 2 : Structs.Screen.height - 2;
+            else if (Structs.Screen.height < Structs.Screen.width && this.state.panelWH > (this.props.__BIV_settings.outOfScreen ? Structs.Screen.width * 2 : Structs.Screen.width)) this.state.panelWH = this.props.__BIV_settings.outOfScreen ? Structs.Screen.width * 2 : Structs.Screen.width - 2;
+            this.state.panelWH = Math.ceil(this.state.panelWH);
             this._handleMouseMove(e.clientX, e.clientY);
             this._handleSaveLensWHChangeDC.delay();
           } else {
-            const nextZoom = [Math.min(this.state.zoom[0] * 1.1, 60), this.state.zoom[1]];
+            this.state.zoom = Math.min(this.state.zoom * 1.1, 60);
             if (scrollToggle && !this.state.zooming) {
-              this.setStateImmediate({ zooming: true, visible: true, zoom: nextZoom });
+              this.updateController({ zoom: this.state.zoom, immediate: true }, true);
               this._handleMouseMove(e.clientX, e.clientY, true);
-            } else this.setState({ zoom: nextZoom });
+              this.setState({ zooming: true, visible: true });
+            } else this.updateController({ zoom: this.state.zoom });
           }
         } else if (e.deltaY > 0) {
           if (e.shiftKey) {
-            this.state.panelWH[0] *= 0.9;
-            if (this.state.panelWH[0] < 75) this.state.panelWH[0] = 75;
-            this.state.panelWH[0] = Math.ceil(this.state.panelWH[0]);
+            this.state.panelWH *= 0.9;
+            if (this.state.panelWH < 75) this.state.panelWH = 75;
+            this.state.panelWH = Math.ceil(this.state.panelWH);
             this._handleMouseMove(e.clientX, e.clientY);
             this._handleSaveLensWHChangeDC.delay();
           } else {
-            const nextZoom = this.state.zoom[0] * 0.9;
-            if (scrollToggle && nextZoom < 1.5) this.setStateImmediate({ zooming: false });
-            this.setState({ zoom: [Math.max(nextZoom, 1.5), this.state.zoom[1]] });
+            const nextZoom = this.state.zoom * 0.9;
+            this.state.zoom = Math.max(nextZoom, 1);
+            this.updateController({ zoom: this.state.zoom });
+            if (scrollToggle && nextZoom < 1) this.setState({ zooming: false });
           }
         }
       }
@@ -434,27 +450,24 @@ var BetterImageViewer = (() => {
             style: {
               width: props.panelWH,
               height: props.panelWH,
-              left: props.panelX,
-              top: props.panelY,
+              transform: ReactSpring.to([props.panelX, props.panelY], (x, y) => `translate3d(${x}px, ${y}px, 0)`),
               opacity: ea.opacity
             },
-            className: XenoLib.joinClassNames('BIV-zoom-lens', { 'BIV-zoom-lens-round': this.props.settings.round })
+            className: XenoLib.joinClassNames('BIV-zoom-lens', { 'BIV-zoom-lens-round': this.props.__BIV_settings.round })
           },
           React.createElement(
-            this.props.settings.smoothing ? ReactSpring.animated.div : 'div',
+            ReactSpring.animated.div,
             {
               style: {
-                position: 'absolute',
-                left: props.imgLeft,
-                top: props.imgTop
+                transform: ReactSpring.to([props.imgLeft, props.imgTop], (x, y) => `translate3d(${x}px, ${y}px, 0)`)
               }
             },
-            React.createElement(this.props.__BIV_animated ? (this.props.settings.smoothing ? ReactSpring.animated.video : 'video') : this.props.settings.smoothing ? ReactSpring.animated.img : 'img', {
+            React.createElement(this.props.__BIV_animated ? ReactSpring.animated.video : ReactSpring.animated.img, {
               onError: _ => this.getRawImage(true),
               src: this.props.__BIV_animated ? this.props.__BIV_src : this.state.raw,
               width: props.imgWidth,
               height: props.imgHeight,
-              style: this.props.settings.interp
+              style: this.props.__BIV_settings.interp
                 ? undefined
                 : {
                     imageRendering: 'pixelated'
@@ -466,45 +479,52 @@ var BetterImageViewer = (() => {
       }
       render() {
         const ret = super.render();
+        if (this.__BIV_crash) return ret;
         ret.props.onMouseDown = this.handleMouseDown;
-        delete ret.props.settings;
+        for (const prop in ret.props) if (!prop.indexOf('__BIV')) delete ret.props[prop];
         ret.ref = e => (this._ref = e);
         if (this.state.visible) {
           ret.props.children.push(
-            ReactDOM.createPortal(
-              React.createElement(
-                ReactSpring.Spring,
-                {
-                  native: true,
-                  from: { opacity: 0 },
-                  to: { opacity: this.state.zooming ? 1 : 0 },
-                  config: { duration: 100 },
-                  onRest: () => {
-                    !this.state.zooming && this.setState({ visible: false });
-                  }
-                },
-                ea => [
-                  React.createElement(ReactSpring.animated.div, {
-                    style: {
-                      opacity: ea.opacity
-                    },
-                    className: 'BIV-zoom-backdrop'
-                  }),
-                  this.props.settings.smoothing
-                    ? React.createElement(
-                        ReactSpring.Spring,
-                        {
-                          native: true,
-                          from: { panelX: this.state.panelX[1], panelY: this.state.panelY[1], panelWH: this.state.panelWH[1], offsetX: this.state.offsetX[1], offsetY: this.state.offsetY[1], zoom: this.state.zoom[1], opacity: 0 },
-                          to: { panelX: this.state.panelX[0], panelY: this.state.panelY[0], panelWH: this.state.panelWH[0], offsetX: this.state.offsetX[0], offsetY: this.state.offsetY[0], zoom: this.state.zoom[0], opacity: 1 },
-                          config: { mass: 1, tension: 1750, friction: 75, easing: Easing ? Easing.linear : e => e, clamp: false }
-                        },
-                        e => this.renderLens(ea, { ...e, imgLeft: ReactSpring.to([e.zoom, e.offsetX, e.panelWH], (z, x, wh) => -x * z + wh / 2), imgTop: ReactSpring.to([e.zoom, e.offsetY, e.panelWH], (z, y, wh) => -y * z + wh / 2), imgWidth: e.zoom.to(e => e * this.props.width), imgHeight: e.zoom.to(e => e * this.props.height) })
-                      )
-                    : this.renderLens(ea, { panelWH: this.state.panelWH[0], panelX: this.state.panelX[0], panelY: this.state.panelY[0], imgLeft: -this.state.offsetX[0] * this.state.zoom[0] + this.state.panelWH[0] / 2, imgTop: -this.state.offsetY[0] * this.state.zoom[0] + this.state.panelWH[0] / 2, imgWidth: this.state.zoom[0] * this.props.width, imgHeight: this.state.zoom[0] * this.props.height })
-                ]
-              ),
-              overlayDOMNode
+            React.createElement(
+              XenoLib.ReactComponents.ErrorBoundary,
+              {
+                label: 'Image zoom',
+                onError: () => {
+                  XenoLib.Notifications.error(`[**${config.info.name}**] Image zoom has encountered a rendering error and has been temporarily disabled to prevent Discord from crashing. More info in console.`, { timeout: 0 });
+                }
+              },
+              ReactDOM.createPortal(
+                React.createElement(
+                  ReactSpring.Spring,
+                  {
+                    native: true,
+                    from: { opacity: 0 },
+                    to: { opacity: this.state.zooming ? 1 : 0 },
+                    config: { duration: 100 },
+                    onRest: () => {
+                      !this.state.zooming && this.setState({ visible: false });
+                    }
+                  },
+                  ea => [
+                    React.createElement(ReactSpring.animated.div, {
+                      style: {
+                        opacity: ea.opacity
+                      },
+                      className: 'BIV-zoom-backdrop'
+                    }),
+                    this.renderLens(ea, {
+                      imgLeft: ReactSpring.to([this._controller.animated.zoom, this._controller.animated.offsetX, this._controller.animated.panelX], (z, x, a) => -a + (this._ref.offsetLeft - ((this._ref.offsetWidth * z - this._ref.offsetWidth) / (this._ref.offsetWidth * z)) * x * z)),
+                      imgTop: ReactSpring.to([this._controller.animated.zoom, this._controller.animated.offsetY, this._controller.animated.panelY], (z, y, a) => -a + (this._ref.offsetTop - ((this._ref.offsetHeight * z - this._ref.offsetHeight) / (this._ref.offsetHeight * z)) * y * z)),
+                      imgWidth: this._controller.animated.zoom.to(e => e * this.props.width),
+                      imgHeight: this._controller.animated.zoom.to(e => e * this.props.height),
+                      panelX: this._controller.animated.panelX,
+                      panelY: this._controller.animated.panelY,
+                      panelWH: this._controller.animated.panelWH
+                    })
+                  ]
+                ),
+                overlayDOMNode
+              )
             )
           );
         }
@@ -628,6 +648,11 @@ var BetterImageViewer = (() => {
     const TimerIcon = e => React.createElement('svg', { ...e, name: 'Timer', width: 16, height: 16, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z', fill: 'currentColor', fillRule: 'nonzero' }));
     const ClearIcon = e => React.createElement('svg', { ...e, name: 'Clear', width: 18, height: 18, viewBox: '0 0 18 18' }, React.createElement('path', { d: 'M9,2 C12.871,2 16,5.129 16,9 C16,12.871 12.871,16 9,16 C5.129,16 2,12.871 2,9 C2,5.129 5.129,2 9,2 L9,2 Z M11.6925,5.25 L9,7.9425 L6.3075,5.25 L5.25,6.3075 L7.9425,9 L5.25,11.6925 L6.3075,12.75 L9,10.0575 L11.6925,12.75 L12.75,11.6925 L10.0575,9 L12.75,6.3075 L11.6925,5.25 Z', fill: 'currentColor', fillRule: 'nonzero' }));
 
+    const EditorTools = WebpackModules.getByProps('getFirstTextBlock');
+    const SearchTools = WebpackModules.getByProps('tokenizeQuery', 'getSearchQueryFromTokens');
+    // const SearchResultsWrap = XenoLib.getSingleClass('noResults searchResultsWrap') || 'ERRORCLASS';
+    const SearchStore = WebpackModules.getByProps('getCurrentSearchId');
+
     class RichImageModal extends (() => {
       if (ImageModal) return ImageModal;
       Logger.error('ImageModal is undefined! Plugin will not work!');
@@ -663,52 +688,89 @@ var BetterImageViewer = (() => {
           this.state.internalError = true;
           return;
         }
-        const filtered = this.filterMessages(true);
-        if (filtered.findIndex(m => m.id === this.state.__BIV_data.messageId) === -1) {
-          this.state.internalError = true;
-          return;
-        }
-        this._lastSearch = 0;
-        this._cancellers = new Set();
-        this._cachedMessages = [props.__BIV_data.messageId];
-        this._preloading = new Set();
-        if (SearchCache[DiscordAPI.currentChannel.id]) {
-          OldSearchCache[DiscordAPI.currentChannel.id] = [...SearchCache[DiscordAPI.currentChannel.id]];
-          if (SearchCache[DiscordAPI.currentChannel.id].noBefore) OldSearchCache[DiscordAPI.currentChannel.id].noBefore = SearchCache[DiscordAPI.currentChannel.id].noBefore;
-          if (SearchCache[DiscordAPI.currentChannel.id]._totalResults) OldSearchCache[DiscordAPI.currentChannel.id]._totalResults = SearchCache[DiscordAPI.currentChannel.id]._totalResults;
-        }
-        const cache = SearchCache[DiscordAPI.currentChannel.id];
-        if (cache && filtered[0]) {
-          const idx = cache.findIndex(e => e.id === filtered[0].id);
-          /* better cache utilization */
-          if (idx !== -1) {
-            this._searchCache = cache.slice(0, idx + 1);
-            if (cache.noBefore) this._searchCache.noBefore = cache.noBefore;
-            if (cache._totalResults) this._searchCache._totalResults = cache._totalResults;
-            SearchCache[DiscordAPI.currentChannel.id] = this._searchCache;
+        try {
+          const filtered = this.filterMessages(true);
+          if (!props.__BIV_isSearch && filtered.findIndex(m => m.id === this.state.__BIV_data.messageId) === -1) {
+            this.state.internalError = true;
+            return;
           }
-        }
-        if (!this._searchCache) this._searchCache = SearchCache[DiscordAPI.currentChannel.id] = [];
-        if (!this._searchCache._totalResults) this._searchCache._totalResults = 0;
-        if (!ChannelMessages[DiscordAPI.currentChannel.id].hasMoreBefore) this._searchCache.noBefore = true;
-        if (ForwardSearchCache[DiscordAPI.currentChannel.id]) OldForwardSearchCache[DiscordAPI.currentChannel.id] = [...ForwardSearchCache[DiscordAPI.currentChannel.id]];
-        if (ChannelMessages[DiscordAPI.currentChannel.id].hasMoreAfter && !ChannelMessages[DiscordAPI.currentChannel.id]._after._wasAtEdge) {
-          filtered.reverse();
-          const cache = ForwardSearchCache[DiscordAPI.currentChannel.id];
-          if (cache && filtered[0]) {
-            const idx = cache.findIndex(e => e.id === filtered[0].id);
-            /* god I hope I did this right */
-            if (idx !== -1) {
-              this._forwardSearchCache = cache.slice(idx);
-              ForwardSearchCache[DiscordAPI.currentChannel.id] = this._forwardSearchCache;
+          this._lastSearch = 0;
+          this._cancellers = new Set();
+          this._cachedMessages = [props.__BIV_data.messageId];
+          this._preloading = new Set();
+          if (!props.__BIV_isSearch) {
+            if (SearchCache[DiscordAPI.currentChannel.id]) {
+              OldSearchCache[DiscordAPI.currentChannel.id] = [...SearchCache[DiscordAPI.currentChannel.id]];
+              if (SearchCache[DiscordAPI.currentChannel.id].noBefore) OldSearchCache[DiscordAPI.currentChannel.id].noBefore = SearchCache[DiscordAPI.currentChannel.id].noBefore;
+              if (SearchCache[DiscordAPI.currentChannel.id]._totalResults) OldSearchCache[DiscordAPI.currentChannel.id]._totalResults = SearchCache[DiscordAPI.currentChannel.id]._totalResults;
             }
+            const cache = SearchCache[DiscordAPI.currentChannel.id];
+            if (cache && filtered[0]) {
+              const idx = cache.findIndex(e => e.id === filtered[0].id);
+              /* better cache utilization */
+              if (idx !== -1) {
+                this._searchCache = cache.slice(0, idx + 1);
+                if (cache.noBefore) this._searchCache.noBefore = cache.noBefore;
+                if (cache._totalResults) this._searchCache._totalResults = cache._totalResults;
+                SearchCache[DiscordAPI.currentChannel.id] = this._searchCache;
+              }
+            }
+            if (!this._searchCache) this._searchCache = SearchCache[DiscordAPI.currentChannel.id] = [];
+            if (!this._searchCache._totalResults) this._searchCache._totalResults = 0;
+            if (!ChannelMessages[DiscordAPI.currentChannel.id].hasMoreBefore) this._searchCache.noBefore = true;
+            if (ForwardSearchCache[DiscordAPI.currentChannel.id]) OldForwardSearchCache[DiscordAPI.currentChannel.id] = [...ForwardSearchCache[DiscordAPI.currentChannel.id]];
+            if (ChannelMessages[DiscordAPI.currentChannel.id].hasMoreAfter && !ChannelMessages[DiscordAPI.currentChannel.id]._after._wasAtEdge) {
+              filtered.reverse();
+              const cache = ForwardSearchCache[DiscordAPI.currentChannel.id];
+              if (cache && filtered[0]) {
+                const idx = cache.findIndex(e => e.id === filtered[0].id);
+                /* god I hope I did this right */
+                if (idx !== -1) {
+                  this._forwardSearchCache = cache.slice(idx);
+                  ForwardSearchCache[DiscordAPI.currentChannel.id] = this._forwardSearchCache;
+                }
+              }
+            }
+            if (!this._forwardSearchCache) this._forwardSearchCache = ForwardSearchCache[DiscordAPI.currentChannel.id] = [];
+            this._followNew = ChannelMessages[DiscordAPI.currentChannel.id]._after._wasAtEdge;
+            this._searchId = DiscordAPI.currentGuild ? DiscordAPI.currentGuild.id : DiscordAPI.currentChannel.id;
+          } else {
+            this._followNew = false;
+            this._searchCache = [];
+            this._forwardSearchCache = [];
+            const images = [];
+            this._searchId = SearchStore.getCurrentSearchId();
+            const searchResults = SearchStore.getResults(this._searchId);
+            searchResults.forEach(group => {
+              group.forEach(iMessage => {
+                if (!iMessage.isSearchHit || images.findIndex(e => e.id === iMessage.id) !== -1) return;
+                if (!extractImages(iMessage).length) return;
+                images.push(iMessage);
+              });
+            });
+            images.sort((a, b) => a.timestamp.unix() - b.timestamp.unix());
+            /* discord search is le broken lol */
+            /* if (Utilities.getNestedProp(ZeresPluginLibrary.ReactTools.getOwnerInstance(document.querySelector(`.${SearchResultsWrap}`)), 'state.searchMode') === DiscordConstants.SearchModes.OLDEST) images.reverse(); */
+            this._searchCache._totalResults = SearchStore.getTotalResults(this._searchId);
+            this._searchCache.unshift(...images);
+            let searchString = EditorTools.getFirstTextBlock(SearchStore.getEditorState(this._searchId));
+            let searchquery;
+            let o;
+            let s;
+            for (o = SearchTools.tokenizeQuery(searchString), searchquery = SearchTools.getSearchQueryFromTokens(o), s = 0; s < o.length; s++) {
+              SearchTools.filterHasAnswer(o[s], o[s + 1]) || (searchString = searchString.substring(0, o[s].start) + searchString.substring(o[s].end));
+            }
+            this._searchProps = searchquery;
           }
+          this._searchType = GuildStore.getGuild(this._searchId) ? DiscordConstants.SearchTypes.GUILD : DiscordConstants.SearchTypes.CHANNEL;
+          this._imageCounter = {};
+          this._oFM = [];
+          this.calculateImageNumNMax();
+        } catch (err) {
+          Logger.stacktrace('Failed constructing RichImageModal', err);
+          /* XenoLib.Notifications.error(`[**${config.info.name}**] Serious internal error. More info in console.`) */
+          this.state.internalError = -1;
         }
-        if (!this._forwardSearchCache) this._forwardSearchCache = ForwardSearchCache[DiscordAPI.currentChannel.id] = [];
-        this._followNew = ChannelMessages[DiscordAPI.currentChannel.id]._after._wasAtEdge;
-        this._imageCounter = {};
-        this._oFM = [];
-        this.calculateImageNumNMax();
       }
       componentDidMount() {
         if (super.componentDidMount) super.componentDidMount();
@@ -730,8 +792,8 @@ var BetterImageViewer = (() => {
         this._cancellers.clear();
       }
       filterMessages(noCache) {
-        const chan = ChannelMessages[DiscordAPI.currentChannel.id];
-        const arr = [...((!noCache && this._searchCache) || []), ...chan._before._messages, ...chan._array, ...chan._after._messages, ...((!noCache && this._forwardSearchCache) || [])];
+        const chan = this.props.__BIV_isSearch ? [] : ChannelMessages[DiscordAPI.currentChannel.id];
+        const arr = [...((!noCache && this._searchCache) || []), ...(!this.props.__BIV_isSearch ? [...chan._before._messages, ...chan._array, ...chan._after._messages] : []), ...((!noCache && this._forwardSearchCache) || [])];
         return arr.filter((m, i) => arr.findIndex(a => a.id === m.id) === i && extractImages(m).length).sort((a, b) => a.timestamp.unix() - b.timestamp.unix());
       }
       getMessage(id) {
@@ -771,13 +833,13 @@ var BetterImageViewer = (() => {
         }
       }
       handleSearch(lastId, reverse) {
-        if (!this.props.settings.behavior.searchAPI) return;
-        if (reverse && !ChannelMessages[DiscordAPI.currentChannel.id].hasMoreAfter) return Logger.warn("Illegal operation, attempted to reverse search, but we're on newest image\n", new Error().stack);
+        if (!this.props.__BIV_settings.behavior.searchAPI) return;
+        if (!this.props.__BIV_isSearch && reverse && !ChannelMessages[DiscordAPI.currentChannel.id].hasMoreAfter) return Logger.warn("Illegal operation, attempted to reverse search, but we're on newest image\n", new Error().stack);
         this.state.needsSearch = false;
         if ((this.state.requesting && !this.state.indexing) || (!reverse && this._searchCache.noBefore) || (reverse && this._followNew)) return;
         /* fully utilize both caches */
-        if (this.processCache(OldForwardSearchCache, lastId, reverse)) return;
-        if (this.processCache(OldSearchCache, lastId, reverse)) return;
+        if (!this.props.__BIV_isSearch && this.processCache(OldForwardSearchCache, lastId, reverse)) return;
+        if (!this.props.__BIV_isSearch && this.processCache(OldSearchCache, lastId, reverse)) return;
         if (this.state.rateLimited) return;
         if (!this.state.indexing && Date.now() - this._lastSearch < 3500) {
           if (!this.state.localRateLimited) {
@@ -787,19 +849,14 @@ var BetterImageViewer = (() => {
                 this.handleSearch(lastId, reverse);
               }, 3500 - (Date.now() - this._lastSearch))
             });
-            // Toasts.error('Slow down!');
           }
           return;
         }
         this._lastSearch = Date.now();
+        const query = Object.assign({}, this.props.__BIV_isSearch ? this._searchProps : { channel_id: DiscordAPI.currentChannel.id }, { has: 'image', include_nsfw: true, [reverse ? 'min_id' : 'max_id']: lastId }, reverse ? { sort_order: 'asc' } : {});
         APIModule.get({
-          url: DiscordConstants.Endpoints.SEARCH_CHANNEL(DiscordAPI.currentChannel.id),
-          query: APIEncodeModule.stringify({
-            channel_id: DiscordAPI.currentChannel.id,
-            has: 'image',
-            include_nsfw: true,
-            [reverse ? 'min_id' : 'max_id']: lastId
-          })
+          url: this._searchType === DiscordConstants.SearchTypes.GUILD ? DiscordConstants.Endpoints.SEARCH_GUILD(this._searchId) : DiscordConstants.Endpoints.SEARCH_CHANNEL(this._searchId),
+          query: APIEncodeModule.stringify(query)
         })
           .then(content => {
             if (content.status === 202) {
@@ -824,7 +881,7 @@ var BetterImageViewer = (() => {
             const images = [reverse ? filtered[filtered.length - 1] : filtered[0]];
             content.body.messages.forEach(group => {
               group.forEach(message => {
-                if (images.findIndex(e => e.id === message.id) !== -1) return;
+                if ((this.props.__BIV_isSearch && !message.hit) || images.findIndex(e => e.id === message.id) !== -1) return;
                 const iMessage = MessageRecordUtils.createMessageRecord(message);
                 if (!extractImages(iMessage).length) return;
                 images.push(iMessage);
@@ -845,6 +902,7 @@ var BetterImageViewer = (() => {
         this.setState({ requesting: true, unknownError: false });
       }
       handleMessageCreate({ optimistic, channelId, message }) {
+        if (this.props.__BIV_isSearch) return;
         if (optimistic || channelId !== DiscordAPI.currentChannel.id || !extractImages(message).length) return;
         if (this._followNew) this._forwardSearchCache.push(MessageRecordUtils.createMessageRecord(message));
         this.calculateImageNumNMax();
@@ -886,14 +944,14 @@ var BetterImageViewer = (() => {
       }
       handleMouseEnter(next) {
         this.state.controlsHovered = true;
-        if (this.props.settings.behavior.debug) this.forceUpdate();
-        if (!this.state.needsSearch || (this.state.needsSearch === -1 && !next) || !this.props.settings.behavior.hoverSearch) return;
+        if (this.props.__BIV_settings.behavior.debug) this.forceUpdate();
+        if (!this.state.needsSearch || (this.state.needsSearch === -1 && !next) || !this.props.__BIV_settings.behavior.hoverSearch) return;
         const filtered = this.filterMessages();
         this.handleSearch(next ? filtered[filtered.length - 1].id : filtered[0].id, next);
       }
       handleMouseLeave() {
         this.state.controlsHovered = false;
-        if (this.props.settings.behavior.debug) this.forceUpdate();
+        if (this.props.__BIV_settings.behavior.debug) this.forceUpdate();
       }
       handlePreLoad(keyboardMode, next, subsidiaryMessageId) {
         const filtered = this.filterMessages();
@@ -903,13 +961,16 @@ var BetterImageViewer = (() => {
         this.setState({ isNearingEdge, showFullRes: false });
         if (keyboardMode === -1 || isNearingEdge) {
           /* search required, wait for user input if none of these are tripped */
-          if (keyboardMode || this._maxImages < 2 || this.state.controlsHovered) {
-            if (!next || (next && ChannelMessages[DiscordAPI.currentChannel.id].hasMoreAfter)) this.handleSearch(next ? filtered[filtered.length - 1].id : filtered[0].id, next);
+          if (keyboardMode || this.state.controlsHovered) {
+            if (!next || (next && (this.props.__BIV_isSearch || ChannelMessages[DiscordAPI.currentChannel.id].hasMoreAfter))) this.handleSearch(next ? filtered[filtered.length - 1].id : filtered[0].id, next);
           } else {
             this.state.needsSearch = next ? -1 : 1;
           }
         }
-        if (targetIdx === -1) return this.setState({ internalError: true });
+        if (targetIdx === -1) {
+          XenoLib.Notifications.error(`[**${config.info.name}**] Anomaly detected, disabling controls.`, { timeout: 5000 });
+          return this.setState({ internalError: true });
+        }
         const handleMessage = message => {
           if (this._cachedMessages.indexOf(message.id) !== -1 || this._preloading.has(message.id)) return;
           const data = extractImages(message);
@@ -976,11 +1037,13 @@ var BetterImageViewer = (() => {
       }
       handleChangeImage(next, keyboardMode) {
         if (next) {
-          if (this.state.__BIV_index === this.state.__BIV_data.images.length - 1) return this.handleEnd(keyboardMode);
-          this.state.__BIV_index++;
+          if (this.state.__BIV_index === this.state.__BIV_data.images.length - 1) {
+            if (!this.handleEnd(keyboardMode)) return;
+          } else this.state.__BIV_index++;
         } else {
-          if (!this.state.__BIV_index) return this.handleStart(keyboardMode);
-          this.state.__BIV_index--;
+          if (!this.state.__BIV_index) {
+            if (!this.handleStart(keyboardMode)) return;
+          } else this.state.__BIV_index--;
         }
         this.handlePreLoad(keyboardMode, next);
         this.setState(this.state.__BIV_data.images[this.state.__BIV_index]);
@@ -1008,10 +1071,16 @@ var BetterImageViewer = (() => {
         this.handlePreLoad(-1, next);
       }
       render() {
+        if (this.state.internalError === -1) throw 'If you see this, something went HORRIBLY wrong!';
         for (const prop of ImageProps) this.props[prop] = this.state[prop];
         const message = this.state.__BIV_data && this.getMessage(this.state.__BIV_data.messageId);
         const ret = super.render();
-        if (!message || this.state.internalError) return ret;
+        if (!message) {
+          if (!this.__couldNotFindMessage) XenoLib.Notifications.error(`[**${config.info.name}**] Something went wrong.. Could not find associated message for current image.`, { timeout: 7500 });
+          this.__couldNotFindMessage = true;
+          return ret;
+        } else this.__couldNotFindMessage = false;
+        if (this.state.internalError) return ret;
         const currentImage = this._imageCounter[this.state.__BIV_data.messageId] + (this.state.__BIV_data.images.length - 1 - this.state.__BIV_index);
         ret.props.children[0].type = LazyImage;
         ret.props.children[0].props.id = message.id + currentImage;
@@ -1020,7 +1089,7 @@ var BetterImageViewer = (() => {
         ret.props.children.push(
           ReactDOM.createPortal(
             [
-              this.props.settings.ui.navButtons || this.props.settings.behavior.debug
+              this.props.__BIV_settings.ui.navButtons || this.props.__BIV_settings.behavior.debug
                 ? [
                     React.createElement(
                       Clickable,
@@ -1051,7 +1120,7 @@ var BetterImageViewer = (() => {
                 {
                   className: XenoLib.joinClassNames('BIV-info', { 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsVisible })
                 },
-                this.props.settings.ui.imageIndex || this.props.settings.behavior.debug
+                this.props.__BIV_settings.ui.imageIndex || this.props.__BIV_settings.behavior.debug
                   ? React.createElement(
                       TextElement,
                       {
@@ -1061,7 +1130,7 @@ var BetterImageViewer = (() => {
                       currentImage,
                       ' of ',
                       this._maxImages,
-                      this._searchCache._totalResults || this.props.settings.behavior.debug
+                      this._searchCache._totalResults || this.props.__BIV_settings.behavior.debug
                         ? React.createElement(
                             Tooltip,
                             {
@@ -1088,7 +1157,7 @@ var BetterImageViewer = (() => {
                       {
                         className: XenoLib.joinClassNames(UsernameClassname, ClickableClassname),
                         onContextMenu: e => {
-                          WebpackModules.getByProps('openUserContextMenu').openUserContextMenu(e, message.author, DiscordAPI.currentChannel.discordObject);
+                          WebpackModules.getByProps('openUserContextMenu').openUserContextMenu(e, message.author, ChannelStore.getChannel(message.channel_id));
                         },
                         style:
                           iMember && iMember.colorString
@@ -1098,7 +1167,7 @@ var BetterImageViewer = (() => {
                             : null,
                         onClick: () => {
                           this.props.onClose();
-                          NavigationUtils.transitionTo(`/channels/${(DiscordAPI.currentGuild && DiscordAPI.currentGuild.id) || '@me'}/${DiscordAPI.currentChannel.id}${message.id ? '/' + message.id : ''}`);
+                          NavigationUtils.transitionTo(`/channels/${(DiscordAPI.currentGuild && DiscordAPI.currentGuild.id) || '@me'}/${message.channel_id}${message.id ? '/' + message.id : ''}`);
                         }
                       },
                       (iMember && iMember.nick) || message.author.username
@@ -1106,7 +1175,7 @@ var BetterImageViewer = (() => {
                     React.createElement(MessageTimestamp, {
                       timestamp: DiscordModules.Moment(message.timestamp)
                     }),
-                    (this.props.settings.behavior.debug || this._searchCache.noBefore) &&
+                    (this.props.__BIV_settings.behavior.debug || this._searchCache.noBefore) &&
                       React.createElement(
                         'div',
                         {
@@ -1120,7 +1189,7 @@ var BetterImageViewer = (() => {
                           e => React.createElement(LeftCaretIcon, e)
                         )
                       ),
-                    (this.props.settings.behavior.debug || (this.state.isNearingEdge && !this.props.settings.behavior.searchAPI)) &&
+                    (this.props.__BIV_settings.behavior.debug || (this.state.isNearingEdge && !this.props.__BIV_settings.behavior.searchAPI)) &&
                       React.createElement(
                         'div',
                         {
@@ -1134,7 +1203,7 @@ var BetterImageViewer = (() => {
                           e => React.createElement(WarningTriangleIcon, e)
                         )
                       ),
-                    (this.props.settings.behavior.debug || (this.state.requesting && !this.state.unknownError)) &&
+                    (this.props.__BIV_settings.behavior.debug || (this.state.requesting && !this.state.unknownError)) &&
                       React.createElement(
                         'div',
                         {
@@ -1148,7 +1217,7 @@ var BetterImageViewer = (() => {
                           e => React.createElement(UpdateAvailableIcon, e)
                         )
                       ),
-                    (this.props.settings.behavior.debug || this.state.indexing) &&
+                    (this.props.__BIV_settings.behavior.debug || this.state.indexing) &&
                       React.createElement(
                         'div',
                         {
@@ -1162,7 +1231,7 @@ var BetterImageViewer = (() => {
                           e => React.createElement(SearchIcon, e)
                         )
                       ),
-                    this.props.settings.behavior.debug || this.state.localRateLimited || this.state.rateLimited
+                    this.props.__BIV_settings.behavior.debug || this.state.localRateLimited || this.state.rateLimited
                       ? React.createElement(
                           'div',
                           {
@@ -1177,7 +1246,7 @@ var BetterImageViewer = (() => {
                           )
                         )
                       : undefined,
-                    (this.props.settings.behavior.debug || this._followNew) &&
+                    (this.props.__BIV_settings.behavior.debug || this._followNew) &&
                       React.createElement(
                         'div',
                         {
@@ -1191,7 +1260,7 @@ var BetterImageViewer = (() => {
                           e => React.createElement(RightCaretIcon, e)
                         )
                       ),
-                    (this.props.settings.behavior.debug || this.state.unknownError) &&
+                    (this.props.__BIV_settings.behavior.debug || this.state.unknownError) &&
                       React.createElement(
                         'div',
                         {
@@ -1372,7 +1441,6 @@ var BetterImageViewer = (() => {
             animation: BIV-spin 2s linear infinite;
           }
           .BIV-zoom-lens {
-            position: absolute;
             overflow: hidden;
             cursor: none;
             border: solid #0092ff;
@@ -1387,6 +1455,9 @@ var BetterImageViewer = (() => {
           }
           .BIV-text-bold {
             font-weight: 600;
+          }
+          .${WebpackModules.find(e => Object.keys(e).length === 2 && e.modal && e.inner).modal.split(' ')[0]} > .${WebpackModules.find(e => Object.keys(e).length === 2 && e.modal && e.inner).inner.split(' ')[0]} > .${XenoLib.getSingleClass('imageZoom imageWrapper')} {
+            display: table; /* lol */
           }
         `
         );
@@ -1431,9 +1502,13 @@ var BetterImageViewer = (() => {
       }
 
       patchLazyImageZoomable() {
+        const patchKey = DiscordModules.KeyGenerator();
         Patcher.before(WebpackModules.getByDisplayName('LazyImageZoomable').prototype, 'render', (_this, _, ret) => {
-          if (!_this.onZoom.__BIV_patched) {
+          if (_this.onZoom.__BIV_patched !== patchKey) {
             _this.onZoom = (e, n) => {
+              let isSearch = e.target;
+              while (isSearch && typeof isSearch.className === 'string' && isSearch.className.indexOf('searchResultMessage') === -1) isSearch = isSearch.parentElement;
+              isSearch = !!isSearch;
               e.preventDefault();
               if (e.currentTarget instanceof HTMLElement) e.currentTarget.blur();
               e = null;
@@ -1484,7 +1559,8 @@ var BetterImageViewer = (() => {
                           onClickUntrusted: _this.onClickUntrusted,
                           __BIV_data: _this.props.__BIV_data,
                           __BIV_index: _this.props.__BIV_data ? _this.props.__BIV_data.images.findIndex(m => m.src === _this.props.src) : -1,
-                          settings: this.settings
+                          __BIV_isSearch: isSearch,
+                          __BIV_settings: this.settings
                         },
                         e
                       )
@@ -1498,7 +1574,7 @@ var BetterImageViewer = (() => {
                 }
               });
             };
-            _this.onZoom.__BIV_patched = true;
+            _this.onZoom.__BIV_patched = patchKey;
           }
         });
       }
@@ -1517,10 +1593,10 @@ var BetterImageViewer = (() => {
         Patcher.before(MessageAccessories.component.prototype, 'renderEmbeds', _this => {
           if (!_this.renderEmbed.__BIV_patched) {
             const oRenderEmbed = _this.renderEmbed;
-            _this.renderEmbed = function(e, n) {
+            _this.renderEmbed = function (e, n) {
               const oRenderImageComponent = n.renderImageComponent;
               if (!oRenderImageComponent.__BIV_patched) {
-                n.renderImageComponent = function(a) {
+                n.renderImageComponent = function (a) {
                   a.__BIV_data = _this.__BIV_data;
                   return oRenderImageComponent(a);
                 };
@@ -1537,7 +1613,7 @@ var BetterImageViewer = (() => {
             let props = Utilities.getNestedProp(attachment, 'props.children.props');
             if (!props) continue;
             const oRenderImageComponent = props.renderImageComponent;
-            props.renderImageComponent = function(e) {
+            props.renderImageComponent = function (e) {
               e.__BIV_data = _this.__BIV_data;
               return oRenderImageComponent(e);
             };
@@ -1764,11 +1840,10 @@ var BetterImageViewer = (() => {
         Patcher.after(LazyImage.prototype, 'render', (_this, _, ret) => {
           if (!ret) return;
           /* fix scaling issues for all images */
-          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || _this.props.__BIV_isVideo) return;
-          /* but not for the public release */
           const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
           ret.props.width = ret.props.width * scale;
           ret.props.height = ret.props.height * scale;
+          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || _this.props.__BIV_isVideo) return;
           if (_this.props.animated && ret.props.children) {
             /* dirty */
             try {
@@ -1778,9 +1853,9 @@ var BetterImageViewer = (() => {
             }
           }
           ret.type = Image;
-          ret.props.settings = this.settings.zoom;
+          ret.props.__BIV_settings = this.settings.zoom;
           ret.props.__BIV_animated = _this.props.animated;
-          ret.props.hiddenSettings = this.hiddenSettings;
+          ret.props.__BIV_hiddenSettings = this.hiddenSettings;
         });
         Patcher.after(WebpackModules.getByDisplayName('LazyVideo').prototype, 'render', (_, __, ret) => {
           if (!ret) return;
