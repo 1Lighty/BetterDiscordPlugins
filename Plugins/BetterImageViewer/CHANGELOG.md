@@ -1,5 +1,8 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
-### 1.3.0
+### 1.3.2
+- Fixed zoom jitter if movement smoothing is disabled.
+
+### 1.3.0 && 1.3.1
 - Fixed images being clipped at the bottom if there isn't enough screen height.
 - Fixed image zoom jitter when changing zoom level, or changing lens size.
 - Fixed error being thrown when you update the plugin and don't switch channels before opening an image.

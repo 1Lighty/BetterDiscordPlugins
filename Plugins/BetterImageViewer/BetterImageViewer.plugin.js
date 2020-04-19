@@ -37,12 +37,17 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.1',
+      version: '1.3.2',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
+      {
+        title: '1.3.2 fixes',
+        type: 'fixed',
+        items: ['Fixed zoom jitter if movement smoothing is disabled.']
+      },
       {
         title: 'fixed',
         type: 'fixed',
@@ -279,15 +284,7 @@ var BetterImageViewer = (() => {
       return images;
     }
     const ReactSpring = WebpackModules.getByProps('useTransition');
-
-    const Easing = (() => {
-      try {
-        return WebpackModules.getByProps('Easing').Easing;
-      } catch (e) {
-        Logger.stacktrace('Failed to get easing', e);
-        return null;
-      }
-    })();
+    const zoomConfig = { mass: 1, tension: 1750, friction: 75, clamp: false };
 
     class Image extends (() => {
       const Image = WebpackModules.getByDisplayName('Image');
@@ -299,12 +296,13 @@ var BetterImageViewer = (() => {
       constructor(props) {
         super(props);
         this.state = { zooming: false, visible: false, panelWH: props.__BIV_hiddenSettings.panelWH, zoom: 1.5 };
-        XenoLib._.bindAll(this, ['handleMouseDown', 'handleMouseUp', 'handleMouseWheel']);
+        XenoLib._.bindAll(this, ['handleMouseDown', 'handleMouseUp', 'handleMouseWheel', 'setRef']);
         try {
           this._handleMouseMove = this.handleMouseMove.bind(this);
           this.handleMouseMove = e => this.state.zooming && this._handleMouseMove(e.clientX, e.clientY);
           this._handleSaveLensWHChangeDC = new TimingModule.DelayedCall(1000, this._handleSaveLensWHChange.bind(this));
-          this._controller = new ReactSpring.Controller({ panelX: 0, panelY: 0, panelWH: 0, offsetX: 0, offsetY: 0, zoom: 1.5 });
+          this._controller = new ReactSpring.Controller({ panelX: 0, panelY: 0, panelWH: 0, offsetX: 0, offsetY: 0 });
+          this._zoomController = new ReactSpring.Controller({ zoom: 1.5 });
         } catch (err) {
           Logger.stacktrace(`Failed constructing Image`, err);
           XenoLib.Notifications.error(`[**${config.info.name}**] Image zoom has encountered an error and has been temporarily disabled to prevent Discord from crashing. More info in console.`, { timeout: 0 });
@@ -329,20 +327,25 @@ var BetterImageViewer = (() => {
         this._handleSaveLensWHChange();
         this._controller.destroy();
         this._controller = null;
+        this._zoomController.destroy();
+        this._zoomController = null;
       }
       componentDidUpdate(prevProps, prevState, snapshot) {
         if (super.componentDidUpdate) super.componentDidUpdate(prevProps, prevState, snapshot);
         if (this.__BIV_crash) return;
         if (this.props.src !== prevProps.src) {
           this.state.zoom = 1.5;
-          this.updateController({ zoom: 1.5, immediate: !this.state.zooming });
-          this.getRawImage();
+          this.updateZoomController({ zoom: 1.5, immediate: !this.state.zooming });
           if (this.state.zooming) this.setState({ zooming: false });
+          this.getRawImage();
         }
       }
       updateController(props, noStart = false) {
-        this._controller.update({ ...props, immediate: !this.props.__BIV_settings.smoothing || props.immediate, config: { mass: 1, tension: 1750, friction: 75, easing: Easing ? Easing.linear : e => e, clamp: false } });
+        this._controller.update({ ...props, immediate: !this.props.__BIV_settings.smoothing || props.immediate, config: zoomConfig });
         if (!noStart) this._controller.start();
+      }
+      updateZoomController(props) {
+        this._zoomController.update({ ...props, immediate: !this.props.__BIV_settings.smoothing || props.immediate, config: zoomConfig }).start();
       }
       _handleSaveLensWHChange() {
         Dispatcher.dirtyDispatch({ type: 'BIV_LENS_WH_CHANGE', value: this.state.panelWH });
@@ -400,11 +403,11 @@ var BetterImageViewer = (() => {
             this._handleSaveLensWHChangeDC.delay();
           } else {
             this.state.zoom = Math.min(this.state.zoom * 1.1, 60);
+            this.updateZoomController({ zoom: this.state.zoom });
             if (scrollToggle && !this.state.zooming) {
-              this.updateController({ zoom: this.state.zoom, immediate: true }, true);
               this._handleMouseMove(e.clientX, e.clientY, true);
               this.setState({ zooming: true, visible: true });
-            } else this.updateController({ zoom: this.state.zoom });
+            }
           }
         } else if (e.deltaY > 0) {
           if (e.shiftKey) {
@@ -416,17 +419,16 @@ var BetterImageViewer = (() => {
           } else {
             const nextZoom = this.state.zoom * 0.9;
             this.state.zoom = Math.max(nextZoom, 1);
-            this.updateController({ zoom: this.state.zoom });
+            this.updateZoomController({ zoom: this.state.zoom });
             if (scrollToggle && nextZoom < 1) this.setState({ zooming: false });
           }
         }
       }
       getRawImage(failed) {
-        if (this.__BIV_updating || this.props.__BIV_animated) return;
+        if (this.props.__BIV_animated) return;
         if (typeof this.__BIV_failNum !== 'number') this.__BIV_failNum = 0;
         if (failed) this.__BIV_failNum++;
         else this.__BIV_failNum = 0;
-        this.__BIV_updating = true;
         const src = this.props.src;
         const fullSource = (() => {
           const split = src.split('?')[0];
@@ -439,9 +441,7 @@ var BetterImageViewer = (() => {
           } catch (_) {}
           return split + (needsSize ? '?size=2048' : '');
         })();
-        this.__BIV_updating = true;
-        this.setState({ raw: fullSource });
-        this.__BIV_updating = false;
+        this.state.raw = fullSource;
       }
       renderLens(ea, props) {
         return React.createElement(
@@ -477,12 +477,15 @@ var BetterImageViewer = (() => {
           )
         );
       }
+      setRef(e) {
+        this._ref = e;
+      }
       render() {
         const ret = super.render();
         if (this.__BIV_crash) return ret;
         ret.props.onMouseDown = this.handleMouseDown;
         for (const prop in ret.props) if (!prop.indexOf('__BIV')) delete ret.props[prop];
-        ret.ref = e => (this._ref = e);
+        ret.ref = this.setRef;
         if (this.state.visible) {
           ret.props.children.push(
             React.createElement(
@@ -513,10 +516,10 @@ var BetterImageViewer = (() => {
                       className: 'BIV-zoom-backdrop'
                     }),
                     this.renderLens(ea, {
-                      imgLeft: ReactSpring.to([this._controller.animated.zoom, this._controller.animated.offsetX, this._controller.animated.panelX], (z, x, a) => -a + (this._ref.offsetLeft - ((this._ref.offsetWidth * z - this._ref.offsetWidth) / (this._ref.offsetWidth * z)) * x * z)),
-                      imgTop: ReactSpring.to([this._controller.animated.zoom, this._controller.animated.offsetY, this._controller.animated.panelY], (z, y, a) => -a + (this._ref.offsetTop - ((this._ref.offsetHeight * z - this._ref.offsetHeight) / (this._ref.offsetHeight * z)) * y * z)),
-                      imgWidth: this._controller.animated.zoom.to(e => e * this.props.width),
-                      imgHeight: this._controller.animated.zoom.to(e => e * this.props.height),
+                      imgLeft: ReactSpring.to([this._zoomController.animated.zoom, this._controller.animated.offsetX, this._controller.animated.panelX], (z, x, a) => -a + (this._ref.offsetLeft - ((this._ref.offsetWidth * z - this._ref.offsetWidth) / (this._ref.offsetWidth * z)) * x * z)),
+                      imgTop: ReactSpring.to([this._zoomController.animated.zoom, this._controller.animated.offsetY, this._controller.animated.panelY], (z, y, a) => -a + (this._ref.offsetTop - ((this._ref.offsetHeight * z - this._ref.offsetHeight) / (this._ref.offsetHeight * z)) * y * z)),
+                      imgWidth: this._zoomController.animated.zoom.to(e => e * this.props.width),
+                      imgHeight: this._zoomController.animated.zoom.to(e => e * this.props.height),
                       panelX: this._controller.animated.panelX,
                       panelY: this._controller.animated.panelY,
                       panelWH: this._controller.animated.panelWH
@@ -539,6 +542,10 @@ var BetterImageViewer = (() => {
       PluginBrokenFatal = true;
       return class error {};
     })() {
+      constructor(props) {
+        super(props);
+        this.renderChildren = this.renderChildren.bind(this);
+      }
       componentDidUpdate(props, prevState, snapshot) {
         this._cancellers.forEach(e => e());
         this._cancellers.clear();
@@ -556,6 +563,15 @@ var BetterImageViewer = (() => {
         }
         this.__BIV_updating = false;
       }
+      renderChildren(e) {
+        return React.createElement('img', {
+          className: e.className || undefined,
+          alt: e.alt,
+          src: e.src,
+          style: e.size,
+          key: this.props.id /* force React to create a new element for a smooth transition */
+        });
+      }
       render() {
         const ret = super.render();
         if (!ret) {
@@ -563,14 +579,7 @@ var BetterImageViewer = (() => {
           return ret;
         }
         ret.props.__BIV_original = this.props.__BIV_original;
-        ret.props.children = e =>
-          React.createElement('img', {
-            className: e.className || undefined,
-            alt: e.alt,
-            src: e.src,
-            style: e.size,
-            key: this.props.id /* force React to create a new element for a smooth transition */
-          });
+        ret.props.children = this.renderChildren;
         return ret;
       }
     }
@@ -683,7 +692,11 @@ var BetterImageViewer = (() => {
           basicImageInfo: null,
           showFullRes: false
         };
-        XenoLib._.bindAll(this, ['handleMessageCreate', 'handleMessageDelete', 'handlePurge', 'handleKeyDown', 'handlePrevious', 'handleNext', 'handleMouseEnter', 'handleMouseLeave', 'handleFastJump']);
+        XenoLib._.bindAll(this, ['handleMessageCreate', 'handleMessageDelete', 'handlePurge', 'handleKeyDown', 'handlePrevious', 'handleNext', 'handleMouseLeave']);
+        this.handleMouseEnterLeft = this._handleMouseEnter.bind(this, false);
+        this.handleMouseEnterRight = this._handleMouseEnter.bind(this, true);
+        this.handleFastJumpLeft = this._handleFastJump.bind(this, false);
+        this.handleFastJumpRight = this._handleFastJump.bind(this, true);
         if (props.__BIV_index === -1) {
           this.state.internalError = true;
           return;
@@ -942,7 +955,7 @@ var BetterImageViewer = (() => {
         }
         this.handleMessageDeletes();
       }
-      handleMouseEnter(next) {
+      _handleMouseEnter(next) {
         this.state.controlsHovered = true;
         if (this.props.__BIV_settings.behavior.debug) this.forceUpdate();
         if (!this.state.needsSearch || (this.state.needsSearch === -1 && !next) || !this.props.__BIV_settings.behavior.hoverSearch) return;
@@ -1055,7 +1068,7 @@ var BetterImageViewer = (() => {
       handleNext() {
         this.handleChangeImage(true);
       }
-      handleFastJump(next) {
+      _handleFastJump(next) {
         const filtered = this.filterMessages();
         const iMessage = next ? filtered[filtered.length - 1] : filtered[0];
         const newData = {
@@ -1096,8 +1109,8 @@ var BetterImageViewer = (() => {
                       {
                         className: XenoLib.joinClassNames('BIV-left', { 'BIV-disabled': currentImage === this._maxImages && (this._searchCache.noBefore || this.state.rateLimited), 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsVisible }),
                         onClick: this.handlePrevious,
-                        onContextMenu: () => this.handleFastJump(),
-                        onMouseEnter: () => this.handleMouseEnter(),
+                        onContextMenu: this.handleFastJumpLeft,
+                        onMouseEnter: this.handleMouseEnterLeft,
                         onMouseLeave: this.handleMouseLeave
                       },
                       React.createElement(LeftCaretIcon)
@@ -1107,8 +1120,8 @@ var BetterImageViewer = (() => {
                       {
                         className: XenoLib.joinClassNames('BIV-right', { 'BIV-disabled': currentImage === 1, 'BIV-inactive': this.state.controlsInactive, 'BIV-hidden': !this.state.controlsVisible }),
                         onClick: this.handleNext,
-                        onContextMenu: () => this.handleFastJump(true),
-                        onMouseEnter: () => this.handleMouseEnter(true),
+                        onContextMenu: this.handleFastJumpRight,
+                        onMouseEnter: this.handleMouseEnterRight,
                         onMouseLeave: this.handleMouseLeave
                       },
                       React.createElement(RightCaretIcon)
