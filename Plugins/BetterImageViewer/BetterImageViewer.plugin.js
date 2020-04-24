@@ -37,26 +37,16 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.2',
+      version: '1.3.3',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: '1.3.2 fixes',
-        type: 'fixed',
-        items: ['Fixed zoom jitter if movement smoothing is disabled.']
-      },
-      {
         title: 'fixed',
         type: 'fixed',
-        items: ["Fixed images being clipped at the bottom if there isn't enough screen height.", 'Fixed image zoom jitter when changing zoom level, or changing lens size.', "Fixed error being thrown when you update the plugin and don't switch channels before opening an image.", 'Fixed some objects and strings escaping to the DOM tree.', 'Fixed possible Discord crashers.', 'Fixed changelog not being big enough for some people.', 'Fixed sometimes getting locked in place if you opened an image but there is only 1 image available, and search not triggering.', 'Fixed forward search being jank and skipping tons of messages, or not working well at all.']
-      },
-      {
-        title: 'improved',
-        type: 'improved',
-        items: ['Improved image zoom performance (hopefully).', 'Plugin should now inherit search options. Say you search for `from:Lighty` and you open an image from the search results, the plugin will inherit that option so when you navigate between the images, it will only display images that match those search options.']
+        items: ['Fix search API error.']
       }
     ],
     defaultConfig: [
@@ -641,7 +631,7 @@ var BetterImageViewer = (() => {
     })();
 
     const TimingModule = WebpackModules.getByProps('DelayedCall');
-    const APIEncodeModule = WebpackModules.getByProps('stringify');
+    const APIEncodeModule = WebpackModules.getByProps('stringify', 'parse', 'encode');
     const ImageModal = WebpackModules.getByDisplayName('ImageModal');
     const ImageProps = ['height', 'width', 'original', 'placeholder', 'src'];
     const UsernameClassname = XenoLib.getClass('botTag username');
