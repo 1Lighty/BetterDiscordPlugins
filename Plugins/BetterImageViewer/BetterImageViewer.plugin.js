@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.3',
+      version: '1.3.4',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,7 @@ var BetterImageViewer = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fix search API error.']
+        items: ['Fixed image zoom.']
       }
     ],
     defaultConfig: [
@@ -306,6 +306,8 @@ var BetterImageViewer = (() => {
         window.addEventListener('mousemove', this.handleMouseMove);
         window.addEventListener('mousewheel', this.handleMouseWheel);
         this.getRawImage();
+        if (!this._ref) return Logger.warn('this._ref is null!');
+        this._bcr = this._ref.getBoundingClientRect();
       }
       componentWillUnmount() {
         if (super.componentWillUnmount) super.componentWillUnmount();
@@ -329,6 +331,8 @@ var BetterImageViewer = (() => {
           if (this.state.zooming) this.setState({ zooming: false });
           this.getRawImage();
         }
+        if (!this._ref) return Logger.warn('this._ref is null!');
+        this._bcr = this._ref.getBoundingClientRect();
       }
       updateController(props, noStart = false) {
         this._controller.update({ ...props, immediate: !this.props.__BIV_settings.smoothing || props.immediate, config: zoomConfig });
@@ -359,16 +363,16 @@ var BetterImageViewer = (() => {
       }
       handleMouseMove(cx, cy, start) {
         if (!this.props.__BIV_settings.outOfBounds) {
-          cx = Math.min(this._ref.offsetLeft + this._ref.offsetWidth, Math.max(this._ref.offsetLeft, cx));
-          cy = Math.min(this._ref.offsetTop + this._ref.offsetHeight, Math.max(this._ref.offsetTop, cy));
+          cx = Math.min(this._bcr.left + this._bcr.width, Math.max(this._bcr.left, cx));
+          cy = Math.min(this._bcr.top + this._bcr.height, Math.max(this._bcr.top, cy));
         }
         let panelWH = this.state.panelWH;
         if (!this.props.__BIV_settings.outOfScreen) {
           if (Structs.Screen.height < Structs.Screen.width && panelWH > Structs.Screen.height) panelWH = Structs.Screen.height - 2;
           else if (Structs.Screen.height > Structs.Screen.width && panelWH > Structs.Screen.width) panelWH = Structs.Screen.width - 2;
         }
-        const offsetX = cx - this._ref.offsetLeft;
-        const offsetY = cy - this._ref.offsetTop;
+        const offsetX = cx - this._bcr.left;
+        const offsetY = cy - this._bcr.top;
         let panelX = cx - panelWH / 2;
         let panelY = cy - panelWH / 2;
         if (!this.props.__BIV_settings.outOfScreen) {
@@ -506,8 +510,8 @@ var BetterImageViewer = (() => {
                       className: 'BIV-zoom-backdrop'
                     }),
                     this.renderLens(ea, {
-                      imgLeft: ReactSpring.to([this._zoomController.animated.zoom, this._controller.animated.offsetX, this._controller.animated.panelX], (z, x, a) => -a + (this._ref.offsetLeft - ((this._ref.offsetWidth * z - this._ref.offsetWidth) / (this._ref.offsetWidth * z)) * x * z)),
-                      imgTop: ReactSpring.to([this._zoomController.animated.zoom, this._controller.animated.offsetY, this._controller.animated.panelY], (z, y, a) => -a + (this._ref.offsetTop - ((this._ref.offsetHeight * z - this._ref.offsetHeight) / (this._ref.offsetHeight * z)) * y * z)),
+                      imgLeft: ReactSpring.to([this._zoomController.animated.zoom, this._controller.animated.offsetX, this._controller.animated.panelX], (z, x, a) => -a + (this._bcr.left - ((this._bcr.width * z - this._bcr.width) / (this._bcr.width * z)) * x * z)),
+                      imgTop: ReactSpring.to([this._zoomController.animated.zoom, this._controller.animated.offsetY, this._controller.animated.panelY], (z, y, a) => -a + (this._bcr.top - ((this._bcr.height * z - this._bcr.height) / (this._bcr.height * z)) * y * z)),
                       imgWidth: this._zoomController.animated.zoom.to(e => e * this.props.width),
                       imgHeight: this._zoomController.animated.zoom.to(e => e * this.props.height),
                       panelX: this._controller.animated.panelX,

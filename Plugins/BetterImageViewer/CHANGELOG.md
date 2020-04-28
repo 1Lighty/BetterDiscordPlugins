@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.3.4
+- Fixed image zoom.
+
 ### 1.3.3
 - Fix search API error.
 
