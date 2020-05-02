@@ -1,4 +1,4 @@
-//META{"name":"BetterUnavailableGuilds","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/BetterUnavailableGuilds/","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterUnavailableGuilds"}*//
+//META{"name":"BetterUnavailableGuilds","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/BetterUnavailableGuilds/","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterUnavailableGuilds","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
 /*@cc_on
 @if (@_jscript)
 
@@ -10,14 +10,14 @@
 	// Put the user at ease by addressing them in the first person
 	shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
 	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-		shell.Popup('I\'m in the correct folder already.\nJust reload Discord with Ctrl+R.', 0, 'I\'m already installed', 0x40);
+		shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
 	} else if (!fs.FolderExists(pathPlugins)) {
 		shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
 	} else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
 		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
 		// Show the user where to put plugins in the future
 		shell.Exec('explorer ' + pathPlugins);
-		shell.Popup('I\'m installed!\nJust reload Discord with Ctrl+R.', 0, 'Successfully installed', 0x40);
+		shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
 	}
 	WScript.Quit();
 
@@ -41,16 +41,16 @@ var BetterUnavailableGuilds = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.2.4',
-      description: 'Makes unavailable guilds (servers) still show in the list, and be able to drag it around.',
+      version: '0.2.5',
+      description: 'Show the icons of unavailable guilds (servers) normally. Enables interaction with unavailable/offline guilds (servers).',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
     },
     changelog: [
       {
-        title: 'sad',
+        title: 'fixes n stuff',
         type: 'added',
-        items: ['Fixed plugin failing to transfer data from canary to other release channels.']
+        items: ['Fixed settings menu not displaying an input', 'Removed unneeded Xenolib dependency']
       }
     ],
     defaultConfig: [
@@ -78,15 +78,16 @@ var BetterUnavailableGuilds = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Utilities, WebpackModules, DiscordModules, Patcher, PluginUtilities, DiscordAPI, Settings, Toasts } = Api;
-    const { Dispatcher, GuildStore, React } = DiscordModules;
+    const { Dispatcher, GuildStore, React, ModalStack } = DiscordModules;
     const GuildAvailabilityStore = WebpackModules.getByProps('unavailableGuilds');
+    const _ = WebpackModules.getByProps('bindAll', 'debounce');
 
     const FsModule = require('fs');
-    // fuck ED
-    const pluginConfigFile = global.DataStore && !global.ED && DataStore.getPluginFile(config.info.name);
+    // I would say "fuck ED", but it won't even compile on ED due to their piss poor BD/BBD support, lol
+    const pluginConfigFile = require('path').resolve(BdApi.Plugins.folder, config.info.name + '.config.json');
 
     const loadData = (key, defaults) => {
-      const cloned = XenoLib.DiscordUtils.cloneDeep(defaults);
+      const cloned = _.cloneDeep(defaults);
       try {
         if (pluginConfigFile) {
           if (FsModule.existsSync(pluginConfigFile)) {
@@ -102,33 +103,22 @@ var BetterUnavailableGuilds = (() => {
       }
     };
 
-    const copyToClipboard = WebpackModules.getByProps('copy').copy;
+    const copyToClipboard = WebpackModules.getByProps('copy').copy; /* Possible error in future, TODO: safeguard */
     const GuildIconWrapper = WebpackModules.getByDisplayName('GuildIconWrapper');
     const ListClassModule = WebpackModules.getByProps('listRowContent', 'listAvatar');
-    const ListScrollerClassname = WebpackModules.getByProps('listScroller').listScroller;
+    const ListScrollerClassname = WebpackModules.getByProps('listScroller').listScroller; /* Possible error in future, TODO: safeguard */
     const VerticalScroller = WebpackModules.getByDisplayName('VerticalScroller');
     const Clickable = WebpackModules.getByDisplayName('Clickable');
 
+    /* TODO: proper name for the classes */
     class GL extends React.PureComponent {
-      onClickGuild(checked, guild) {
-        const idx = this.state.checkedGuilds.indexOf(guild.id);
-        const isChecked = idx !== -1;
-        if (typeof checked !== 'undefined') {
-          if (checked && !isChecked) this.state.checkedGuilds.push(guild.id);
-          else if (!checked && isChecked) this.state.checkedGuilds.splice(idx, 1);
-        } else {
-          if (isChecked) this.state.checkedGuilds.splice(idx, 1);
-          else this.state.checkedGuilds.push(guild.id);
-        }
-        this.forceUpdate();
-      }
       renderGuild(guild) {
         if (!guild) return null;
         return React.createElement(
           Clickable,
           {
             onClick: () => {
-              copyToClipboard(JSON.stringify({ id: guild.id, icon: guild.icon || undefined, name: guild.name, owner_id: guild.ownerId, joined_at: guild.joinedAt.valueOf(), default_message_notifications: guild.defaultMessageNotifications }));
+              copyToClipboard(JSON.stringify({ id: guild.id, icon: guild.icon || undefined, name: guild.name, owner_id: guild.ownerId, joined_at: guild.joinedAt.valueOf() }));
               Toasts.success(`Copied ${guild.name}!`);
             },
             className: 'BUG-guild-icon'
@@ -161,7 +151,7 @@ var BetterUnavailableGuilds = (() => {
     class TB extends DiscordModules.Textbox {
       render() {
         const ret = super.render();
-        const props = ret.props.children[1].props;
+        const props = Utilities.findInReactTree(ret, e => e && e.onEnterPressed);
         props.onKeyDown = e => {
           if (e.keyCode !== 13) return;
           try {
@@ -203,10 +193,13 @@ var BetterUnavailableGuilds = (() => {
     return class BetterUnavailableGuilds extends Plugin {
       constructor() {
         super();
-        XenoLib.changeName(__filename, 'BetterUnavailableGuilds');
+        try {
+          ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
+        } catch (e) {}
         this._dispatches = ['CONNECTION_OPEN'];
-        XenoLib.DiscordUtils.bindAll(this, ['handleGuildStoreChange', 'verifyAllServersCachedInClient', ...this._dispatches]);
-        this.handleGuildStoreChange = XenoLib.DiscordUtils.throttle(this.handleGuildStoreChange, 15000 + (GLOBAL_ENV.RELEASE_CHANNEL === 'ptb' ? 2500 : GLOBAL_ENV.RELEASE_CHANNEL === 'canary' ? 5000 : 0));
+        _.bindAll(this, ['handleGuildStoreChange', 'verifyAllServersCachedInClient', ...this._dispatches]);
+        // different timings for clients to avoid fighting over a damn config file
+        this.handleGuildStoreChange = _.throttle(this.handleGuildStoreChange, 15000 + (GLOBAL_ENV.RELEASE_CHANNEL === 'ptb' ? 2500 : GLOBAL_ENV.RELEASE_CHANNEL === 'canary' ? 5000 : 0));
       }
       onStart() {
         this._guildRecord = loadData('data', { data: {} }).data;
@@ -230,17 +223,14 @@ var BetterUnavailableGuilds = (() => {
       onStop() {
         GuildStore.removeChangeListener(this.handleGuildStoreChange);
         Patcher.unpatchAll();
+        Dispatcher._computeOrderedActionHandlers('GUILD_DELETE');
         for (const dispatch of this._dispatches) Dispatcher.unsubscribe(dispatch, this[dispatch]);
         PluginUtilities.removeStyle(this.short + '-CSS');
-      }
-      /* zlib uses reference to defaultSettings instead of a cloned object, which sets settings as default settings, messing everything up */
-      loadSettings(defaultSettings) {
-        return PluginUtilities.loadSettings(this.name, Utilities.deepclone(this.defaultSettings ? this.defaultSettings : defaultSettings));
       }
 
       buildSetting(data) {
         if (data.type === 'textbox') {
-          const { name, note, type, value, onChange, id } = data;
+          const { name, note } = data;
           const setting = new Textbox(
             name,
             note,
@@ -265,7 +255,7 @@ var BetterUnavailableGuilds = (() => {
         Dispatcher.wait(() => {
           this.ensureBDGuildsPreCached();
           this._verifying = true;
-          const unavailable = XenoLib.DiscordUtils.cloneDeep(GuildAvailabilityStore.unavailableGuilds);
+          const unavailable = _.cloneDeep(GuildAvailabilityStore.unavailableGuilds);
           unavailable.forEach(guildId => {
             if (!this.guildRecord[guildId] || GuildStore.getGuild(guildId)) return;
             Dispatcher.dispatch({
@@ -298,8 +288,8 @@ var BetterUnavailableGuilds = (() => {
       }
 
       ensureBDGuildsPreCached() {
-        this.guildRecord['86004744966914048'] = { id: '86004744966914048', icon: '292e7f6bfff2b71dfd13e508a859aedd', name: 'BetterDiscord', owner_id: '81388395867156480', joined_at: Date.now(), default_message_notifications: 1 };
-        this.guildRecord['280806472928198656'] = { id: '280806472928198656', icon: 'cbdda04c041699d80689b99c4e5e89dc', name: 'BetterDiscord2', owner_id: '81388395867156480', joined_at: Date.now(), default_message_notifications: 1 };
+        this.guildRecord['86004744966914048'] = { id: '86004744966914048', icon: '292e7f6bfff2b71dfd13e508a859aedd', name: 'BetterDiscord', owner_id: '81388395867156480', joined_at: Date.now() };
+        this.guildRecord['280806472928198656'] = { id: '280806472928198656', icon: 'cbdda04c041699d80689b99c4e5e89dc', name: 'BetterDiscord2', owner_id: '81388395867156480', joined_at: Date.now() };
       }
 
       ensureDataSettable() {
@@ -307,9 +297,9 @@ var BetterUnavailableGuilds = (() => {
         if (!this._guildRecord[DiscordAPI.currentUser.id][GLOBAL_ENV.RELEASE_CHANNEL]) {
           const curUserShit = this._guildRecord[DiscordAPI.currentUser.id];
           /* transfer the data */
-          if (curUserShit['stable']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = XenoLib.DiscordUtils.cloneDeep(curUserShit['stable']);
-          else if (curUserShit['ptb']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = XenoLib.DiscordUtils.cloneDeep(curUserShit['ptb']);
-          else if (curUserShit['canary']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = XenoLib.DiscordUtils.cloneDeep(curUserShit['canary']);
+          if (curUserShit['stable']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = _.cloneDeep(curUserShit['stable']);
+          else if (curUserShit['ptb']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = _.cloneDeep(curUserShit['ptb']);
+          else if (curUserShit['canary']) curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = _.cloneDeep(curUserShit['canary']);
           else curUserShit[GLOBAL_ENV.RELEASE_CHANNEL] = {};
         }
       }
@@ -333,15 +323,13 @@ var BetterUnavailableGuilds = (() => {
           icon: guild.icon || undefined,
           name: guild.name,
           owner_id: guild.ownerId,
-          joined_at: guild.joinedAt.valueOf() /* int value is fine too */,
-          /* useless info? */
-          default_message_notifications: guild.defaultMessageNotifications
+          joined_at: guild.joinedAt.valueOf() /* int value is fine too */
         }));
         let guilds = {};
         GuildAvailabilityStore.unavailableGuilds.forEach(id => this.guildRecord[id] && (guilds[id] = this.guildRecord[id]));
         availableGuilds.forEach(guild => (guilds[guild.id] = guild));
-        for (const guildId in guilds) guilds[guildId] = XenoLib.DiscordUtils.pickBy(guilds[guildId], e => !XenoLib.DiscordUtils.isUndefined(e));
-        if (!XenoLib.DiscordUtils.isEqual(this.guildRecord, guilds)) {
+        for (const guildId in guilds) guilds[guildId] = _.pickBy(guilds[guildId], e => !_.isUndefined(e));
+        if (!_.isEqual(this.guildRecord, guilds)) {
           this.guildRecord = guilds;
           PluginUtilities.saveData(this.name, 'data', { data: this._guildRecord });
         }
@@ -353,40 +341,42 @@ var BetterUnavailableGuilds = (() => {
         Utilities.suppressErrors(this.patchGuildDelete.bind(this), 'GUILD_DELETE dispatch patch')();
       }
 
-      async patchGuildDelete() {
-        const GUILD_DELETE = Dispatcher._computeOrderedActionHandlers('GUILD_DELETE');
-        GUILD_DELETE.forEach(handler => {
-          Patcher.instead(handler, 'actionHandler', (_, [dispatch], orig) => {
-            if (!dispatch.guild.unavailable) return orig(dispatch);
-          });
-        });
+      patchGuildDelete() {
+        // super sekret (not really) V3/rewrite patch code
+        for (const id in Dispatcher._dependencyGraph.nodes) {
+          const node = Dispatcher._dependencyGraph.nodes[id];
+          if (typeof node.actionHandler !== 'function' && !node.actionHandler['GUILD_DELETE']) continue;
+          if (typeof node.actionHandler === 'function') {
+            Patcher.instead(node, 'actionHandler', (_, [dispatch], orig) => {
+              if (!dispatch.guild.unavailable) return orig(dispatch);
+            });
+          } else {
+            Patcher.instead(node.actionHandler, 'GUILD_DELETE', (_, [dispatch], orig) => {
+              if (!dispatch.guild.unavailable) return orig(dispatch);
+            });
+          }
+        }
+        Dispatcher._computeOrderedActionHandlers('GUILD_DELETE');
       }
 
       /* PATCHES */
 
       getSettingsPanel() {
-        const panel = this.buildSettingsPanel();
-        panel.addListener(() => ReactTools.getOwnerInstance(document.getElementById('TooltipPreview')).forceUpdate());
-        return panel.getElement();
+        return this.buildSettingsPanel().getElement();
       }
 
       get [Symbol.toStringTag]() {
         return 'Plugin';
-      }
-      get css() {
-        return this._css;
       }
       get name() {
         return config.info.name;
       }
       get short() {
         let string = '';
-
         for (let i = 0, len = config.info.name.length; i < len; i++) {
           const char = config.info.name[i];
           if (char === char.toUpperCase()) string += char;
         }
-
         return string;
       }
       get author() {
@@ -404,23 +394,20 @@ var BetterUnavailableGuilds = (() => {
   /* Finalize */
 
   let ZeresPluginLibraryOutdated = false;
-  let XenoLibOutdated = false;
   try {
     if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
-      const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
-        n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
-        e = BdApi.getPlugin('ZeresPluginLibrary'),
-        o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.17') && (XenoLibOutdated = !0);
+      const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
+        b = BdApi.getPlugin('ZeresPluginLibrary');
+      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.15') && (ZeresPluginLibraryOutdated = !0);
     }
-  } catch (i) {
-    console.error('Error checking if libraries are out of date', i);
+  } catch (e) {
+    console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
 
-  return !global.ZeresPluginLibrary || !global.XenoLib || ZeresPluginLibraryOutdated || XenoLibOutdated
+  return !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
     ? class {
         constructor() {
-          this._XL_PLUGIN = true;
+          this._config = config;
           this.start = this.load = this.handleMissingLib;
         }
         getName() {
@@ -433,29 +420,21 @@ var BetterUnavailableGuilds = (() => {
           return this.version;
         }
         getDescription() {
-          return this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
+          return this.description + ' You are missing ZeresPluginLibrary for this plugin, please enable the plugin and click Download Now.';
         }
         stop() {}
         handleMissingLib() {
           const a = BdApi.findModuleByProps('isModalOpenWithKey');
           if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
-          const b = !global.XenoLib,
-            c = !global.ZeresPluginLibrary,
-            d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
-            e = (() => {
-              let a = '';
-              return b || c ? (a += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? ' and outdated' : ''} `) : (XenoLibOutdated || ZeresPluginLibraryOutdated) && (a += `Outdated `), (a += `${d ? 'Libraries' : 'Library'} `), a;
-            })(),
-            f = (() => {
-              let a = `The ${d ? 'libraries' : 'library'} `;
-              return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
-            })(),
-            g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
-            h = BdApi.findModuleByDisplayName('Text'),
-            i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            j = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
-          if (!g || !i || !h) return j();
-          class k extends BdApi.React.PureComponent {
+          const b = !global.ZeresPluginLibrary,
+            c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
+            d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
+            e = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
+            f = BdApi.findModuleByDisplayName('Text'),
+            g = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
+            h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
+          if (!e || !g || !f) return h();
+          class i extends BdApi.React.PureComponent {
             constructor(a) {
               super(a), (this.state = { hasError: !1 });
             }
@@ -466,41 +445,38 @@ var BetterUnavailableGuilds = (() => {
               return this.state.hasError ? null : this.props.children;
             }
           }
-          class l extends i {
+          class j extends g {
             submitModal() {
               this.props.onConfirm();
             }
           }
-          let m = !1;
-          const n = g.push(
+          let k = !1;
+          const l = e.push(
             a =>
               BdApi.React.createElement(
-                k,
+                i,
                 {
                   label: 'missing dependency modal',
                   onError: () => {
-                    g.popWithKey(n), j();
+                    e.popWithKey(l), h();
                   }
                 },
                 BdApi.React.createElement(
-                  l,
+                  j,
                   Object.assign(
                     {
-                      header: e,
-                      children: [BdApi.React.createElement(h, { size: h.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] })],
+                      header: c,
+                      children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
                       red: !1,
                       confirmText: 'Download Now',
                       cancelText: 'Cancel',
                       onConfirm: () => {
-                        if (m) return;
-                        m = !0;
+                        if (k) return;
+                        k = !0;
                         const a = require('request'),
                           b = require('fs'),
-                          c = require('path'),
-                          d = () => {
-                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a || 200 !== d.statusCode ? (g.popWithKey(n), j()) : void b.writeFile(c.join(BdApi.Plugins.folder, '1XenoLib.plugin.js'), e, () => {})));
-                          };
-                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, e, f) => (a || 200 !== e.statusCode ? (g.popWithKey(n), j()) : void (b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
+                          c = require('path');
+                        a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, d, f) => (a || 200 !== d.statusCode ? (e.popWithKey(l), h()) : void b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {})));
                       }
                     },
                     a

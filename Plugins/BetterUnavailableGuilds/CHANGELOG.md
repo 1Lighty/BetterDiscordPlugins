@@ -1,4 +1,8 @@
 # [BetterUnavailableGuilds](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterUnavailableGuilds "BetterUnavailableGuilds") Changelog
+### 0.2.5
+- Fixed settings menu not displaying an input
+- Removed unneeded Xenolib dependency
+
 ### 0.2.4
 - Fixed plugin failing to transfer data from canary to other release channels
 

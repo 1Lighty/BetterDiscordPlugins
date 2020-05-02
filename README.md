@@ -15,7 +15,7 @@ Move between images in the entire channel with arrow keys, image zoom enabled by
 Replaces "Several people are typing" with who is actually typing, plus "x others" if it can't fit. Number of shown people typing can be changed.
 
 ## [BetterUnavailableGuilds](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/BetterUnavailableGuilds "BetterUnavailableGuilds")
-Makes unavailable guilds (servers) still show in the list, and be able to drag it around/interact with it.
+Show the icons of unavailable guilds (servers) normally. Enables interaction with unavailable/offline guilds (servers).
 
 ##  [CrashRecovery](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/CrashRecovery "CrashRecovery")
 In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.
