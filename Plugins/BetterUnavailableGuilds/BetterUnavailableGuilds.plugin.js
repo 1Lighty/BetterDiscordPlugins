@@ -41,7 +41,7 @@ var BetterUnavailableGuilds = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.2.5',
+      version: '0.2.6',
       description: 'Show the icons of unavailable guilds (servers) normally. Enables interaction with unavailable/offline guilds (servers).',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
@@ -50,7 +50,7 @@ var BetterUnavailableGuilds = (() => {
       {
         title: 'fixes n stuff',
         type: 'added',
-        items: ['Fixed settings menu not displaying an input', 'Removed unneeded Xenolib dependency']
+        items: ['Fixed settings menu not displaying an input', 'Removed unneeded Xenolib dependency', 'Fixed error spam that was so fast, devtools froze']
       }
     ],
     defaultConfig: [
@@ -345,16 +345,10 @@ var BetterUnavailableGuilds = (() => {
         // super sekret (not really) V3/rewrite patch code
         for (const id in Dispatcher._dependencyGraph.nodes) {
           const node = Dispatcher._dependencyGraph.nodes[id];
-          if (typeof node.actionHandler !== 'function' && !node.actionHandler['GUILD_DELETE']) continue;
-          if (typeof node.actionHandler === 'function') {
-            Patcher.instead(node, 'actionHandler', (_, [dispatch], orig) => {
-              if (!dispatch.guild.unavailable) return orig(dispatch);
-            });
-          } else {
-            Patcher.instead(node.actionHandler, 'GUILD_DELETE', (_, [dispatch], orig) => {
-              if (!dispatch.guild.unavailable) return orig(dispatch);
-            });
-          }
+          if (!node.actionHandler['GUILD_DELETE']) continue;
+          Patcher.instead(node.actionHandler, 'GUILD_DELETE', (_, [dispatch], orig) => {
+            if (!dispatch.guild.unavailable) return orig(dispatch);
+          });
         }
         Dispatcher._computeOrderedActionHandlers('GUILD_DELETE');
       }
