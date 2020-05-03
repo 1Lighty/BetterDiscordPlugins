@@ -1,4 +1,7 @@
 # [BetterUnavailableGuilds](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterUnavailableGuilds "BetterUnavailableGuilds") Changelog
+### 0.2.6
+- Fixed error spam that was so fast, devtools froze
+
 ### 0.2.5
 - Fixed settings menu not displaying an input
 - Removed unneeded Xenolib dependency

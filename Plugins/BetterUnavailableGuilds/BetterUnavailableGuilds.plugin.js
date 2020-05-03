@@ -42,7 +42,7 @@ var BetterUnavailableGuilds = (() => {
         }
       ],
       version: '0.2.6',
-      description: 'Show the icons of unavailable guilds (servers) normally. Enables interaction with unavailable/offline guilds (servers).',
+      description: 'Force Discord to show server icons of unavailable servers, instead of "1 server is unavailable" and enable interaction with the server (ability to leave the server, move it around, etc).',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
     },

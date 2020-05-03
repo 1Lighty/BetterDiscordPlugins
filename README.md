@@ -15,7 +15,7 @@ Move between images in the entire channel with arrow keys, image zoom enabled by
 Replaces "Several people are typing" with who is actually typing, plus "x others" if it can't fit. Number of shown people typing can be changed.
 
 ## [BetterUnavailableGuilds](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/BetterUnavailableGuilds "BetterUnavailableGuilds")
-Show the icons of unavailable guilds (servers) normally. Enables interaction with unavailable/offline guilds (servers).
+Force Discord to show server icons of unavailable servers, instead of "1 server is unavailable" and enable interaction with the server (ability to leave the server, move it around, etc).
 
 ##  [CrashRecovery](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/CrashRecovery "CrashRecovery")
 In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.
@@ -23,8 +23,6 @@ In the event that your Discord crashes, the plugin enables you to get Discord ba
 ##  [InAppNotifications](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/InAppNotifications "InAppNotifications")
 Show a notification in Discord when someone sends a message, just like on mobile.
 
-##  [MentionAliasesRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/MentionAliasesRedux "MentionAliasesRedux")
-Set custom @mention aliases, that can also appear next to their name (nearly) anywhere, as well as have mention groups to mention multiple people at once.
 ## [SaveToRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/SaveToRedux "SaveToRedux")
 Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly, as well as install plugins from direct links.
 ## [UnreadBadgesRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/UnreadBadgesRedux "UnreadBadgesRedux")
