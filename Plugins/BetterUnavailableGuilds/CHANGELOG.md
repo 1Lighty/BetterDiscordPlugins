@@ -1,4 +1,7 @@
 # [BetterUnavailableGuilds](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterUnavailableGuilds "BetterUnavailableGuilds") Changelog
+### 0.2.7
+- Fixed rare bug when client reconnects.
+
 ### 0.2.6
 - Fixed error spam that was so fast, devtools froze
 

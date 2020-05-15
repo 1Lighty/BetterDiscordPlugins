@@ -41,7 +41,7 @@ var BetterUnavailableGuilds = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.2.6',
+      version: '0.2.7',
       description: 'Force Discord to show server icons of unavailable servers, instead of "1 server is unavailable" and enable interaction with the server (ability to leave the server, move it around, etc).',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
@@ -50,7 +50,7 @@ var BetterUnavailableGuilds = (() => {
       {
         title: 'fixes n stuff',
         type: 'added',
-        items: ['Fixed settings menu not displaying an input', 'Removed unneeded Xenolib dependency', 'Fixed error spam that was so fast, devtools froze']
+        items: ['Fixed rare bug when client reconnects.']
       }
     ],
     defaultConfig: [
@@ -323,7 +323,7 @@ var BetterUnavailableGuilds = (() => {
           icon: guild.icon || undefined,
           name: guild.name,
           owner_id: guild.ownerId,
-          joined_at: guild.joinedAt.valueOf() /* int value is fine too */
+          joined_at: guild.joinedAt ? guild.joinedAt.valueOf() /* int value is fine too */ : 0 /* wut? MasicoreLord experienced a weird bug with joinedAt being undefined */
         }));
         let guilds = {};
         GuildAvailabilityStore.unavailableGuilds.forEach(id => this.guildRecord[id] && (guilds[id] = this.guildRecord[id]));
@@ -392,7 +392,7 @@ var BetterUnavailableGuilds = (() => {
     if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
       const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
         b = BdApi.getPlugin('ZeresPluginLibrary');
-      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.15') && (ZeresPluginLibraryOutdated = !0);
+      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.16') && (ZeresPluginLibraryOutdated = !0);
     }
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
@@ -426,8 +426,8 @@ var BetterUnavailableGuilds = (() => {
             e = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
             f = BdApi.findModuleByDisplayName('Text'),
             g = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
-          if (!e || !g || !f) return h();
+            h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
+          if (!e || !g || !f) return console.error(`Missing components:${(e ? '' : ' ModalStack') + (g ? '' : ' ConfirmationModalComponent') + (f ? '' : 'TextElement')}`), h();
           class i extends BdApi.React.PureComponent {
             constructor(a) {
               super(a), (this.state = { hasError: !1 });
@@ -444,39 +444,53 @@ var BetterUnavailableGuilds = (() => {
               this.props.onConfirm();
             }
           }
-          let k = !1;
-          const l = e.push(
-            a =>
-              BdApi.React.createElement(
-                i,
-                {
-                  label: 'missing dependency modal',
-                  onError: () => {
-                    e.popWithKey(l), h();
-                  }
-                },
-                BdApi.React.createElement(
-                  j,
-                  Object.assign(
-                    {
-                      header: c,
-                      children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
-                      red: !1,
-                      confirmText: 'Download Now',
-                      cancelText: 'Cancel',
-                      onConfirm: () => {
-                        if (k) return;
-                        k = !0;
-                        const a = require('request'),
-                          b = require('fs'),
-                          c = require('path');
-                        a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, d, f) => (a || 200 !== d.statusCode ? (e.popWithKey(l), h()) : void b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {})));
-                      }
-                    },
-                    a
+          let k = !1,
+            l = !1;
+          const m = e.push(
+            a => {
+              if (l) return null;
+              try {
+                return BdApi.React.createElement(
+                  i,
+                  {
+                    label: 'missing dependency modal',
+                    onError: () => {
+                      e.popWithKey(m), h();
+                    }
+                  },
+                  BdApi.React.createElement(
+                    j,
+                    Object.assign(
+                      {
+                        header: c,
+                        children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
+                        red: !1,
+                        confirmText: 'Download Now',
+                        cancelText: 'Cancel',
+                        onConfirm: () => {
+                          if (k) return;
+                          k = !0;
+                          const a = require('request'),
+                            b = require('fs'),
+                            c = require('path');
+                          a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, d, f) => {
+                            try {
+                              if (a || 200 !== d.statusCode) return e.popWithKey(m), h();
+                              b.writeFile(c.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {});
+                            } catch (a) {
+                              console.error('Fatal error downloading ZeresPluginLibrary', a), e.popWithKey(m), h();
+                            }
+                          });
+                        }
+                      },
+                      a
+                    )
                   )
-                )
-              ),
+                );
+              } catch (a) {
+                return console.error('There has been an error constructing the modal', a), (l = !0), e.popWithKey(m), h(), null;
+              }
+            },
             void 0,
             `${this.name}_DEP_MODAL`
           );
