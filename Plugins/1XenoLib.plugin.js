@@ -41,7 +41,7 @@ var XenoLib = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.18',
+      version: '1.3.19',
       description: 'Simple library to complement plugins with shared code without lowering performance.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ var XenoLib = (() => {
       {
         title: 'Boring changes',
         type: 'fixed',
-        items: ['Fixed notifications not working.', 'Fixed parser error.']
+        items: ['Fix up startup warnings and errors.', 'Fixed notifications closing sometimes if you hover them near the end of the timeout.', 'Future proofing.']
       }
     ],
     defaultConfig: [
@@ -432,7 +432,7 @@ var XenoLib = (() => {
           return null;
         }
       };
-      const renderContextMenus = ['NativeContextMenu', 'GuildRoleContextMenu', 'DeveloperContextMenu', 'ScreenshareContextMenu'];
+      const renderContextMenus = ['NativeContextMenu', 'DeveloperContextMenu'];
       const hookContextMenus = [getModule(/case \w.ContextMenuTypes.CHANNEL_LIST_TEXT/), getModule(/case \w.ContextMenuTypes.GUILD_CHANNEL_LIST/), getModule(/case \w.ContextMenuTypes.USER_CHANNEL_MEMBERS/), getModule(/case \w\.ContextMenuTypes\.MESSAGE_MAIN/)];
       for (const type of renderContextMenus) {
         const module = WebpackModules.getByDisplayName(type);
@@ -483,9 +483,9 @@ var XenoLib = (() => {
 
     const ContextMenuSubMenuItem = WebpackModules.getByDisplayName('FluxContainer(SubMenuItem)');
     XenoLib.unpatchContext = callback => XenoLib.__contextPatches.splice(XenoLib.__contextPatches.indexOf(callback), 1);
-    XenoLib.createContextMenuItem = (label, action, options = {}) => React.createElement(ContextMenuItem, { label, action: () => (!options.noClose && ContextMenuActions.closeContextMenu(), action()), ...options });
-    XenoLib.createContextMenuSubMenu = (label, items, options = {}) => React.createElement(ContextMenuSubMenuItem, { label, render: items, ...options });
-    XenoLib.createContextMenuGroup = (children, options) => React.createElement(ContextMenuItemsGroup, { children, ...options });
+    XenoLib.createContextMenuItem = (label, action, options = {}) => (!ContextMenuItem ? null : React.createElement(ContextMenuItem, { label, action: () => (!options.noClose && ContextMenuActions.closeContextMenu(), action()), ...options }));
+    XenoLib.createContextMenuSubMenu = (label, items, options = {}) => (!ContextMenuSubMenuItem ? null : React.createElement(ContextMenuSubMenuItem, { label, render: items, ...options }));
+    XenoLib.createContextMenuGroup = (children, options) => (!ContextMenuItemsGroup ? null : React.createElement(ContextMenuItemsGroup, { children, ...options }));
 
     try {
       XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('ButtonLink');
@@ -855,7 +855,7 @@ var XenoLib = (() => {
       const ParsersModule = WebpackModules.getByProps('parseAllowLinks', 'parse');
       try {
         const DeepClone = WebpackModules.getByString('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(');
-        const ReactParserRules = WebpackModules.getByRegex(/function\(\){return \w}$/);
+        const ReactParserRules = WebpackModules.find(m => m.default && m.default.toString().search(/function\(\){return \w}$/) !== -1).default; /* thanks Zere for not fixing the bug ._. */
         const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES', 'ALLOW_LINKS_RULES').ALLOW_LINKS_RULES, ReactParserRules()]);
         FANCY_PANTS_PARSER_RULES.image = WebpackModules.getByProps('defaultParse').defaultRules.image;
         return ParsersModule.reactParserFor(FANCY_PANTS_PARSER_RULES);
@@ -941,6 +941,99 @@ var XenoLib = (() => {
       ModalStack.push(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12 }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
     };
 
+    /* https://github.com/react-spring/zustand
+     * MIT License
+     *
+     * Copyright (c) 2019 Paul Henschel
+     *
+     * Permission is hereby granted, free of charge, to any person obtaining a copy
+     * of this software and associated documentation files (the "Software"), to deal
+     * in the Software without restriction, including without limitation the rights
+     * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+     * copies of the Software, and to permit persons to whom the Software is
+     * furnished to do so, subject to the following conditions:
+     *
+     * The above copyright notice and this permission notice shall be included in all
+     * copies or substantial portions of the Software.
+     *
+     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+     * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+     * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+     * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+     * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+     * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+     * SOFTWARE.
+     */
+    XenoLib.zustand = createState => {
+      var state;
+      var listeners = new Set();
+      const setState = partial => {
+        var partialState = typeof partial === 'function' ? partial(state) : partial;
+        if (partialState !== state) {
+          state = Object.assign({}, state, partialState);
+          listeners.forEach(function (listener) {
+            return listener();
+          });
+        }
+      };
+      const getState = () => state;
+      const getSubscriber = (listener, selector, equalityFn) => {
+        if (selector === void 0) selector = getState;
+        if (equalityFn === void 0) equalityFn = Object.is;
+        return { currentSlice: selector(state), equalityFn: equalityFn, errored: false, listener: listener, selector: selector, unsubscribe: function unsubscribe() {} };
+      };
+      var subscribe = function subscribe(subscriber) {
+        function listener() {
+          // Selector or equality function could throw but we don't want to stop
+          // the listener from being called.
+          // https://github.com/react-spring/zustand/pull/37
+          try {
+            var newStateSlice = subscriber.selector(state);
+            if (!subscriber.equalityFn(subscriber.currentSlice, newStateSlice)) subscriber.listener((subscriber.currentSlice = newStateSlice));
+          } catch (error) {
+            subscriber.errored = true;
+            subscriber.listener(null, error);
+          }
+        }
+
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      };
+      const apiSubscribe = (listener, selector, equalityFn) => subscribe(getSubscriber(listener, selector, equalityFn));
+      const destroy = () => listeners.clear();
+      const useStore = (selector, equalityFn) => {
+        if (selector === void 0) selector = getState;
+        if (equalityFn === void 0) equalityFn = Object.is;
+        var forceUpdate = React.useReducer(c => c + 1, 0)[1];
+        var subscriberRef = React.useRef();
+        if (!subscriberRef.current) {
+          subscriberRef.current = getSubscriber(forceUpdate, selector, equalityFn);
+          subscriberRef.current.unsubscribe = subscribe(subscriberRef.current);
+        }
+        var subscriber = subscriberRef.current;
+        var newStateSlice;
+        var hasNewStateSlice = false; // The selector or equalityFn need to be called during the render phase if
+        // they change. We also want legitimate errors to be visible so we re-run
+        // them if they errored in the subscriber.
+        if (subscriber.selector !== selector || subscriber.equalityFn !== equalityFn || subscriber.errored) {
+          // Using local variables to avoid mutations in the render phase.
+          newStateSlice = selector(state);
+          hasNewStateSlice = !equalityFn(subscriber.currentSlice, newStateSlice);
+        } // Syncing changes in useEffect.
+        React.useLayoutEffect(function () {
+          if (hasNewStateSlice) subscriber.currentSlice = newStateSlice;
+          subscriber.selector = selector;
+          subscriber.equalityFn = equalityFn;
+          subscriber.errored = false;
+        });
+        React.useLayoutEffect(() => subscriber.unsubscribe, []);
+        return hasNewStateSlice ? newStateSlice : subscriber.currentSlice;
+      };
+      const api = { setState: setState, getState: getState, subscribe: apiSubscribe, destroy: destroy };
+      state = createState(setState, getState, api);
+      return [useStore, api];
+    };
+
     /* NOTIFICATIONS START */
     let UPDATEKEY = {};
     try {
@@ -972,99 +1065,7 @@ var XenoLib = (() => {
         }
         return true;
       };
-      /* https://github.com/react-spring/zustand
-       * MIT License
-       *
-       * Copyright (c) 2019 Paul Henschel
-       *
-       * Permission is hereby granted, free of charge, to any person obtaining a copy
-       * of this software and associated documentation files (the "Software"), to deal
-       * in the Software without restriction, including without limitation the rights
-       * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-       * copies of the Software, and to permit persons to whom the Software is
-       * furnished to do so, subject to the following conditions:
-       *
-       * The above copyright notice and this permission notice shall be included in all
-       * copies or substantial portions of the Software.
-       *
-       * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-       * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-       * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-       * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-       * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-       * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-       * SOFTWARE.
-       */
-      function zustand(createState) {
-        var state;
-        var listeners = new Set();
-        const setState = partial => {
-          var partialState = typeof partial === 'function' ? partial(state) : partial;
-          if (partialState !== state) {
-            state = Object.assign({}, state, partialState);
-            listeners.forEach(function (listener) {
-              return listener();
-            });
-          }
-        };
-        const getState = () => state;
-        const getSubscriber = (listener, selector, equalityFn) => {
-          if (selector === void 0) selector = getState;
-          if (equalityFn === void 0) equalityFn = Object.is;
-          return { currentSlice: selector(state), equalityFn: equalityFn, errored: false, listener: listener, selector: selector, unsubscribe: function unsubscribe() {} };
-        };
-        var subscribe = function subscribe(subscriber) {
-          function listener() {
-            // Selector or equality function could throw but we don't want to stop
-            // the listener from being called.
-            // https://github.com/react-spring/zustand/pull/37
-            try {
-              var newStateSlice = subscriber.selector(state);
-              if (!subscriber.equalityFn(subscriber.currentSlice, newStateSlice)) subscriber.listener((subscriber.currentSlice = newStateSlice));
-            } catch (error) {
-              subscriber.errored = true;
-              subscriber.listener(null, error);
-            }
-          }
-
-          listeners.add(listener);
-          return () => listeners.delete(listener);
-        };
-        const apiSubscribe = (listener, selector, equalityFn) => subscribe(getSubscriber(listener, selector, equalityFn));
-        const destroy = () => listeners.clear();
-        const useStore = (selector, equalityFn) => {
-          if (selector === void 0) selector = getState;
-          if (equalityFn === void 0) equalityFn = Object.is;
-          var forceUpdate = React.useReducer(c => c + 1, 0)[1];
-          var subscriberRef = React.useRef();
-          if (!subscriberRef.current) {
-            subscriberRef.current = getSubscriber(forceUpdate, selector, equalityFn);
-            subscriberRef.current.unsubscribe = subscribe(subscriberRef.current);
-          }
-          var subscriber = subscriberRef.current;
-          var newStateSlice;
-          var hasNewStateSlice = false; // The selector or equalityFn need to be called during the render phase if
-          // they change. We also want legitimate errors to be visible so we re-run
-          // them if they errored in the subscriber.
-          if (subscriber.selector !== selector || subscriber.equalityFn !== equalityFn || subscriber.errored) {
-            // Using local variables to avoid mutations in the render phase.
-            newStateSlice = selector(state);
-            hasNewStateSlice = !equalityFn(subscriber.currentSlice, newStateSlice);
-          } // Syncing changes in useEffect.
-          React.useLayoutEffect(function () {
-            if (hasNewStateSlice) subscriber.currentSlice = newStateSlice;
-            subscriber.selector = selector;
-            subscriber.equalityFn = equalityFn;
-            subscriber.errored = false;
-          });
-          React.useLayoutEffect(() => subscriber.unsubscribe, []);
-          return hasNewStateSlice ? newStateSlice : subscriber.currentSlice;
-        };
-        const api = { setState: setState, getState: getState, subscribe: apiSubscribe, destroy: destroy };
-        state = createState(setState, getState, api);
-        return [useStore, api];
-      }
-      const [useStore, api] = zustand(e => ({ data: [] }));
+      const [useStore, api] = XenoLib.zustand(e => ({ data: [] }));
       const defaultOptions = {
         loading: false,
         progress: -1,
@@ -1333,6 +1334,7 @@ var XenoLib = (() => {
                 if (this.state.hovered && !this.state.closeFast) return;
                 if (!this.state.closeFast && !LibrarySettings.notifications.timeoutReset) this._startProgressing = Date.now();
                 await next({ progress: 100 });
+                if (this.state.hovered && !this.state.closeFast) return; /* race condition: notif is hovered, but it continues and closes! */
                 this.state.leaving = true;
                 if (!this.state.closeFast) {
                   api.setState(state => {
@@ -1378,7 +1380,8 @@ var XenoLib = (() => {
                       if (this._startProgressing) {
                         this._timeout -= Date.now() - this._startProgressing;
                       }
-                      this.setState({ hovered: true });
+                      this.state.hovered = true;
+                      this.forceUpdate();
                     },
                     onMouseLeave: e => {
                       if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
@@ -1660,7 +1663,7 @@ var XenoLib = (() => {
     if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
       const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
         b = BdApi.getPlugin('ZeresPluginLibrary');
-      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.14') && (ZeresPluginLibraryOutdated = !0);
+      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.16') && (ZeresPluginLibraryOutdated = !0);
     }
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
@@ -1694,8 +1697,8 @@ var XenoLib = (() => {
             e = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
             f = BdApi.findModuleByDisplayName('Text'),
             g = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
-          if (!e || !g || !f) return h();
+            h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
+          if (!e || !g || !f) return console.error(`Missing components:${(e ? '' : ' ModalStack') + (g ? '' : ' ConfirmationModalComponent') + (f ? '' : 'TextElement')}`), h();
           class i extends BdApi.React.PureComponent {
             constructor(a) {
               super(a), (this.state = { hasError: !1 });
@@ -1712,39 +1715,53 @@ var XenoLib = (() => {
               this.props.onConfirm();
             }
           }
-          let k = !1;
-          const l = e.push(
-            a =>
-              BdApi.React.createElement(
-                i,
-                {
-                  label: 'missing dependency modal',
-                  onError: () => {
-                    e.popWithKey(l), h();
-                  }
-                },
-                BdApi.React.createElement(
-                  j,
-                  Object.assign(
-                    {
-                      header: c,
-                      children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
-                      red: !1,
-                      confirmText: 'Download Now',
-                      cancelText: 'Cancel',
-                      onConfirm: () => {
-                        if (k) return;
-                        k = !0;
-                        const a = require('request'),
-                          b = require('fs'),
-                          c = require('path');
-                        a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, d, f) => (a || 200 !== d.statusCode ? (e.popWithKey(l), h()) : void b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {})));
-                      }
-                    },
-                    a
+          let k = !1,
+            l = !1;
+          const m = e.push(
+            a => {
+              if (l) return null;
+              try {
+                return BdApi.React.createElement(
+                  i,
+                  {
+                    label: 'missing dependency modal',
+                    onError: () => {
+                      e.popWithKey(m), h();
+                    }
+                  },
+                  BdApi.React.createElement(
+                    j,
+                    Object.assign(
+                      {
+                        header: c,
+                        children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
+                        red: !1,
+                        confirmText: 'Download Now',
+                        cancelText: 'Cancel',
+                        onConfirm: () => {
+                          if (k) return;
+                          k = !0;
+                          const a = require('request'),
+                            b = require('fs'),
+                            c = require('path');
+                          a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, d, f) => {
+                            try {
+                              if (a || 200 !== d.statusCode) return e.popWithKey(m), h();
+                              b.writeFile(c.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {});
+                            } catch (a) {
+                              console.error('Fatal error downloading ZeresPluginLibrary', a), e.popWithKey(m), h();
+                            }
+                          });
+                        }
+                      },
+                      a
+                    )
                   )
-                )
-              ),
+                );
+              } catch (a) {
+                return console.error('There has been an error constructing the modal', a), (l = !0), e.popWithKey(m), h(), null;
+              }
+            },
             void 0,
             `${this.name}_DEP_MODAL`
           );
