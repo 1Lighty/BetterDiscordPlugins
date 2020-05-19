@@ -1,4 +1,8 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.1.0
+- Fixed plugin after the new context menu changes. If you notice any bugs, [join my support server](https://discord.gg/NYvWdN5)
+- Fixed incorrect slashes used on Windows.
+
 ### 2.0.14
 - Fixed plugin being broken.
 
