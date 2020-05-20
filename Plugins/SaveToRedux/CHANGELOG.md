@@ -1,4 +1,8 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.1.1
+- Fixed sub context menu layering issue. 
+![image](https://i.imgur.com/jY5lcoA.png)
+
 ### 2.1.0
 - Fixed plugin after the new context menu changes. If you notice any bugs, [join my support server](https://discord.gg/NYvWdN5)
 - Fixed incorrect slashes used on Windows.
