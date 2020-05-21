@@ -41,7 +41,7 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.1.1',
+      version: '2.1.2',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -50,7 +50,7 @@ var SaveToRedux = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed sub context menu layering issue.\n![image](https://i.imgur.com/jY5lcoA.png)']
+        items: ['Fixed startup error']
       }
     ],
     defaultConfig: [
@@ -442,7 +442,7 @@ var SaveToRedux = (() => {
       }
 
       patchUserContextMenus() {
-        const CTXs = WebpackModules.findAll(({ default: { displayName } }) => displayName && (displayName.endsWith('UserContextMenu') || displayName === 'GroupDMContextMenu'));
+        const CTXs = WebpackModules.findAll(m => m.default && m.default.displayName && (m.default.displayName.endsWith('UserContextMenu') || m.default.displayName === 'GroupDMContextMenu'));
         for (const CTX of CTXs) {
           Patcher.after(CTX, 'default', (_, [props], ret) => {
             const menu = Utilities.getNestedProp(
@@ -610,17 +610,17 @@ var SaveToRedux = (() => {
         };
 
         Patcher.after(
-          WebpackModules.find(({ default: { displayName } }) => displayName === 'NativeImageContextMenu'),
+          WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'NativeImageContextMenu'),
           'default',
           (_, [props], ret) => patchHandler(props, ret, true)
         );
         Patcher.after(
-          WebpackModules.find(({ default: { displayName } }) => displayName === 'MessageContextMenu'),
+          WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'MessageContextMenu'),
           'default',
           (_, [props], ret) => patchHandler(props, ret)
         );
         Patcher.after(
-          WebpackModules.find(({ default: { displayName } }) => displayName === 'MessageSearchResultContextMenu'),
+          WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'MessageSearchResultContextMenu'),
           'default',
           (_, [props], ret) => patchHandler(props, ret)
         );
@@ -628,7 +628,7 @@ var SaveToRedux = (() => {
 
       patchGuildContextMenu() {
         Patcher.after(
-          WebpackModules.find(({ default: { displayName } }) => displayName === 'GuildContextMenu'),
+          WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'GuildContextMenu'),
           'default',
           (_, [props], ret) => {
             const menu = Utilities.getNestedProp(

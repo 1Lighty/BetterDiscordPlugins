@@ -1,4 +1,7 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.1.2
+- Fixed startup error
+
 ### 2.1.1
 - Fixed sub context menu layering issue. 
 ![image](https://i.imgur.com/jY5lcoA.png)
