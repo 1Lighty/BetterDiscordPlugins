@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.21',
+      version: '1.3.22',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'Boring changes',
         type: 'fixed',
-        items: ['Change to module.exports', 'Extra plugin buttons on plugin cards are now opt-in (such as these ![image](https://i.imgur.com/rVdKi94.png)). They can be re-enabled in settings\n![image2](https://i.imgur.com/6BtqrmY.png)\notherwise the buttons are now in plugin settings (most of the time at least)']
+        items: ['Fixed context menu duplication', 'Fixed first notification not working properly if the position was at the bottom']
       }
     ],
     defaultConfig: [
@@ -200,11 +200,25 @@ module.exports = (() => {
     XenoLib.createSmartPatcher = patcher => {
       const createPatcher = patcher => {
         return (moduleToPatch, functionName, callback, options = {}) => {
-          const origDef = moduleToPatch[functionName];
-          patcher(moduleToPatch, functionName, callback, options);
-          if (origDef.isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
-            patcher(moduleToPatch.BDFDBpatch[functionName], 'originalMethod', callback, options);
+          try {
+            var origDef = moduleToPatch[functionName];
+          } catch (_) {
+            return Logger.error(`Failed to patch ${functionName}`);
           }
+          const unpatches = [];
+          unpatches.push(patcher(moduleToPatch, functionName, callback, options));
+          try {
+            if (origDef.__isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
+              /* do NOT patch a patch by ZLIb, that'd be bad and cause double items in context menus */
+              if ((Utilities.getNestedProp(ZeresPluginLibrary, 'Patcher._patches') || []).findIndex(e => e.module === moduleToPatch) !== -1 && moduleToPatch.BDFDBpatch[functionName].originalMethod.__originalFunction) return;
+              unpatches.push(patcher(moduleToPatch.BDFDBpatch[functionName], 'originalMethod', callback, options));
+            }
+          } catch (err) {
+            Logger.stacktrace('Failed to patch BDFDB patches', err);
+          }
+          return function unpatch() {
+            unpatches.forEach(e => e());
+          };
         };
       };
       return Object.assign({}, patcher, {
@@ -517,14 +531,7 @@ module.exports = (() => {
           const component = [...ReactComponents.components.entries()].find(([_, e]) => e.component && e.component.prototype && e.component.prototype.reload && e.component.prototype.showSettings);
           const AddonCard = component ? component[1] : await ReactComponents.getComponent('AddonCard', '.bda-slist > .ui-switch-item', e => e.prototype && e.prototype.reload && e.prototype.showSettings);
           if (CancelledAsync) return;
-          const BDErrorBoundary = await ReactComponents.getComponent('BDErrorBoundary', '.bda-slist > .ui-switch-item', e => {
-            try {
-              return e.prototype && e.prototype.render && e.prototype.render.toString().indexOf('},"Component Error"):') !== -1;
-            } catch (err) {
-              return false;
-            }
-          });
-          if (CancelledAsync) return;
+          const ContentColumn = await ReactComponents.getComponent('ContentColumn', '.content-column');
           class PatchedAddonCard extends AddonCard.component {
             render() {
               const ret = super.render();
@@ -537,11 +544,22 @@ module.exports = (() => {
               return ret;
             }
           }
-          Patcher.after(BDErrorBoundary.component.prototype, 'render', (_, __, ret) => {
-            if (!LibrarySettings.addons.extra || ret.type !== AddonCard.component) return;
-            ret.type = PatchedAddonCard;
+          let firstRender = true;
+          Patcher.after(ContentColumn.component.prototype, 'render', (_, __, ret) => {
+            if (!LibrarySettings.addons.extra) return;
+            const list = Utilities.findInReactTree(ret, e => e && typeof e.className === 'string' && e.className.indexOf('bd-addon-list') !== -1);
+            if (Utilities.getNestedProp(list, 'children.0.props.children.type') !== AddonCard.component) return;
+            for (const item of list.children) {
+              const card = Utilities.getNestedProp(item, 'props.children');
+              if (!card) continue;
+              card.type = PatchedAddonCard;
+            }
+            if (!firstRender) return;
+            ret.key = DiscordModules.KeyGenerator();
+            firstRender = false;
           });
           if (manualPatch) return;
+          ContentColumn.forceUpdateAll();
           AddonCard.forceUpdateAll();
         }
         patchRewriteCard();
@@ -1110,7 +1128,7 @@ module.exports = (() => {
         }
         return true;
       };
-      const [useStore, api] = XenoLib.zustand(e => ({ data: [] }));
+      const [useStore, api] = global.FCAPI && global.FCAPI.NotificationStore ? global.FCAPI.NotificationStore : XenoLib.zustand(e => ({ data: [] }));
       const defaultOptions = {
         loading: false,
         progress: -1,
@@ -1295,7 +1313,7 @@ module.exports = (() => {
         checkOffScreen() {
           if (this.state.leaving || !this._contentRef) return;
           const bcr = this._contentRef.getBoundingClientRect();
-          if (bcr.bottom > Structs.Screen.height || bcr.top < 0) {
+          if (Math.floor(bcr.bottom) - 1 > Structs.Screen.height || Math.ceil(bcr.top) + 1 < 0) {
             if (!this.state.offscreen) {
               this._animationCancel();
               this.setState({ offscreen: true });
