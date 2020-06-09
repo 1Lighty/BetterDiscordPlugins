@@ -41,7 +41,7 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.1.2',
+      version: '2.1.3',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -50,7 +50,7 @@ var SaveToRedux = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed startup error']
+        items: ['Fixed startup error on canary']
       }
     ],
     defaultConfig: [
@@ -115,7 +115,7 @@ var SaveToRedux = (() => {
     );
 
     const dialog = Utilities.getNestedProp(require('electron'), 'remote.dialog');
-    const openItem = Utilities.getNestedProp(require('electron'), 'shell.openItem');
+    const openPath = Utilities.getNestedProp(require('electron'), 'shell.openPath') || Utilities.getNestedProp(require('electron'), 'shell.openItem');
     const DelayedCall = Utilities.getNestedProp(WebpackModules.getByProps('DelayedCall'), 'DelayedCall');
     const FsModule = require('fs');
     const RequestModule = require('request');
@@ -274,7 +274,7 @@ var SaveToRedux = (() => {
 
     const faultyVars = [];
     {
-      const vars = { TextComponent, getEmojiURL, openItem, DelayedCall, FormItem, Messages, TextInput, AvatarModule, TrustStore };
+      const vars = { TextComponent, getEmojiURL, openPath, DelayedCall, FormItem, Messages, TextInput, AvatarModule, TrustStore };
       for (const varName in vars) {
         if (!vars[varName]) faultyVars.push(varName);
       }
@@ -787,7 +787,7 @@ var SaveToRedux = (() => {
                 req
                   .pipe(FsModule.createWriteStream(path))
                   .on('finish', () => {
-                    if (openOnSave) openItem(path);
+                    if (openOnSave) openPath(path);
                     BdApi.showToast(`Saved to '${PathModule.resolve(path)}'`, { type: 'success' });
                   })
                   .on('error', e => {
@@ -1027,7 +1027,7 @@ var SaveToRedux = (() => {
               XenoLib.createContextMenuItem(
                 'Open Folder',
                 () => {
-                  openItem(folder.path);
+                  openPath(folder.path);
                 },
                 'open-folder'
               ),

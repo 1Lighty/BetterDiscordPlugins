@@ -1,4 +1,7 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.1.3
+- Fixed startup error on canary
+
 ### 2.1.2
 - Fixed startup error
 
