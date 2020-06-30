@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.22',
+      version: '1.3.23',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'Boring changes',
         type: 'fixed',
-        items: ['Fixed context menu duplication', 'Fixed first notification not working properly if the position was at the bottom']
+        items: ['Fixed ignorable startup error']
       }
     ],
     defaultConfig: [
@@ -917,7 +917,7 @@ module.exports = (() => {
     const FancyParser = (() => {
       const ParsersModule = WebpackModules.getByProps('parseAllowLinks', 'parse');
       try {
-        const DeepClone = WebpackModules.getByString('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(');
+        const DeepClone = WebpackModules.find(m => m.default && m.default.toString().indexOf('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(') !== -1 && !m.useVirtualizedAnchor).default;
         const ReactParserRules = WebpackModules.find(m => m.default && m.default.toString().search(/function\(\){return \w}$/) !== -1).default; /* thanks Zere for not fixing the bug ._. */
         const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES', 'ALLOW_LINKS_RULES').ALLOW_LINKS_RULES, ReactParserRules()]);
         FANCY_PANTS_PARSER_RULES.image = WebpackModules.getByProps('defaultParse').defaultRules.image;
