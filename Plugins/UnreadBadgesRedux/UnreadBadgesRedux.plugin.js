@@ -41,7 +41,7 @@ var UnreadBadgesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.4',
+      version: '1.0.5',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -50,7 +50,7 @@ var UnreadBadgesRedux = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed badge not showing on folders on Discord canary']
+        items: ['Fixed badge not showing on folders, again']
       }
     ],
     defaultConfig: [
@@ -375,7 +375,7 @@ var UnreadBadgesRedux = (() => {
           return React.createElement(e.__UBR_old_type, e);
         }
         BlobMaskWrapper.displayName = 'BlobMask';
-        const GuildFolderMemo = WebpackModules.find(m => m.type && m.type.toString().indexOf('.ContextMenuTypes.GUILD_ICON_FOLDER') !== -1);
+        const GuildFolderMemo = WebpackModules.find(m => m.type && m.type.toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1);
         if (GuildFolderMemo) {
           Patcher.after(GuildFolderMemo, 'type', (_, [props], ret) => {
             const mask = Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'BlobMask');

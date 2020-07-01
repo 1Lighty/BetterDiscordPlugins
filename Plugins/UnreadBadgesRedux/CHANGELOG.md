@@ -1,4 +1,7 @@
 # [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux") Changelog
+### 1.0.5
+- Fixed badge not showing on folders, again
+
 ### 1.0.4
 - Fixed badge not showing on folders on Discord canary
 
