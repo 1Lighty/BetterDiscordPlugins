@@ -156,7 +156,7 @@ var BetterUnavailableGuilds = (() => {
           if (e.keyCode !== 13) return;
           try {
             const parsed = JSON.parse(this.props.value);
-            ['id', 'name', 'owner_id', 'joined_at', 'default_message_notifications'].forEach(prop => {
+            ['id', 'name', 'owner_id', 'joined_at'].forEach(prop => {
               if (!parsed.hasOwnProperty(prop) || typeof parsed[prop] === 'undefined') throw `Malformed guild data (${prop})`;
             });
             if (typeof parsed.name !== 'string' || typeof parsed.owner_id !== 'string' || /\\d+$/.test(parsed.owner_id)) throw 'Malformed guild data';
@@ -194,7 +194,7 @@ var BetterUnavailableGuilds = (() => {
       constructor() {
         super();
         try {
-          ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
+          WebpackModules.getByProps('openModal', 'hasModalOpen').closeModal(`${this.name}_DEP_MODAL`);
         } catch (e) {}
         this._dispatches = ['CONNECTION_OPEN'];
         _.bindAll(this, ['handleGuildStoreChange', 'verifyAllServersCachedInClient', ...this._dispatches]);
@@ -418,17 +418,16 @@ var BetterUnavailableGuilds = (() => {
         }
         stop() {}
         handleMissingLib() {
-          const a = BdApi.findModuleByProps('isModalOpenWithKey');
-          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
+          const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
+          if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
           const b = !global.ZeresPluginLibrary,
             c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
             d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
-            e = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
-            f = BdApi.findModuleByDisplayName('Text'),
-            g = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
-          if (!e || !g || !f) return console.error(`Missing components:${(e ? '' : ' ModalStack') + (g ? '' : ' ConfirmationModalComponent') + (f ? '' : 'TextElement')}`), h();
-          class i extends BdApi.React.PureComponent {
+            e = BdApi.findModuleByDisplayName('Text'),
+            f = BdApi.findModuleByDisplayName('ConfirmModal'),
+            g = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
+          if (!a || !f || !e) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (f ? '' : ' ConfirmationModalComponent') + (e ? '' : 'TextElement')}`), g();
+          class h extends BdApi.React.PureComponent {
             constructor(a) {
               super(a), (this.state = { hasError: !1 });
             }
@@ -439,60 +438,56 @@ var BetterUnavailableGuilds = (() => {
               return this.state.hasError ? null : this.props.children;
             }
           }
-          class j extends g {
-            submitModal() {
-              this.props.onConfirm();
-            }
-          }
-          let k = !1,
-            l = !1;
-          const m = e.push(
-            a => {
-              if (l) return null;
+          let i = !1,
+            j = !1;
+          const k = a.openModal(
+            b => {
+              if (j) return null;
               try {
                 return BdApi.React.createElement(
-                  i,
+                  h,
                   {
                     label: 'missing dependency modal',
                     onError: () => {
-                      e.popWithKey(m), h();
+                      a.closeModal(k), g();
                     }
                   },
                   BdApi.React.createElement(
-                    j,
+                    f,
                     Object.assign(
                       {
                         header: c,
-                        children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
+                        children: BdApi.React.createElement(e, { size: e.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] }),
                         red: !1,
                         confirmText: 'Download Now',
                         cancelText: 'Cancel',
+                        onCancel: b.onClose,
                         onConfirm: () => {
-                          if (k) return;
-                          k = !0;
-                          const a = require('request'),
-                            b = require('fs'),
-                            c = require('path');
-                          a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, d, f) => {
+                          if (i) return;
+                          i = !0;
+                          const b = require('request'),
+                            c = require('fs'),
+                            d = require('path');
+                          b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, e, f) => {
                             try {
-                              if (a || 200 !== d.statusCode) return e.popWithKey(m), h();
-                              b.writeFile(c.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {});
-                            } catch (a) {
-                              console.error('Fatal error downloading ZeresPluginLibrary', a), e.popWithKey(m), h();
+                              if (b || 200 !== e.statusCode) return a.closeModal(k), g();
+                              c.writeFile(d.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {});
+                            } catch (b) {
+                              console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(k), g();
                             }
                           });
                         }
                       },
-                      a
+                      b,
+                      { onClose: () => {} }
                     )
                   )
                 );
-              } catch (a) {
-                return console.error('There has been an error constructing the modal', a), (l = !0), e.popWithKey(m), h(), null;
+              } catch (b) {
+                return console.error('There has been an error constructing the modal', b), (j = !0), a.closeModal(k), g(), null;
               }
             },
-            void 0,
-            `${this.name}_DEP_MODAL`
+            { modalKey: `${this.name}_DEP_MODAL` }
           );
         }
         get [Symbol.toStringTag]() {

@@ -174,7 +174,7 @@ var BetterTypingUsers = (() => {
       constructor() {
         super();
         try {
-          ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
+          WebpackModules.getByProps('openModal', 'hasModalOpen').closeModal(`${this.name}_DEP_MODAL`);
         } catch (e) {}
       }
       onStart() {
@@ -364,17 +364,16 @@ var BetterTypingUsers = (() => {
         }
         stop() {}
         handleMissingLib() {
-          const a = BdApi.findModuleByProps('isModalOpenWithKey');
-          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
+          const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
+          if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
           const b = !global.ZeresPluginLibrary,
             c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
             d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
-            e = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
-            f = BdApi.findModuleByDisplayName('Text'),
-            g = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
-          if (!e || !g || !f) return h();
-          class i extends BdApi.React.PureComponent {
+            e = BdApi.findModuleByDisplayName('Text'),
+            f = BdApi.findModuleByDisplayName('ConfirmModal'),
+            g = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
+          if (!a || !f || !e) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (f ? '' : ' ConfirmationModalComponent') + (e ? '' : 'TextElement')}`), g();
+          class h extends BdApi.React.PureComponent {
             constructor(a) {
               super(a), (this.state = { hasError: !1 });
             }
@@ -385,46 +384,56 @@ var BetterTypingUsers = (() => {
               return this.state.hasError ? null : this.props.children;
             }
           }
-          class j extends g {
-            submitModal() {
-              this.props.onConfirm();
-            }
-          }
-          let k = !1;
-          const l = e.push(
-            a =>
-              BdApi.React.createElement(
-                i,
-                {
-                  label: 'missing dependency modal',
-                  onError: () => {
-                    e.popWithKey(l), h();
-                  }
-                },
-                BdApi.React.createElement(
-                  j,
-                  Object.assign(
-                    {
-                      header: c,
-                      children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
-                      red: !1,
-                      confirmText: 'Download Now',
-                      cancelText: 'Cancel',
-                      onConfirm: () => {
-                        if (k) return;
-                        k = !0;
-                        const a = require('request'),
-                          b = require('fs'),
-                          c = require('path');
-                        a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, d, f) => (a || 200 !== d.statusCode ? (e.popWithKey(l), h()) : void b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {})));
-                      }
-                    },
-                    a
+          let i = !1,
+            j = !1;
+          const k = a.openModal(
+            b => {
+              if (j) return null;
+              try {
+                return BdApi.React.createElement(
+                  h,
+                  {
+                    label: 'missing dependency modal',
+                    onError: () => {
+                      a.closeModal(k), g();
+                    }
+                  },
+                  BdApi.React.createElement(
+                    f,
+                    Object.assign(
+                      {
+                        header: c,
+                        children: BdApi.React.createElement(e, { size: e.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] }),
+                        red: !1,
+                        confirmText: 'Download Now',
+                        cancelText: 'Cancel',
+                        onCancel: b.onClose,
+                        onConfirm: () => {
+                          if (i) return;
+                          i = !0;
+                          const b = require('request'),
+                            c = require('fs'),
+                            d = require('path');
+                          b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, e, f) => {
+                            try {
+                              if (b || 200 !== e.statusCode) return a.closeModal(k), g();
+                              c.writeFile(d.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {});
+                            } catch (b) {
+                              console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(k), g();
+                            }
+                          });
+                        }
+                      },
+                      b,
+                      { onClose: () => {} }
+                    )
                   )
-                )
-              ),
-            void 0,
-            `${this.name}_DEP_MODAL`
+                );
+              } catch (b) {
+                return console.error('There has been an error constructing the modal', b), (j = !0), a.closeModal(k), g(), null;
+              }
+            },
+            { modalKey: `${this.name}_DEP_MODAL` }
           );
         }
         get [Symbol.toStringTag]() {

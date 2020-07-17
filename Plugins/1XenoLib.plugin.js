@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.24',
+      version: '1.3.25',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -732,8 +732,8 @@ module.exports = (() => {
      */
     const FormItem = WebpackModules.getByDisplayName('FormItem');
     const DeprecatedModal = WebpackModules.getByDisplayName('DeprecatedModal');
-    const ModalContainerClassname = XenoLib.getClass('mobile container');
-    const ModalContentClassname = XenoLib.getClass('mobile container content');
+    const ModalContainerClassname = /* XenoLib.getClass('mobile container') */'';
+    const ModalContentClassname = /* XenoLib.getClass('mobile container content') */'';
 
     const ColorPickerComponent = WebpackModules.getByDisplayName('ColorPicker');
 
@@ -1014,7 +1014,7 @@ module.exports = (() => {
             isFistType = false;
         }
       }
-      const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (LayerManager.popLayer(), ModalStack.pop(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Join my support server'), "! Or consider donating via ", React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (window.open('https://paypal.me/lighty13')) }, 'Paypal'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (window.open('https://ko-fi.com/lighty_')) }, 'Ko-fi'),', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (window.open('https://www.patreon.com/lightyp')) }, 'Patreon'), '!'];
+      const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (LayerManager.popLayer(), ModalStack.pop(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Join my support server'), '! Or consider donating via ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://paypal.me/lighty13') }, 'Paypal'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://ko-fi.com/lighty_') }, 'Ko-fi'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://www.patreon.com/lightyp') }, 'Patreon'), '!'];
       ModalStack.push(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12 }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
     };
 
@@ -1651,7 +1651,7 @@ module.exports = (() => {
         this.settings = LibrarySettings;
         XenoLib.changeName(__filename, '1XenoLib'); /* prevent user from changing libs filename */
         try {
-          ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
+          WebpackModules.getByProps('openModal', 'hasModalOpen').closeModal(`${this.name}_DEP_MODAL`);
         } catch (e) {}
       }
       load() {
@@ -1773,17 +1773,16 @@ module.exports = (() => {
         }
         stop() {}
         handleMissingLib() {
-          const a = BdApi.findModuleByProps('isModalOpenWithKey');
-          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
+          const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
+          if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
           const b = !global.ZeresPluginLibrary,
             c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
             d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
-            e = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
-            f = BdApi.findModuleByDisplayName('Text'),
-            g = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            h = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
-          if (!e || !g || !f) return console.error(`Missing components:${(e ? '' : ' ModalStack') + (g ? '' : ' ConfirmationModalComponent') + (f ? '' : 'TextElement')}`), h();
-          class i extends BdApi.React.PureComponent {
+            e = BdApi.findModuleByDisplayName('Text'),
+            f = BdApi.findModuleByDisplayName('ConfirmModal'),
+            g = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
+          if (!a || !f || !e) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (f ? '' : ' ConfirmationModalComponent') + (e ? '' : 'TextElement')}`), g();
+          class h extends BdApi.React.PureComponent {
             constructor(a) {
               super(a), (this.state = { hasError: !1 });
             }
@@ -1794,60 +1793,56 @@ module.exports = (() => {
               return this.state.hasError ? null : this.props.children;
             }
           }
-          class j extends g {
-            submitModal() {
-              this.props.onConfirm();
-            }
-          }
-          let k = !1,
-            l = !1;
-          const m = e.push(
-            a => {
-              if (l) return null;
+          let i = !1,
+            j = !1;
+          const k = a.openModal(
+            b => {
+              if (j) return null;
               try {
                 return BdApi.React.createElement(
-                  i,
+                  h,
                   {
                     label: 'missing dependency modal',
                     onError: () => {
-                      e.popWithKey(m), h();
+                      a.closeModal(k), g();
                     }
                   },
                   BdApi.React.createElement(
-                    j,
+                    f,
                     Object.assign(
                       {
                         header: c,
-                        children: [BdApi.React.createElement(f, { size: f.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] })],
+                        children: BdApi.React.createElement(e, { size: e.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] }),
                         red: !1,
                         confirmText: 'Download Now',
                         cancelText: 'Cancel',
+                        onCancel: b.onClose,
                         onConfirm: () => {
-                          if (k) return;
-                          k = !0;
-                          const a = require('request'),
-                            b = require('fs'),
-                            c = require('path');
-                          a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, d, f) => {
+                          if (i) return;
+                          i = !0;
+                          const b = require('request'),
+                            c = require('fs'),
+                            d = require('path');
+                          b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, e, f) => {
                             try {
-                              if (a || 200 !== d.statusCode) return e.popWithKey(m), h();
-                              b.writeFile(c.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {});
-                            } catch (a) {
-                              console.error('Fatal error downloading ZeresPluginLibrary', a), e.popWithKey(m), h();
+                              if (b || 200 !== e.statusCode) return a.closeModal(k), g();
+                              c.writeFile(d.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {});
+                            } catch (b) {
+                              console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(k), g();
                             }
                           });
                         }
                       },
-                      a
+                      b,
+                      { onClose: () => {} }
                     )
                   )
                 );
-              } catch (a) {
-                return console.error('There has been an error constructing the modal', a), (l = !0), e.popWithKey(m), h(), null;
+              } catch (b) {
+                return console.error('There has been an error constructing the modal', b), (j = !0), a.closeModal(k), g(), null;
               }
             },
-            void 0,
-            `${this.name}_DEP_MODAL`
+            { modalKey: `${this.name}_DEP_MODAL` }
           );
         }
         get name() {
