@@ -1,4 +1,12 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.3.5, 1.3.6 && 1.3.7
+- Fixed text being hard to read in light mode.
+- Fixed plugin causing client crash.
+- Fixed plugin *not* expecting a crash.
+- Fixed an anomaly bug if you clicked on a non hit image in search results, and now instead goes thru all images in search results.
+- Fixed using incorrect modals.
+- Fixed load warning because of Zeres nonsensical changes of trying to force to use module.exports
+
 ### 1.3.4
 - Fixed image zoom.
 

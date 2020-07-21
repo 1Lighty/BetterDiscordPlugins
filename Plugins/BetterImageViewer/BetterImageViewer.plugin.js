@@ -23,7 +23,7 @@
 
 @else@*/
 
-var BetterImageViewer = (() => {
+module.exports = (() => {
   /* Setup */
   const config = {
     main: 'index.js',
@@ -37,7 +37,7 @@ var BetterImageViewer = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.6',
+      version: '1.3.7',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,12 @@ var BetterImageViewer = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed image zoom.']
+        items: ['Fixed text being hard to read in light mode.', 'Fixed plugin causing client crash.', 'Fixed plugin *not* expecting a crash.', 'Fixed an anomaly bug if you clicked on a non hit image in search results, and now instead goes thru all images in search results.', 'Fixed using incorrect modals.', 'Fixed load warning because of Zeres nonsensical changes of trying to force to use module.exports']
+      },
+      {
+        title: 'changed',
+        type: 'added',
+        items: ['Using ImageGallery alongside BetterImageViewer is no longer supported, due to the author likely intentionally causing bugs, and that the plugin is fully superseded in terms of features anyways. If you continue to use ImageGallery, any bugs that occur because of it are not my problem.']
       }
     ],
     defaultConfig: [
@@ -195,7 +200,9 @@ var BetterImageViewer = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, Patcher, PluginUtilities, PluginUpdater, Structs } = Api;
-    const { React, ReactDOM, ModalStack, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, MessageStore, APIModule, NavigationUtils, ChannelStore } = DiscordModules;
+    const { React, ReactDOM, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, MessageStore, APIModule, NavigationUtils, ChannelStore } = DiscordModules;
+
+    const ModalStack = WebpackModules.getByProps('openModal', 'hasModalOpen');
 
     let PluginBrokenFatal = false;
     let NoImageZoom = false;
@@ -608,14 +615,16 @@ var BetterImageViewer = (() => {
     class ErrorCatcher extends React.PureComponent {
       constructor(props) {
         super(props);
-        this.state = { errorLevel: 0 };
+        this.state = { errorLevel: 0, errorTimeout: false };
       }
       componentDidCatch(err, inf) {
         Logger.err(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`);
-        this.setState({ errorLevel: this.state.errorLevel + 1 });
+        this.setState({ errorTimeout: true });
         if (typeof this.props.onError === 'function') this.props.onError(err, this.state.errorLevel);
+        setImmediate(_ => this.setState({ errorLevel: this.state.errorLevel + 1 }));
       }
       render() {
+        if (this.state.errorTimeout) return null;
         if (!this.state.errorLevel) return this.props.children;
         if (Array.isArray(this.props.fallback) && this.props.fallback[this.state.errorLevel - 1]) return this.props.fallback[this.state.errorLevel - 1];
         return null;
@@ -748,9 +757,10 @@ var BetterImageViewer = (() => {
             const images = [];
             this._searchId = SearchStore.getCurrentSearchId();
             const searchResults = SearchStore.getResults(this._searchId);
+            this._includeNonHits = !searchResults.some(m => m.findIndex(e => e.id === props.__BIV_data.messageId && e.isSearchHit) !== -1);
             searchResults.forEach(group => {
               group.forEach(iMessage => {
-                if (!iMessage.isSearchHit || images.findIndex(e => e.id === iMessage.id) !== -1) return;
+                if ((!this._includeNonHits && !iMessage.isSearchHit) || images.findIndex(e => e.id === iMessage.id) !== -1) return;
                 if (!extractImages(iMessage).length) return;
                 images.push(iMessage);
               });
@@ -888,7 +898,7 @@ var BetterImageViewer = (() => {
             const images = [reverse ? filtered[filtered.length - 1] : filtered[0]];
             content.body.messages.forEach(group => {
               group.forEach(message => {
-                if ((this.props.__BIV_isSearch && !message.hit) || images.findIndex(e => e.id === message.id) !== -1) return;
+                if ((this.props.__BIV_isSearch && !this._includeNonHits && !message.hit) || images.findIndex(e => e.id === message.id) !== -1) return;
                 const iMessage = MessageRecordUtils.createMessageRecord(message);
                 if (!extractImages(iMessage).length) return;
                 images.push(iMessage);
@@ -1297,6 +1307,7 @@ var BetterImageViewer = (() => {
         super();
         XenoLib.changeName(__filename, this.name);
         this.handleWHChange = this.handleWHChange.bind(this);
+        this.showChangelog = this.showChangelog.bind(this);
         const oOnStart = this.onStart.bind(this);
         this._startFailure = message => {
           PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
@@ -1314,7 +1325,7 @@ var BetterImageViewer = (() => {
           }
         };
         try {
-          ModalStack.popWithKey(`${this.name}_DEP_MODAL`);
+          ModalStack.closeModal(`${this.name}_DEP_MODAL`);
         } catch (e) {}
       }
       onStart() {
@@ -1326,8 +1337,9 @@ var BetterImageViewer = (() => {
         this.promises = { state: { cancelled: false } };
         if (PluginBrokenFatal) return this._startFailure('Plugin is in a broken state.');
         if (NoImageZoom) this._startFailure('Image zoom is broken.');
-        if (!NoImageZoom && BdApi.getPlugin('ImageZoom') && BdApi.Plugins.isEnabled('ImageZoom')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageZoom** while having the zoom function in **${this.name}** enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });
+        if (this.settings.zoom.enabled && !NoImageZoom && BdApi.getPlugin('ImageZoom') && BdApi.Plugins.isEnabled('ImageZoom')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageZoom** while having the zoom function in **${this.name}** enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });
         if (BdApi.getPlugin('Better Image Popups') && BdApi.Plugins.isEnabled('Better Image Popups')) XenoLib.Notifications.warning(`[**${this.name}**] Using **Better Image Popups** with **${this.name}** is completely unsupported and will cause issues. **${this.name}** fully supersedes it in terms of features as well, please either disable **Better Image Popups** or delete it to avoid issues.`, { timeout: 0 });
+        if (this.settings.zoom.enabled && BdApi.getPlugin('ImageGallery') && BdApi.Plugins.isEnabled('ImageGallery')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageGallery** with **${this.name}** is completely unsupported and will cause issues, mainly, zoom breaks. **${this.name}** fully supersedes it in terms of features as well, please either disable **ImageGallery** or delete it to avoid issues.`, { timeout: 0 });
         this.hiddenSettings = XenoLib.loadData(this.name, 'hidden', { panelWH: 500 });
         this.patchAll();
         Dispatcher.subscribe('MESSAGE_DELETE', this.handleMessageDelete);
@@ -1382,6 +1394,9 @@ var BetterImageViewer = (() => {
             height: 42px;
             transition: opacity 0.35s ease-in-out;
           }
+          .theme-light .BIV-info {
+            color: white;
+          }
           .BIV-info-extra {
             left: unset;
             right: 12px;
@@ -1431,7 +1446,7 @@ var BetterImageViewer = (() => {
           }
           .biv-overlay {
             pointer-events: none;
-            z-index: 1000;
+            z-index: 1002;
           }
           .biv-overlay > * {
             pointer-events: all;
@@ -1462,6 +1477,9 @@ var BetterImageViewer = (() => {
           }
           .BIV-text-bold {
             font-weight: 600;
+          }
+          .theme-light .BIV-text-bold {
+            color: white;
           }
           .${WebpackModules.find(e => Object.keys(e).length === 2 && e.modal && e.inner).modal.split(' ')[0]} > .${WebpackModules.find(e => Object.keys(e).length === 2 && e.modal && e.inner).inner.split(' ')[0]} > .${XenoLib.getSingleClass('imageZoom imageWrapper')} {
             display: table; /* lol */
@@ -1510,6 +1528,10 @@ var BetterImageViewer = (() => {
 
       patchLazyImageZoomable() {
         const patchKey = DiscordModules.KeyGenerator();
+        const MaskedLink = WebpackModules.getByDisplayName('MaskedLink');
+        const renderLinkComponent = props => React.createElement(MaskedLink, props);
+        const Modals = WebpackModules.getByProps('ModalRoot');
+        const ImageModalClasses = WebpackModules.getByProps('modal', 'image');
         Patcher.before(WebpackModules.getByDisplayName('LazyImageZoomable').prototype, 'render', (_this, _, ret) => {
           if (_this.onZoom.__BIV_patched !== patchKey) {
             _this.onZoom = (e, n) => {
@@ -1520,10 +1542,13 @@ var BetterImageViewer = (() => {
               if (e.currentTarget instanceof HTMLElement) e.currentTarget.blur();
               e = null;
               const original = _this.props.original || _this.props.src;
-              ModalStack.push(e => {
+              ModalStack.openModal(e => {
                 try {
                   return React.createElement(
-                    /* this safety net should prevent any major issues or crashes, in theory */
+                    /* this safety net should prevent any major issues or crashes, in theory
+                      UPDATE: 21.7.2020 the theory was wrong, I'm an idiot and set the state to an invalid one immediately
+                      causing another crash and crashing the entire client!
+                     */
                     ErrorCatcher,
                     {
                       label: 'Image modal',
@@ -1533,44 +1558,57 @@ var BetterImageViewer = (() => {
                       },
                       fallback: [
                         React.createElement(
-                          ImageModal,
-                          Object.assign(
-                            {
-                              original,
-                              src: _this.props.src,
-                              width: _this.props.width,
-                              height: _this.props.height,
-                              animated: _this.props.animated,
-                              children: _this.props.children,
-                              placeholder: n.placeholder,
-                              isTrusted: TrustedStore.isTrustedDomain(original),
-                              onClickUntrusted: _this.onClickUntrusted
-                            },
-                            e
+                          Modals.ModalRoot,
+                          { className: ImageModalClasses.modal, ...e, size: Modals.ModalSize.DYNAMIC },
+                          React.createElement(
+                            ImageModal,
+                            Object.assign(
+                              {
+                                original,
+                                src: _this.props.src,
+                                width: _this.props.width,
+                                height: _this.props.height,
+                                animated: _this.props.animated,
+                                children: _this.props.children,
+                                placeholder: n.placeholder,
+                                isTrusted: TrustedStore.isTrustedDomain(original),
+                                onClickUntrusted: _this.onClickUntrusted,
+                                renderLinkComponent,
+                                className: ImageModalClasses.image,
+                                shouldAnimate: true
+                              },
+                              e
+                            )
                           )
                         )
                       ]
                     },
                     React.createElement(
-                      RichImageModal,
-                      Object.assign(
-                        {
-                          original,
-                          src: _this.props.src,
-                          width: _this.props.width,
-                          height: _this.props.height,
-                          animated: _this.props.animated,
-                          children: _this.props.children,
-                          placeholder: n.placeholder,
-                          isTrusted: TrustedStore.isTrustedDomain(original),
-                          onClickUntrusted: _this.onClickUntrusted,
-                          __BIV_data: _this.props.__BIV_data,
-                          __BIV_index: _this.props.__BIV_data ? _this.props.__BIV_data.images.findIndex(m => m.src === _this.props.src) : -1,
-                          __BIV_isSearch: isSearch,
-                          __BIV_settings: this.settings,
-                          renderLinkComponent: (e) => React.createElement(BdApi.findModuleByDisplayName('MaskedLink'), e)
-                        },
-                        e
+                      Modals.ModalRoot,
+                      { className: ImageModalClasses.modal, ...e, size: Modals.ModalSize.DYNAMIC },
+                      React.createElement(
+                        RichImageModal,
+                        Object.assign(
+                          {
+                            original,
+                            src: _this.props.src,
+                            width: _this.props.width,
+                            height: _this.props.height,
+                            animated: _this.props.animated,
+                            children: _this.props.children,
+                            placeholder: n.placeholder,
+                            isTrusted: TrustedStore.isTrustedDomain(original),
+                            onClickUntrusted: _this.onClickUntrusted,
+                            renderLinkComponent,
+                            __BIV_data: _this.props.__BIV_data,
+                            __BIV_index: _this.props.__BIV_data ? _this.props.__BIV_data.images.findIndex(m => m.src === _this.props.src) : -1,
+                            __BIV_isSearch: isSearch,
+                            __BIV_settings: this.settings,
+                            className: ImageModalClasses.image,
+                            shouldAnimate: true
+                          },
+                          e
+                        )
                       )
                     )
                   );
@@ -1888,7 +1926,7 @@ var BetterImageViewer = (() => {
       }
 
       getSettingsPanel() {
-        return this.buildSettingsPanel().getElement();
+        return this.buildSettingsPanel().append(new XenoLib.Settings.PluginFooter(this.showChangelog)).getElement();
       }
 
       get [Symbol.toStringTag]() {
@@ -1953,8 +1991,8 @@ var BetterImageViewer = (() => {
         }
         stop() {}
         handleMissingLib() {
-          const a = BdApi.findModuleByProps('isModalOpenWithKey');
-          if (a && a.isModalOpenWithKey(`${this.name}_DEP_MODAL`)) return;
+          const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
+          if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
           const b = !global.XenoLib,
             c = !global.ZeresPluginLibrary,
             d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
@@ -1966,65 +2004,74 @@ var BetterImageViewer = (() => {
               let a = `The ${d ? 'libraries' : 'library'} `;
               return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
             })(),
-            g = BdApi.findModuleByProps('push', 'update', 'pop', 'popWithKey'),
-            h = BdApi.findModuleByDisplayName('Text'),
-            i = BdApi.findModule(a => a.defaultProps && a.key && 'confirm-modal' === a.key()),
-            j = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
-          if (!g || !i || !h) return j();
-          class k extends BdApi.React.PureComponent {
+            g = BdApi.findModuleByDisplayName('Text'),
+            h = BdApi.findModuleByDisplayName('ConfirmModal'),
+            i = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
+          if (!a || !h || !g) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (h ? '' : ' ConfirmationModalComponent') + (g ? '' : 'TextElement')}`), i();
+          class j extends BdApi.React.PureComponent {
             constructor(a) {
-              super(a), (this.state = { hasError: !1 });
-            }
-            componentDidCatch(a) {
-              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a);
-            }
-            render() {
-              return this.state.hasError ? null : this.props.children;
+              super(a), (this.state = { hasError: !1 }), (this.componentDidCatch = a => (console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a))), (this.render = () => (this.state.hasError ? null : this.props.children));
             }
           }
-          class l extends i {
-            submitModal() {
-              this.props.onConfirm();
-            }
-          }
-          let m = !1;
-          const n = g.push(
-            a =>
-              BdApi.React.createElement(
-                k,
-                {
-                  label: 'missing dependency modal',
-                  onError: () => {
-                    g.popWithKey(n), j();
-                  }
-                },
-                BdApi.React.createElement(
-                  l,
-                  Object.assign(
-                    {
-                      header: e,
-                      children: [BdApi.React.createElement(h, { size: h.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] })],
-                      red: !1,
-                      confirmText: 'Download Now',
-                      cancelText: 'Cancel',
-                      onConfirm: () => {
-                        if (m) return;
-                        m = !0;
-                        const a = require('request'),
-                          b = require('fs'),
-                          c = require('path'),
-                          d = () => {
-                            (global.XenoLib && !XenoLibOutdated) || a('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (a, d, e) => (a || 200 !== d.statusCode ? (g.popWithKey(n), j()) : void b.writeFile(c.join(BdApi.Plugins.folder, '1XenoLib.plugin.js'), e, () => {})));
-                          };
-                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? a('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (a, e, f) => (a || 200 !== e.statusCode ? (g.popWithKey(n), j()) : void (b.writeFile(c.join(BdApi.Plugins.folder, '0PluginLibrary.plugin.js'), f, () => {}), d()))) : d();
-                      }
-                    },
-                    a
+          let k = !1,
+            l = !1;
+          const m = a.openModal(
+            b => {
+              if (l) return null;
+              try {
+                return BdApi.React.createElement(
+                  j,
+                  { label: 'missing dependency modal', onError: () => (a.closeModal(m), i()) },
+                  BdApi.React.createElement(
+                    h,
+                    Object.assign(
+                      {
+                        header: e,
+                        children: BdApi.React.createElement(g, { size: g.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] }),
+                        red: !1,
+                        confirmText: 'Download Now',
+                        cancelText: 'Cancel',
+                        onCancel: b.onClose,
+                        onConfirm: () => {
+                          if (k) return;
+                          k = !0;
+                          const b = require('request'),
+                            c = require('fs'),
+                            d = require('path'),
+                            e = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
+                            f = () => {
+                              (global.XenoLib && !XenoLibOutdated) ||
+                                b('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (b, f, g) => {
+                                  try {
+                                    if (b || 200 !== f.statusCode) return a.closeModal(m), i();
+                                    c.writeFile(d.join(e, '1XenoLib.plugin.js'), g, () => {});
+                                  } catch (b) {
+                                    console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
+                                  }
+                                });
+                            };
+                          !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
+                            ? b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, g, h) => {
+                                try {
+                                  if (b || 200 !== g.statusCode) return a.closeModal(m), i();
+                                  c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => {}), f();
+                                } catch (b) {
+                                  console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
+                                }
+                              })
+                            : f();
+                        }
+                      },
+                      b,
+                      { onClose: () => {} }
+                    )
                   )
-                )
-              ),
-            void 0,
-            `${this.name}_DEP_MODAL`
+                );
+              } catch (b) {
+                return console.error('There has been an error constructing the modal', b), (l = !0), a.closeModal(m), i(), null;
+              }
+            },
+            { modalKey: `${this.name}_DEP_MODAL` }
           );
         }
         get [Symbol.toStringTag]() {
