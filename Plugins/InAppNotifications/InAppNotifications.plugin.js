@@ -27,7 +27,7 @@
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
-var InAppNotifications = (() => {
+module.exports = (() => {
   /* Setup */
   const config = {
     main: 'index.js',
@@ -41,7 +41,7 @@ var InAppNotifications = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.5',
+      version: '1.0.6',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -93,17 +93,7 @@ var InAppNotifications = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed settings not showing anything.']
-      },
-      {
-        title: 'Misc changes',
-        type: 'added',
-        items: ['Lowered the minimum WPM setting to be 50 instead of 300, for you slower readers. If the notifications go away too fast, just enable `Calculate timeout by number of words` and lower the `Words Per Minute` slider in settings.']
-      },
-      {
-        title: '',
-        type: 'added',
-        items: ["Since some people are still confused, I'll put this here.", 'You can hover your mouse over the notification to stop the timer.', 'Right click the x button to dismiss all notifications.', 'You can change the position and remove the backdrop filter blur style as well as the backdrop color in XenoLib settings.', 'If you disable the backdrop effect and want to change the background color of the notification, simply use this custom CSS ```js\n.xenoLib-notification-content {\n   background: #474747;\n}```']
+        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
       }
     ]
   };

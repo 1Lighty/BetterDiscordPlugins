@@ -1,4 +1,7 @@
 # [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux") Changelog
+### 1.0.6
+- Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.
+
 ### 1.0.5
 - Fixed badge not showing on folders, again
 

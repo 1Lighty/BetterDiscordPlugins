@@ -1,4 +1,7 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.1.5
+- Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.
+
 ### 2.1.4
 - Fixed some options not doing anything
 

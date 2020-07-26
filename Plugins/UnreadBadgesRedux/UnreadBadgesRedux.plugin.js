@@ -27,7 +27,7 @@
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
-var UnreadBadgesRedux = (() => {
+module.exports = (() => {
   /* Setup */
   const config = {
     main: 'index.js',
@@ -41,7 +41,7 @@ var UnreadBadgesRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.5',
+      version: '1.0.6',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -50,7 +50,7 @@ var UnreadBadgesRedux = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed badge not showing on folders, again']
+        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
       }
     ],
     defaultConfig: [

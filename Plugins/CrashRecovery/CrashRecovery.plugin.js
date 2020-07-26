@@ -27,7 +27,7 @@
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
-var CrashRecovery = (() => {
+module.exports = (() => {
   /* Setup */
   const config = {
     main: 'index.js',
@@ -41,16 +41,16 @@ var CrashRecovery = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.1.6',
+      version: '0.1.7',
       description: 'In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
     },
     changelog: [
       {
-        title: 'misc changes',
+        title: 'fixed',
         type: 'fixed',
-        items: ['Removed usage of soon to be deprecated globals.']
+        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
       }
     ],
     defaultConfig: [

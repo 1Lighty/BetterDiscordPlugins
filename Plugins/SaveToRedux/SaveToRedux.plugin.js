@@ -27,7 +27,7 @@
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
-var SaveToRedux = (() => {
+module.exports = (() => {
   /* Setup */
   const config = {
     main: 'index.js',
@@ -41,7 +41,7 @@ var SaveToRedux = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.1.4',
+      version: '2.1.5',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -50,7 +50,7 @@ var SaveToRedux = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed some options not doing anything']
+        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
       }
     ],
     defaultConfig: [

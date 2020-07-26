@@ -27,7 +27,7 @@
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
-var BetterTypingUsers = (() => {
+module.exports = (() => {
   /* Setup */
   const config = {
     main: 'index.js',
@@ -41,21 +41,16 @@ var BetterTypingUsers = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.0',
+      version: '1.0.1',
       description: 'Replaces "Several people are typing" with who is actually typing, plus "x others" if it can\'t fit. Number of shown people typing can be changed.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterTypingUsers/BetterTypingUsers.plugin.js'
     },
     changelog: [
       {
-        title: 'Initial release!',
-        type: 'added',
-        items: ['Max users typing changed to 5, with showing and "x others" if more people than that are typing.']
-      },
-      {
-        title: 'future plans',
-        type: 'progress',
-        items: ['Auto fit max number of people typing, until there is no space left.']
+        title: 'fixed',
+        type: 'fixed',
+        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
       }
     ],
     defaultConfig: [
