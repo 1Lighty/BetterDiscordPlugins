@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.7',
+      version: '1.3.8',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,12 +46,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed text being hard to read in light mode.', 'Fixed plugin causing client crash.', 'Fixed plugin *not* expecting a crash.', 'Fixed an anomaly bug if you clicked on a non hit image in search results, and now instead goes thru all images in search results.', 'Fixed using incorrect modals.', 'Fixed load warning because of Zeres nonsensical changes of trying to force to use module.exports']
-      },
-      {
-        title: 'changed',
-        type: 'added',
-        items: ['Using ImageGallery alongside BetterImageViewer is no longer supported, due to the author likely intentionally causing bugs, and that the plugin is fully superseded in terms of features anyways. If you continue to use ImageGallery, any bugs that occur because of it are not my problem.']
+        items: ['Fixed zoom snapping sometimes. (Thx Murmurs for reporting this)']
       }
     ],
     defaultConfig: [
@@ -313,8 +308,6 @@ module.exports = (() => {
         window.addEventListener('mousemove', this.handleMouseMove);
         window.addEventListener('mousewheel', this.handleMouseWheel);
         this.getRawImage();
-        if (!this._ref) return Logger.warn('this._ref is null!');
-        this._bcr = this._ref.getBoundingClientRect();
       }
       componentWillUnmount() {
         if (super.componentWillUnmount) super.componentWillUnmount();
@@ -369,6 +362,7 @@ module.exports = (() => {
         this.setState({ zooming: false });
       }
       handleMouseMove(cx, cy, start) {
+        if (!this._bcr) this._bcr = this._ref.getBoundingClientRect();
         if (!this.props.__BIV_settings.outOfBounds) {
           cx = Math.min(this._bcr.left + this._bcr.width, Math.max(this._bcr.left, cx));
           cy = Math.min(this._bcr.top + this._bcr.height, Math.max(this._bcr.top, cy));

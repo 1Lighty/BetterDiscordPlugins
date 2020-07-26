@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.3.8
+- Fixed zoom snapping sometimes. (Thx Murmurs for reporting this)
+
 ### 1.3.5, 1.3.6 && 1.3.7
 - Fixed text being hard to read in light mode.
 - Fixed plugin causing client crash.
