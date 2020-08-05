@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.3.9
+- Fixed incorrect positioning of the image on canary
+
 ### 1.3.8
 - Fixed zoom snapping sometimes. (Thx Murmurs for reporting this)
 

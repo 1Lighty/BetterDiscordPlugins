@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.8',
+      version: '1.3.9',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed zoom snapping sometimes. (Thx Murmurs for reporting this)']
+        items: ['Fixed incorrect positioning of the image on canary']
       }
     ],
     defaultConfig: [
@@ -1525,7 +1525,7 @@ module.exports = (() => {
         const MaskedLink = WebpackModules.getByDisplayName('MaskedLink');
         const renderLinkComponent = props => React.createElement(MaskedLink, props);
         const Modals = WebpackModules.getByProps('ModalRoot');
-        const ImageModalClasses = WebpackModules.getByProps('modal', 'image');
+        const ImageModalClasses = WebpackModules.find(m => typeof m.image === 'string' && typeof m.modal === 'string' && !m.card) || WebpackModules.getByProps('modal', 'image');
         Patcher.before(WebpackModules.getByDisplayName('LazyImageZoomable').prototype, 'render', (_this, _, ret) => {
           if (_this.onZoom.__BIV_patched !== patchKey) {
             _this.onZoom = (e, n) => {
