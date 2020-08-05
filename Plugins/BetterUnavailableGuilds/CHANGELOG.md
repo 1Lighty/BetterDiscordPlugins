@@ -1,4 +1,7 @@
 # [BetterUnavailableGuilds](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterUnavailableGuilds "BetterUnavailableGuilds") Changelog
+### 0.2.9
+- Fixed not restoring the servers on startup.
+
 ### 0.2.8
 - Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.
 

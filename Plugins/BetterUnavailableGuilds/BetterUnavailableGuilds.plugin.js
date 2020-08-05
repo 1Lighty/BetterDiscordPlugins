@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.2.8',
+      version: '0.2.9',
       description: 'Force Discord to show server icons of unavailable servers, instead of "1 server is unavailable" and enable interaction with the server (ability to leave the server, move it around, etc).',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
+        items: ['Fixed not restoring the servers on startup.']
       }
     ],
     defaultConfig: [
@@ -266,7 +266,7 @@ module.exports = (() => {
                   presences: [],
                   channels: [],
                   members: [],
-                  roles: {},
+                  roles: [],
                   unavailable: true
                 },
                 this.guildRecord[guildId]
@@ -392,7 +392,7 @@ module.exports = (() => {
     if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
       const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
         b = BdApi.getPlugin('ZeresPluginLibrary');
-      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.16') && (ZeresPluginLibraryOutdated = !0);
+      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.21') && (ZeresPluginLibraryOutdated = !0);
     }
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
