@@ -1,4 +1,10 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.4.0
+- Fixed crashes on canary.
+- Fixed image zoom not working on canary.
+- Fixed image zoom not working quite right if you zoomed too early when opening an image (thx A User for reporting this obscure bug).
+- Image zoom will now show the already loaded image first while it's loading the full image, for a smoother experience. After the full image is loaded, it quickly switches to it as it's obviously higher quality.
+
 ### 1.3.9
 - Fixed incorrect positioning of the image on canary
 

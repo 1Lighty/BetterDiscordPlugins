@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.9',
+      version: '1.4.0',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,12 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed incorrect positioning of the image on canary']
+        items: ['Fixed crashes on canary.', 'Fixed image zoom not working on canary.', 'Fixed image zoom not working quite right if you zoomed too early when opening an image (thx A User for reporting this obscure bug).']
+      },
+      {
+        title: 'Appropriate backports',
+        type: 'added',
+        items: ['Image zoom will now show the already loaded image first while it\'s loading the full image, for a smoother experience. After the full image is loaded, it quickly switches to it as it\'s obviously higher quality.']
       }
     ],
     defaultConfig: [
@@ -287,7 +292,7 @@ module.exports = (() => {
     })() {
       constructor(props) {
         super(props);
-        this.state = { zooming: false, visible: false, panelWH: props.__BIV_hiddenSettings.panelWH, zoom: 1.5 };
+        this.state = { zooming: false, visible: false, panelWH: props.__BIV_hiddenSettings.panelWH, zoom: 1.5, loaded: false, failedLoad: false };
         XenoLib._.bindAll(this, ['handleMouseDown', 'handleMouseUp', 'handleMouseWheel', 'setRef']);
         try {
           this._handleMouseMove = this.handleMouseMove.bind(this);
@@ -317,9 +322,11 @@ module.exports = (() => {
         window.removeEventListener('mousewheel', this.handleMouseWheel);
         this._handleSaveLensWHChangeDC.cancel();
         this._handleSaveLensWHChange();
-        this._controller.destroy();
+        if (typeof this._controller.destroy === 'function') this._controller.destroy();
+        else this._controller.dispose();
         this._controller = null;
-        this._zoomController.destroy();
+        if (typeof this._zoomController.destroy === 'function') this._zoomController.destroy();
+        else this._zoomController.dispose();
         this._zoomController = null;
       }
       componentDidUpdate(prevProps, prevState, snapshot) {
@@ -330,6 +337,27 @@ module.exports = (() => {
           this.updateZoomController({ zoom: 1.5, immediate: !this.state.zooming });
           if (this.state.zooming) this.setState({ zooming: false });
           this.getRawImage();
+        } else if (this.state.zooming !== prevState.zooming && !this.state.loaded && this.state.raw && !this.state.failedLoad && !this.props.__BIV_animated) {
+          /* only trigger if zoom state changed, raw image not loaded, raw link set, didn't fail and is not a GIFV */
+          if (this.state.zooming) {
+            if (ImageUtils.isImageLoaded(this.state.raw)) this.setState({ loaded: true });
+            else {
+              /* zoom started, try to load raw */
+              this._loadCancel = ImageUtils.loadImage(this.state.raw, failed => {
+                console.log('Full loaded!', failed);
+                this._loadCancel = null;
+                /* load failed, either the URL is invalid, host is dead or it's e621/e926, which is a special case
+                 * do note, the special cases are not handled if SaveToRedux is not present */
+                if ((this.state.failedLoad = failed)) return this.updateRawImage(true, true);
+                this.setState({ loaded: true });
+              });
+            }
+          } else {
+            if (typeof this._loadCancel === 'function') {
+              this._loadCancel();
+              this._loadCancel = null;
+            }
+          }
         }
         if (!this._ref) return Logger.warn('this._ref is null!');
         this._bcr = this._ref.getBoundingClientRect();
@@ -362,7 +390,7 @@ module.exports = (() => {
         this.setState({ zooming: false });
       }
       handleMouseMove(cx, cy, start) {
-        if (!this._bcr) this._bcr = this._ref.getBoundingClientRect();
+        this._bcr = this._ref.getBoundingClientRect();
         if (!this.props.__BIV_settings.outOfBounds) {
           cx = Math.min(this._bcr.left + this._bcr.width, Math.max(this._bcr.left, cx));
           cy = Math.min(this._bcr.top + this._bcr.height, Math.max(this._bcr.top, cy));
@@ -436,6 +464,8 @@ module.exports = (() => {
           } catch (_) {}
           return split + (needsSize ? '?size=2048' : '');
         })();
+        this.state.failedLoad = false;
+        this.state.loaded = ImageUtils.isImageLoaded(fullSource);
         this.state.raw = fullSource;
       }
       renderLens(ea, props) {
@@ -454,18 +484,19 @@ module.exports = (() => {
             ReactSpring.animated.div,
             {
               style: {
-                transform: ReactSpring.to([props.imgLeft, props.imgTop], (x, y) => `translate3d(${x}px, ${y}px, 0)`)
+                transform: ReactSpring.to([props.imgContainerLeft, props.imgContainerTop], (x, y) => `translate3d(${-x}px, ${-y}px, 0)`)
               }
             },
             React.createElement(this.props.__BIV_animated ? ReactSpring.animated.video : ReactSpring.animated.img, {
               onError: _ => this.getRawImage(true),
-              src: this.props.__BIV_animated ? this.props.__BIV_src : this.state.raw,
-              width: props.imgWidth,
-              height: props.imgHeight,
+              src: this.props.__BIV_animated ? this.props.__BIV_src : this.state.loaded ? this.state.raw : this.props.src,
+              width: props.imgWidth.to(e => e),
+              height: props.imgHeight.to(e => e),
               style: this.props.__BIV_settings.interp
-                ? undefined
+                ? { transform: ReactSpring.to([props.imgLeft, props.imgTop], (x, y) => `translate3d(${x}px, ${y}px, 0)`) }
                 : {
-                    imageRendering: 'pixelated'
+                    imageRendering: 'pixelated',
+                    transform: ReactSpring.to([props.imgLeft, props.imgTop], (x, y) => `translate3d(${x}px, ${y}px, 0)`)
                   },
               ...(this.props.__BIV_animated ? { autoPlay: true, muted: true, loop: true } : {})
             })
@@ -500,7 +531,7 @@ module.exports = (() => {
                     to: { opacity: this.state.zooming ? 1 : 0 },
                     config: { duration: 100 },
                     onRest: () => {
-                      !this.state.zooming && this.setState({ visible: false });
+                      if (!this.state.zooming) this.setState({ visible: false });
                     }
                   },
                   ea => [
@@ -511,13 +542,15 @@ module.exports = (() => {
                       className: 'BIV-zoom-backdrop'
                     }),
                     this.renderLens(ea, {
-                      imgLeft: ReactSpring.to([this._zoomController.animated.zoom, this._controller.animated.offsetX, this._controller.animated.panelX], (z, x, a) => -a + (this._bcr.left - ((this._bcr.width * z - this._bcr.width) / (this._bcr.width * z)) * x * z)),
-                      imgTop: ReactSpring.to([this._zoomController.animated.zoom, this._controller.animated.offsetY, this._controller.animated.panelY], (z, y, a) => -a + (this._bcr.top - ((this._bcr.height * z - this._bcr.height) / (this._bcr.height * z)) * y * z)),
-                      imgWidth: this._zoomController.animated.zoom.to(e => e * this.props.width),
-                      imgHeight: this._zoomController.animated.zoom.to(e => e * this.props.height),
-                      panelX: this._controller.animated.panelX,
-                      panelY: this._controller.animated.panelY,
-                      panelWH: this._controller.animated.panelWH
+                      imgContainerLeft:(this._controller.animated || this._controller.springs).panelX,
+                      imgContainerTop:(this._controller.animated || this._controller.springs).panelY,
+                      imgLeft: ReactSpring.to([(this._zoomController.animated || this._zoomController.springs).zoom, (this._controller.animated || this._controller.springs).offsetX], (z, x) => (this._bcr.left - ((this._bcr.width * z - this._bcr.width) / (this._bcr.width * z)) * x * z)),
+                      imgTop: ReactSpring.to([(this._zoomController.animated || this._zoomController.springs).zoom, (this._controller.animated || this._controller.springs).offsetY], (z, y) => (this._bcr.top - ((this._bcr.height * z - this._bcr.height) / (this._bcr.height * z)) * y * z)),
+                      imgWidth: ReactSpring.to([(this._zoomController.animated || this._zoomController.springs).zoom], e => e * this.props.width),
+                      imgHeight: ReactSpring.to([(this._zoomController.animated || this._zoomController.springs).zoom], e => e * this.props.height),
+                      panelX: (this._controller.animated || this._controller.springs).panelX,
+                      panelY: (this._controller.animated || this._controller.springs).panelY,
+                      panelWH: (this._controller.animated || this._controller.springs).panelWH
                     })
                   ]
                 ),
@@ -1866,7 +1899,7 @@ module.exports = (() => {
           else if (!animated) _this.unobserveVisibility();
         });
         // Patcher.before(LazyImage.prototype, 'getRatio', _this => {
-        //   if (typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) return;
+        //   if (!_this.handleSidebarChange || typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) return;
         //   if (typeof _this.state.__BIV_sidebarType === 'undefined') _this.handleSidebarChange(true);
         //   if (_this.state.__BIV_sidebarMultiplier === null) return;
         //   const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
