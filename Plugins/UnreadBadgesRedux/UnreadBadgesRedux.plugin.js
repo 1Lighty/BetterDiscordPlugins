@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.6',
+      version: '1.0.7',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
+        items: ['Fixed not working on canary.']
       }
     ],
     defaultConfig: [
@@ -479,7 +479,8 @@ module.exports = (() => {
         Patcher.after(BlobMask.component.prototype, 'componentWillUnmount', _this => {
           if (typeof _this.props.__UBR_unread_count !== 'number') return;
           if (!_this.state.unreadBadgeMask) return;
-          _this.state.unreadBadgeMask.destroy();
+          if (typeof _this.state.unreadBadgeMask.destroy === 'function') _this.state.unreadBadgeMask.destroy();
+          else _this.state.unreadBadgeMask.dispose();
           _this.state.unreadBadgeMask = null;
         });
         Patcher.after(BlobMask.component.prototype, 'componentDidUpdate', (_this, [{ __UBR_unread_count }]) => {
@@ -510,7 +511,7 @@ module.exports = (() => {
           const counter = _this.props.__UBR_unread_count || _this.state.__UBR_old_unread_count;
           if (_this.props.__UBR_unread_count) _this.state.__UBR_old_unread_count = _this.props.__UBR_unread_count;
           const width = BadgesModule.getBadgeWidthForValue(counter);
-          const unreadCountMaskSpring = _this.state.unreadBadgeMask.animated.spring;
+          const unreadCountMaskSpring = (_this.state.unreadBadgeMask.animated || _this.state.unreadBadgeMask.springs).spring;
           masks.props.children.push(
             React.createElement(ReactSpring.animated.rect, {
               x: -4,

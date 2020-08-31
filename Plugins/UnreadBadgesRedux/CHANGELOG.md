@@ -1,4 +1,7 @@
 # [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux") Changelog
+### 1.0.7
+- Fixed not working on canary.
+
 ### 1.0.6
 - Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.
 
