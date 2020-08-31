@@ -344,7 +344,6 @@ module.exports = (() => {
             else {
               /* zoom started, try to load raw */
               this._loadCancel = ImageUtils.loadImage(this.state.raw, failed => {
-                console.log('Full loaded!', failed);
                 this._loadCancel = null;
                 /* load failed, either the URL is invalid, host is dead or it's e621/e926, which is a special case
                  * do note, the special cases are not handled if SaveToRedux is not present */
