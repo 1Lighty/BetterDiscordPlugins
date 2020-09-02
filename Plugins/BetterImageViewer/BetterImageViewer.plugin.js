@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.1',
+      version: '1.4.2',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed zoom behaving weird when scrolling and moving the mouse at the same time.', 'Decreased the local ratelimit of using search API from 3.5 seconds to 1.5 seconds so it\'s less annoying to deal with.']
+        items: ['Fixed zoom behaving weird when scrolling and moving the mouse at the same time.', "Decreased the local ratelimit of using search API from 3.5 seconds to 1.5 seconds so it's less annoying to deal with.", 'Fixed zoom not zooming on 1.4.1']
       },
       {
         title: 'Removed',
@@ -491,14 +491,12 @@ module.exports = (() => {
             React.createElement(this.props.__BIV_animated ? ReactSpring.animated.video : ReactSpring.animated.img, {
               onError: _ => this.getRawImage(true),
               src: this.props.__BIV_animated ? this.props.__BIV_src : this.state.loaded ? this.state.raw : this.props.src,
-              style: this.props.__BIV_settings.interp
-                ? { transform: props.img.to(({ x, y }) => `translate3d(${x}px, ${y}px, 0)`) }
-                : {
-                    imageRendering: 'pixelated',
-                    transform: props.img.to(({ x, y }) => `translate3d(${x}px, ${y}px, 0)`),
-                    width: props.img.to(({ w }) => `${w}px`).to(e => e),
-                    height: props.img.to(({ h }) => `${h}px`).to(e => e) /* even when you animate everything at the same time */
-                  },
+              style: {
+                transform: props.img.to(({ x, y }) => `translate3d(${x}px, ${y}px, 0)`),
+                width: props.img.to(({ w }) => w).to(e => e),
+                height: props.img.to(({ h }) => h).to(e => e) /* even when you animate everything at the same time */,
+                ...(this.props.__BIV_settings.interp ? {} : { imageRendering: 'pixelated' })
+              },
               ...(this.props.__BIV_animated ? { autoPlay: true, muted: true, loop: true } : {})
             })
           )
@@ -1870,7 +1868,7 @@ module.exports = (() => {
                 {
                   className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug }, TextElement.Colors.STANDARD)
                 },
-                React.createElement('table', {}, settings.infoFilename || debug ? React.createElement('tr', {}, React.createElement('td', {colspan:2}, this.fetchFilename(_this.props.src))) : null, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? TextElement.Colors.ERROR : undefined }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
+                React.createElement('table', {}, settings.infoFilename || debug ? React.createElement('tr', {}, React.createElement('td', { colspan: 2 }, this.fetchFilename(_this.props.src))) : null, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? TextElement.Colors.ERROR : undefined }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
               ),
               overlayDOMNode
             )
