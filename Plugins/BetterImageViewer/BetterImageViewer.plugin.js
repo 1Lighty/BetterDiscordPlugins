@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.0',
+      version: '1.4.1',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,12 +46,17 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed crashes on canary.', 'Fixed image zoom not working on canary.', 'Fixed image zoom not working quite right if you zoomed too early when opening an image (thx A User for reporting this obscure bug).']
+        items: ['Fixed zoom behaving weird when scrolling and moving the mouse at the same time.', 'Decreased the local ratelimit of using search API from 3.5 seconds to 1.5 seconds so it\'s less annoying to deal with.']
       },
       {
-        title: 'Appropriate backports',
+        title: 'Removed',
+        type: 'fixed',
+        items: ['Removed % update and downscaled info.']
+      },
+      {
+        title: 'Added',
         type: 'added',
-        items: ['Image zoom will now show the already loaded image first while it\'s loading the full image, for a smoother experience. After the full image is loaded, it quickly switches to it as it\'s obviously higher quality.']
+        items: ['Added image filename option.']
       }
     ],
     defaultConfig: [
@@ -75,16 +80,15 @@ module.exports = (() => {
             value: true
           },
           {
-            name: 'Show image resolution',
-            note: 'Left is downscaled, right is original',
-            id: 'infoResolution',
+            name: 'Show image filename',
+            id: 'infoFilename',
             type: 'switch',
             value: true
           },
           {
-            name: 'Show image scale',
-            note: 'Left value is % of original size, right is % downscaled',
-            id: 'infoScale',
+            name: 'Show image resolution',
+            note: 'Left is downscaled, right is original',
+            id: 'infoResolution',
             type: 'switch',
             value: true
           },
@@ -322,11 +326,9 @@ module.exports = (() => {
         window.removeEventListener('mousewheel', this.handleMouseWheel);
         this._handleSaveLensWHChangeDC.cancel();
         this._handleSaveLensWHChange();
-        if (typeof this._controller.destroy === 'function') this._controller.destroy();
-        else this._controller.dispose();
+        this._controller.dispose();
         this._controller = null;
-        if (typeof this._zoomController.destroy === 'function') this._zoomController.destroy();
-        else this._zoomController.dispose();
+        this._zoomController.dispose();
         this._zoomController = null;
       }
       componentDidUpdate(prevProps, prevState, snapshot) {
@@ -489,13 +491,13 @@ module.exports = (() => {
             React.createElement(this.props.__BIV_animated ? ReactSpring.animated.video : ReactSpring.animated.img, {
               onError: _ => this.getRawImage(true),
               src: this.props.__BIV_animated ? this.props.__BIV_src : this.state.loaded ? this.state.raw : this.props.src,
-              width: props.imgWidth.to(e => e),
-              height: props.imgHeight.to(e => e),
               style: this.props.__BIV_settings.interp
-                ? { transform: ReactSpring.to([props.imgLeft, props.imgTop], (x, y) => `translate3d(${x}px, ${y}px, 0)`) }
+                ? { transform: props.img.to(({ x, y }) => `translate3d(${x}px, ${y}px, 0)`) }
                 : {
                     imageRendering: 'pixelated',
-                    transform: ReactSpring.to([props.imgLeft, props.imgTop], (x, y) => `translate3d(${x}px, ${y}px, 0)`)
+                    transform: props.img.to(({ x, y }) => `translate3d(${x}px, ${y}px, 0)`),
+                    width: props.img.to(({ w }) => `${w}px`).to(e => e),
+                    height: props.img.to(({ h }) => `${h}px`).to(e => e) /* even when you animate everything at the same time */
                   },
               ...(this.props.__BIV_animated ? { autoPlay: true, muted: true, loop: true } : {})
             })
@@ -541,15 +543,19 @@ module.exports = (() => {
                       className: 'BIV-zoom-backdrop'
                     }),
                     this.renderLens(ea, {
-                      imgContainerLeft:(this._controller.animated || this._controller.springs).panelX,
-                      imgContainerTop:(this._controller.animated || this._controller.springs).panelY,
-                      imgLeft: ReactSpring.to([(this._zoomController.animated || this._zoomController.springs).zoom, (this._controller.animated || this._controller.springs).offsetX], (z, x) => (this._bcr.left - ((this._bcr.width * z - this._bcr.width) / (this._bcr.width * z)) * x * z)),
-                      imgTop: ReactSpring.to([(this._zoomController.animated || this._zoomController.springs).zoom, (this._controller.animated || this._controller.springs).offsetY], (z, y) => (this._bcr.top - ((this._bcr.height * z - this._bcr.height) / (this._bcr.height * z)) * y * z)),
-                      imgWidth: ReactSpring.to([(this._zoomController.animated || this._zoomController.springs).zoom], e => e * this.props.width),
-                      imgHeight: ReactSpring.to([(this._zoomController.animated || this._zoomController.springs).zoom], e => e * this.props.height),
-                      panelX: (this._controller.animated || this._controller.springs).panelX,
-                      panelY: (this._controller.animated || this._controller.springs).panelY,
-                      panelWH: (this._controller.animated || this._controller.springs).panelWH
+                      imgContainerLeft: this._controller.springs.panelX,
+                      imgContainerTop: this._controller.springs.panelY,
+                      img: ReactSpring.to([this._zoomController.springs.zoom, this._controller.springs.offsetX, this._controller.springs.offsetY], (z, x, y) => {
+                        return {
+                          x: this._bcr.left - ((this._bcr.width * z - this._bcr.width) / (this._bcr.width * z)) * x * z,
+                          y: this._bcr.top - ((this._bcr.height * z - this._bcr.height) / (this._bcr.height * z)) * y * z,
+                          w: z * this.props.width,
+                          h: z * this.props.height
+                        };
+                      }),
+                      panelX: this._controller.springs.panelX,
+                      panelY: this._controller.springs.panelY,
+                      panelWH: this._controller.springs.panelWH
                     })
                   ]
                 ),
@@ -884,13 +890,13 @@ module.exports = (() => {
         if (!this.props.__BIV_isSearch && this.processCache(OldForwardSearchCache, lastId, reverse)) return;
         if (!this.props.__BIV_isSearch && this.processCache(OldSearchCache, lastId, reverse)) return;
         if (this.state.rateLimited) return;
-        if (!this.state.indexing && Date.now() - this._lastSearch < 3500) {
+        if (!this.state.indexing && Date.now() - this._lastSearch < 1500) {
           if (!this.state.localRateLimited) {
             this.state.localRateLimited = this.setState({
               localRateLimited: setTimeout(() => {
                 this.state.localRateLimited = 0;
                 this.handleSearch(lastId, reverse);
-              }, 3500 - (Date.now() - this._lastSearch))
+              }, 1500 - (Date.now() - this._lastSearch))
             });
           }
           return;
@@ -1542,6 +1548,23 @@ module.exports = (() => {
         this.saveHiddenSettings();
       }
 
+      fetchFilename(url) {
+        try {
+          if (url.indexOf('//giphy.com/gifs/') !== -1) url = `https://i.giphy.com/media/${url.match(/-([^-]+)$/)[1]}/giphy.gif`;
+          const match = url.match(/(?:\/)([^\/]+?)(?:(?:\.)([^.\/?:]+)){0,1}(?:[^\w\/\.]+\w+){0,1}(?:(?:\?[^\/]+){0,1}|(?:\/){0,1})$/);
+          let name = match[1];
+          let extension = match[2] || '.png';
+          if (url.indexOf('//media.tenor.co') !== -1) {
+            extension = name;
+            name = url.match(/\/\/media.tenor.co\/[^\/]+\/([^\/]+)\//)[1];
+          } else if (url.indexOf('//i.giphy.com/media/') !== -1) name = url.match(/\/\/i\.giphy\.com\/media\/([^\/]+)\//)[1];
+          return `${name}.${extension}`;
+        } catch (err) {
+          Logger.stacktrace('Failed to fetch filename', url, err);
+          return 'unknown.png';
+        }
+      }
+
       /* PATCHES */
 
       patchAll() {
@@ -1847,7 +1870,7 @@ module.exports = (() => {
                 {
                   className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug }, TextElement.Colors.STANDARD)
                 },
-                React.createElement('table', {}, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? TextElement.Colors.ERROR : undefined }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoScale || debug ? renderTableEntry(basicImageInfo ? `${(basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%', basicImageInfo ? `${(100 - basicImageInfo.ratio * 100).toFixed(0)}%` : 'NaN%') : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
+                React.createElement('table', {}, settings.infoFilename || debug ? React.createElement('tr', {}, React.createElement('td', {colspan:2}, this.fetchFilename(_this.props.src))) : null, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? TextElement.Colors.ERROR : undefined }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
               ),
               overlayDOMNode
             )
