@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.2',
+      version: '1.4.3',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,17 +46,12 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed zoom behaving weird when scrolling and moving the mouse at the same time.', "Decreased the local ratelimit of using search API from 3.5 seconds to 1.5 seconds so it's less annoying to deal with.", 'Fixed zoom not zooming on 1.4.1']
+        items: ['Fixed images being off to the side']
       },
       {
         title: 'Removed',
         type: 'fixed',
-        items: ['Removed % update and downscaled info.']
-      },
-      {
-        title: 'Added',
-        type: 'added',
-        items: ['Added image filename option.']
+        items: ['The cake is a lie.']
       }
     ],
     defaultConfig: [
@@ -1578,7 +1573,7 @@ module.exports = (() => {
         const MaskedLink = WebpackModules.getByDisplayName('MaskedLink');
         const renderLinkComponent = props => React.createElement(MaskedLink, props);
         const Modals = WebpackModules.getByProps('ModalRoot');
-        const ImageModalClasses = WebpackModules.find(m => typeof m.image === 'string' && typeof m.modal === 'string' && !m.card) || WebpackModules.getByProps('modal', 'image');
+        const ImageModalClasses = WebpackModules.find(m => typeof m.image === 'string' && typeof m.modal === 'string' && !m.content && !m.card) || WebpackModules.getByProps('modal', 'image');
         Patcher.before(WebpackModules.getByDisplayName('LazyImageZoomable').prototype, 'render', (_this, _, ret) => {
           if (_this.onZoom.__BIV_patched !== patchKey) {
             _this.onZoom = (e, n) => {
