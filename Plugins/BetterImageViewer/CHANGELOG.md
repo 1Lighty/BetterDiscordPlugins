@@ -1,4 +1,8 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.4.3
+- Fixed images being off to the side
+- The cake is a lie
+
 ### 1.4.1 && 1.4.2
 - Fixed zoom behaving weird when scrolling and moving the mouse at the same time.
 - Decreased the local ratelimit of using search API from 3.5 seconds to 1.5 seconds so it's less annoying to deal with.
