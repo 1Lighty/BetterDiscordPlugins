@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.7',
+      version: '1.0.8',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not working on canary.']
+        items: ['Fixed not working on channels.']
       }
     ],
     defaultConfig: [
@@ -350,10 +350,12 @@ module.exports = (() => {
              so appending it without slicing first would append it to the components props
              children array
            */
-          const buttons = ret.props.children.slice(0);
+		  const props = Utilities.findInReactTree(ret, e => Array.isArray(e.children) && e.children.find(e => e && e.type && e.type.displayName === 'ConnectedEditButton'));
+		  if (!props) return;
+          const buttons = props.children.slice(0);
           if (!buttons) return;
           buttons.splice(this.settings.misc.channelsDisplayOnLeft ? 0 : 2, 0, badge);
-          ret.props.children = buttons;
+          props.children = buttons;
         });
         ChannelItem.forceUpdateAll();
       }
