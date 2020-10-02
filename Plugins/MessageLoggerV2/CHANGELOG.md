@@ -1,4 +1,7 @@
 # [MessageLoggerV2](https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2 "MessageLoggerV2") Changelog
+### 1.7.56
+- Fixed not working on canary
+
 ### 1.7.55
 - Bruh. Gitlab sux, moved plugin to github.
 
