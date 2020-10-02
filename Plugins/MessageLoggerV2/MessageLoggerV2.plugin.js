@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.55';
+    return '1.7.56';
   }
   getAuthor() {
     return 'Lighty';
@@ -162,9 +162,9 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'bruh',
-        type: 'improved',
-        items: ['Bruh. Gitlab sux, moved plugin to github.']
+        title: 'fixed',
+        type: 'fixed',
+        items: ['Fixed not working on canary']
       }
     ];
   }
@@ -3106,7 +3106,7 @@ module.exports = class MessageLoggerV2 {
       this.createModal.confirmationModal.Sizes = ZeresPluginLibrary.WebpackModules.getByProps('ModalSize').ModalSize;
     } catch { }
     this.ModalStack = ZeresPluginLibrary.WebpackModules.getByProps('openModal', 'hasModalOpen');
-    this._modalsApiUnsubcribe = this.ModalStack.modalsApi.subscribe(_ => {
+    this._modalsApiUnsubcribe = (this.ModalStack.modalsApi || this.ModalStack.useModalsStore).subscribe(_ => {
       if (this.menu.open && !this.ModalStack.hasModalOpen(this.style.menu)) {
         this.menu.filter = '';
         this.menu.open = false;
