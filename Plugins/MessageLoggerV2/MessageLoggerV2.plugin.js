@@ -60,7 +60,7 @@ module.exports = class MessageLoggerV2 {
       const iXenoLib = BdApi.Plugins.get('XenoLib');
       const iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (isOutOfDate(iXenoLib, '1.3.26')) XenoLibOutdated = true;
-      if (isOutOfDate(iZeresPluginLibrary, '1.2.21')) ZeresPluginLibraryOutdated = true;
+      if (isOutOfDate(iZeresPluginLibrary, '1.2.23')) ZeresPluginLibraryOutdated = true;
     }
 
     if (!global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated) {

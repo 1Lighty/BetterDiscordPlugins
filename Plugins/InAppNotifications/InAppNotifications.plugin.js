@@ -456,7 +456,7 @@ module.exports = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.14') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.17') && (XenoLibOutdated = !0);
+      n(e, '1.2.23') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.26') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
@@ -480,6 +480,7 @@ module.exports = (() => {
         getDescription() {
           return this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
         }
+        start() {}
         stop() {}
         handleMissingLib() {
           const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
