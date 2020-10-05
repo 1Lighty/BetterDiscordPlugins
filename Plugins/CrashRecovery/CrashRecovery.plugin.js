@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.1.7',
+      version: '0.1.8',
       description: 'In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
+        items: ['Crash fix.']
       }
     ],
     defaultConfig: [
@@ -71,6 +71,8 @@ module.exports = (() => {
 
     const DelayedCall = (WebpackModules.getByProps('DelayedCall') || {}).DelayedCall;
     const ElectronDiscordModule = WebpackModules.getByProps('cleanupDisplaySleep') || { cleanupDisplaySleep: DiscordModules.DiscordConstants.NOOP };
+
+    const ModalStack = WebpackModules.getByProps('openModal');
 
     return class CrashRecovery extends Plugin {
       constructor() {
@@ -166,12 +168,36 @@ module.exports = (() => {
       cleanupDiscord() {
         ElectronDiscordModule.cleanupDisplaySleep();
         Dispatcher.wait(() => {
-          DiscordModules.ContextMenuActions.closeContextMenu();
-          DiscordModules.ModalStack.popAll();
-          DiscordModules.LayerManager.popAllLayers();
-          DiscordModules.PopoutStack.closeAll();
-          WebpackModules.getByProps('openModal').modalsApi.setState(() => ({ default: [] })); /* slow? unsafe? async? */
-          if (!this.settings.useThirdStep) DiscordModules.NavigationUtils.transitionTo('/channels/@me');
+          try {
+            DiscordModules.ContextMenuActions.closeContextMenu();
+          } catch (err) {
+            Logger.stacktrace('Failed to close all context menus', err);
+          }
+          try {
+            DiscordModules.ModalStack.popAll();
+          } catch (err) {
+            Logger.stacktrace('Failed to pop old modalstack', err);
+          }
+          try {
+            DiscordModules.LayerManager.popAllLayers();
+          } catch (err) {
+            Logger.stacktrace('Failed to pop all layers', err);
+          }
+          try {
+            DiscordModules.PopoutStack.closeAll();
+          } catch (err) {
+            Logger.stacktrace('Failed to close all popouts', err);
+          }
+          try {
+            (ModalStack.modalsApi || ModalStack.useModalsStore).setState(() => ({ default: [] })); /* slow? unsafe? async? */
+          } catch (err) {
+            Logger.stacktrace('Failed to pop new modalstack');
+          }
+          try {
+            if (!this.settings.useThirdStep) DiscordModules.NavigationUtils.transitionTo('/channels/@me');
+          } catch (err) {
+            Logger.stacktrace('Failed to transition to home');
+          }
         });
       }
 
