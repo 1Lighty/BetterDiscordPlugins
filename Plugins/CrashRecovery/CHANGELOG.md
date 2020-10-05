@@ -1,4 +1,7 @@
 # [CrashRecovery](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery "CrashRecovery") Changelog
+### 0.1.8
+- Crash fix.
+
 ### 0.1.7
 - Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.
 
