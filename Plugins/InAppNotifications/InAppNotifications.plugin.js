@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.6',
+      version: '1.0.7',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -93,7 +93,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
+        items: ['Fixed not working.']
       }
     ]
   };
@@ -106,7 +106,7 @@ module.exports = (() => {
     const LurkerStore = WebpackModules.getByProps('isLurking');
     const MuteStore = WebpackModules.getByProps('allowNoMessages');
     const isMentionedUtils = WebpackModules.getByProps('isRawMessageMentioned');
-    const ParserModule = WebpackModules.getByProps('parseAllowLinks', 'parse');
+    const ParserModule = WebpackModules.getByProps('astParserFor', 'parse');
     const MessageClasses = WebpackModules.getByProps('username', 'messageContent');
     const MarkupClassname = XenoLib.getClass('markup');
     const Messages = (WebpackModules.getByProps('Messages') || {}).Messages;
