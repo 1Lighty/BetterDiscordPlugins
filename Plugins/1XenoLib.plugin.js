@@ -1718,6 +1718,7 @@ module.exports = (() => {
         }
       }
       showChangelog(footer) {
+	      return;
         XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog);
       }
       get name() {
