@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.26',
+      version: '1.3.27',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'Boring changes',
         type: 'fixed',
-        items: ['Fixed what Zere broke']
+        items: ['aaaaaa']
       }
     ],
     defaultConfig: [
@@ -938,7 +938,11 @@ module.exports = (() => {
         return ParsersModule.reactParserFor(FANCY_PANTS_PARSER_RULES);
       } catch (e) {
         Logger.stacktrace('Failed to create special parser', e);
-        return ParsersModule.parseAllowLinks;
+	try {
+        	return ParsersModule.parseAllowLinks;
+	} catch (e) {
+		Logger.stacktrace('FUCKING CUNT, parseAllowLinks bad', e);
+	}
       }
     })();
     const AnchorClasses = WebpackModules.getByProps('anchor', 'anchorUnderlineOnHover') || {};
