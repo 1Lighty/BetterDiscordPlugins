@@ -59,7 +59,7 @@ module.exports = class MessageLoggerV2 {
       const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion);
       const iXenoLib = BdApi.Plugins.get('XenoLib');
       const iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
-      if (isOutOfDate(iXenoLib, '1.3.26')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.3.29')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '1.2.23')) ZeresPluginLibraryOutdated = true;
     }
 
