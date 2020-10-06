@@ -942,6 +942,7 @@ module.exports = (() => {
         	return ParsersModule.parseAllowLinks;
 	} catch (e) {
 		Logger.stacktrace('FUCKING CUNT, parseAllowLinks bad', e);
+		return e => e;
 	}
       }
     })();
