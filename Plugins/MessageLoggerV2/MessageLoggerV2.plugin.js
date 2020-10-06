@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.56';
+    return '1.7.57';
   }
   getAuthor() {
     return 'Lighty';
@@ -164,7 +164,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not working on canary']
+        items: ['Fixed not working']
       }
     ];
   }
@@ -479,7 +479,7 @@ module.exports = class MessageLoggerV2 {
       copyToClipboard: this.nodeModules.electron.clipboard.writeText,
       getServer: ZeresPluginLibrary.DiscordModules.GuildStore.getGuild,
       getUser: ZeresPluginLibrary.DiscordModules.UserStore.getUser,
-      parse: ZeresPluginLibrary.WebpackModules.getByProps('parseAllowLinks', 'parse').parse,
+      parse: ZeresPluginLibrary.WebpackModules.getByProps('parse', 'astParserFor').parse,
       getUserAsync: ZeresPluginLibrary.WebpackModules.getByProps('getUser', 'acceptAgreements').getUser,
       isBlocked: ZeresPluginLibrary.WebpackModules.getByProps('isBlocked').isBlocked,
       createMomentObject: ZeresPluginLibrary.WebpackModules.getByProps('createFromInputFallback'),
