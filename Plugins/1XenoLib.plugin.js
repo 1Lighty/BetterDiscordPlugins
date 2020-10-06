@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.27',
+      version: '1.3.29',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -929,19 +929,21 @@ module.exports = (() => {
     };
 
     const FancyParser = (() => {
-      const ParsersModule = WebpackModules.getByProps('parseAllowLinks', 'parse');
+      const ParsersModule = WebpackModules.getByProps('astParserFor', 'parse');
       try {
         const DeepClone = WebpackModules.find(m => m.default && m.default.toString().indexOf('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(') !== -1 && !m.useVirtualizedAnchor).default;
         const ReactParserRules = WebpackModules.find(m => m.default && m.default.toString().search(/function\(\){return \w}$/) !== -1).default; /* thanks Zere for not fixing the bug ._. */
-        const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES', 'ALLOW_LINKS_RULES').ALLOW_LINKS_RULES, ReactParserRules()]);
-        FANCY_PANTS_PARSER_RULES.image = WebpackModules.getByProps('defaultParse').defaultRules.image;
+        const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES').RULES, ReactParserRules()]);
+	const { defaultRules } = WebpackModules.getByProps('defaultParse');
+        FANCY_PANTS_PARSER_RULES.image = defaultRules.image;
+	FANCY_PANTS_PARSER_RULES.link = defaultRules.link;
         return ParsersModule.reactParserFor(FANCY_PANTS_PARSER_RULES);
       } catch (e) {
         Logger.stacktrace('Failed to create special parser', e);
 	try {
-        	return ParsersModule.parseAllowLinks;
+        	return ParsersModule.parse;
 	} catch (e) {
-		Logger.stacktrace('FUCKING CUNT, parseAllowLinks bad', e);
+		Logger.stacktrace('Failed to get even basic parser', e);
 		return e => e;
 	}
       }
