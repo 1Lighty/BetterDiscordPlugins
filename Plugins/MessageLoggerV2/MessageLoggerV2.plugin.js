@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.57';
+    return '1.7.58';
   }
   getAuthor() {
     return 'Lighty';
@@ -164,7 +164,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not working']
+        items: ['Fixed not working on canary']
       }
     ];
   }
@@ -581,11 +581,13 @@ module.exports = class MessageLoggerV2 {
       questionMarkSingle: XenoLib.getSingleClass('questionMark')
     };
 
+    const TabBarStuffs = ZeresPluginLibrary.WebpackModules.getByProps('tabBarItem');
+
     this.createHeader.classes = {
-      itemTabBarItem: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBarItem + ' ' + ZeresPluginLibrary.WebpackModules.find(m => m.item && m.selected && m.topPill).item,
-      tabBarContainer: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBarContainer,
-      tabBar: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBar,
-      tabBarSingle: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBar.split(/ /g)[0]
+      itemTabBarItem: TabBarStuffs.tabBarItem + ' ' + ZeresPluginLibrary.WebpackModules.find(m => m.item && m.selected && m.topPill).item,
+      tabBarContainer: TabBarStuffs.tabBarContainer,
+      tabBar: TabBarStuffs.tabBar,
+      tabBarSingle: TabBarStuffs.tabBar.split(/ /g)[0]
     };
 
     const Modals = ZeresPluginLibrary.WebpackModules.getByProps('ModalRoot');
