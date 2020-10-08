@@ -1,4 +1,10 @@
 # [InAppNotifications](https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications "InAppNotifications") Changelog
+### 1.0.8
+- Fixed error on canary.
+
+### 1.0.7
+- Fixed not working.
+
 ### 1.0.6
 - Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.
 
