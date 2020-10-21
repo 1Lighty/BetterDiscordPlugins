@@ -1,4 +1,9 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.2.0
+- Added support for stickers, they can now be downloaded properly.
+- Animated stickers will be turned into a shareable GIF, but the option of downloaing the source is still available.
+- Lottie sticker download resolution can be changed in settings, default is 160x160.
+
 ### 2.1.5
 - Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.
 

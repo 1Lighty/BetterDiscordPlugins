@@ -2,24 +2,24 @@
 /*@cc_on
 @if (@_jscript)
 
-	// Offer to self-install for clueless users that try to run this directly.
-	var shell = WScript.CreateObject('WScript.Shell');
-	var fs = new ActiveXObject('Scripting.FileSystemObject');
-	var pathPlugins = shell.ExpandEnvironmentStrings('%APPDATA%\\BetterDiscord\\plugins');
-	var pathSelf = WScript.ScriptFullName;
-	// Put the user at ease by addressing them in the first person
-	shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
-	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-		shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
-	} else if (!fs.FolderExists(pathPlugins)) {
-		shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
-	} else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
-		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
-		// Show the user where to put plugins in the future
-		shell.Exec('explorer ' + pathPlugins);
-		shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
-	}
-	WScript.Quit();
+  // Offer to self-install for clueless users that try to run this directly.
+  var shell = WScript.CreateObject('WScript.Shell');
+  var fs = new ActiveXObject('Scripting.FileSystemObject');
+  var pathPlugins = shell.ExpandEnvironmentStrings('%APPDATA%\\BetterDiscord\\plugins');
+  var pathSelf = WScript.ScriptFullName;
+  // Put the user at ease by addressing them in the first person
+  shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
+  if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
+    shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
+  } else if (!fs.FolderExists(pathPlugins)) {
+    shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
+  } else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
+    fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
+    // Show the user where to put plugins in the future
+    shell.Exec('explorer ' + pathPlugins);
+    shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
+  }
+  WScript.Quit();
 
 @else@*/
 /*
@@ -41,16 +41,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.1.5',
-      description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes and custom status emotes to any folder quickly, as well as install plugins from direct links.',
+      version: '2.2.0',
+      description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
-        type: 'fixed',
-        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
+        title: 'added',
+        type: 'added',
+        items: ['Added support for stickers, they can now be downloaded properly.', 'Animated stickers will be turned into a shareable GIF, but the option of downloaing the source is still available.', 'Lottie sticker download resolution can be changed in settings, default is 160x160.']
       }
     ],
     defaultConfig: [
@@ -94,7 +94,17 @@ module.exports = (() => {
             ]
           },
           { name: 'User and Server icons get saved by the users or servers name, instead of randomized', id: 'saveByName', type: 'switch', value: true },
-          { name: 'Append server name or DM name to image/file name', id: 'appendCurrentName', type: 'switch', value: false }
+          { name: 'Append server name or DM name to image/file name', id: 'appendCurrentName', type: 'switch', value: false },
+          {
+            name: 'Lottie sticker save size',
+            id: 'lottieSize',
+            type: 'radio',
+            value: 0,
+            options: [
+              { name: 'Default 160x160', value: 0 },
+              { name: 'Max size 320x320', value: 1 }
+            ]
+          },
         ]
       },
       { type: 'category', id: 'misc', name: 'Misc', collapsible: true, shown: false, settings: [{ name: 'Context menu option at the bottom instead of top', id: 'contextMenuOnBottom', type: 'switch', value: true }] }
@@ -113,7 +123,7 @@ module.exports = (() => {
         const ret = ConfirmModal(props);
         if (props.size) ret.props.size = props.size;
         return ret;
-      } catch(err) {
+      } catch (err) {
         if (props.onCancel) props.onCancel();
         else props.onClose();
         return null;
@@ -125,7 +135,7 @@ module.exports = (() => {
 
     const Modals = {
       showModal(title, content, options) {
-        return ModalStack.openModal(e => React.createElement(ConfirmationModal, Object.assign({title, children: content, cancelText: 'Cancel'}, e, options)));
+        return ModalStack.openModal(e => React.createElement(ConfirmationModal, Object.assign({ title, children: content, cancelText: 'Cancel' }, e, options)));
       },
       showConfirmationModal(title, content, options) {
         return this.showModal(title, React.createElement(Markdown, null, content), options);
@@ -312,6 +322,17 @@ module.exports = (() => {
 
     const useIdealExtensions = url => (url.indexOf('/a_') !== -1 ? url.replace('.webp', '.gif').replace('.png', '.gif') : url.replace('.webp', '.png'));
 
+    const ImageWrapperClassname = XenoLib.getSingleClass('clickable imageWrapper');
+    const StickerUtils = WebpackModules.getByProps('getStickerAssetUrl');
+    const { StickerFormat } = WebpackModules.getByProps('StickerFormat') || {};
+    const WasmLottie = WebpackModules.getByPrototypes('get_rgba');
+
+    const webWorkerData = `importScripts('https://1lighty.github.io/BetterDiscordPlugins/Plugins/SaveToRedux/res/worker.js');`;
+    const workerDataURL = window.URL.createObjectURL(new Blob([webWorkerData], { type: 'text/javascript' }));
+
+    const StickerClasses = WebpackModules.getByProps('pngImage', 'lottieCanvas');
+
+
     return class SaveToRedux extends Plugin {
       constructor() {
         super();
@@ -359,6 +380,9 @@ module.exports = (() => {
         div[id$="-str"] + .${XenoLib.getSingleClass('layerContainer layer')} {
           z-index: 1;
         }
+        div[id$="-str-stickers"] + .${XenoLib.getSingleClass('layerContainer layer')} {
+          z-index: 2;
+        }
         `
         );
         this.lastUsedFolder = -1;
@@ -400,6 +424,7 @@ module.exports = (() => {
         Utilities.suppressErrors(this.patchEmojiPicker.bind(this), 'EmojiPicker patch')(this.promises.state);
         Utilities.suppressErrors(this.patchReactions.bind(this), 'Reaction patch')(this.promises.state);
         this.patchContextMenus();
+        this.patchStickerStorePicker();
       }
 
       patchEmojiPicker() {
@@ -461,6 +486,25 @@ module.exports = (() => {
         Reaction.forceUpdateAll();
       }
 
+      patchStickerStorePicker() {
+        const StickerStorePicker = WebpackModules.find(m => {
+          if (!m || !m.type) return false;
+          const typeString = String(m.type);
+          for (const string of ['.getStickerItemProps', '.inspectedSticker']) if (typeString.indexOf(string) === -1) return false;
+          return true;
+        });
+        Patcher.after(StickerStorePicker, 'type', (_, [props], ret) => {
+          for (const stickerClickable of ret.props.children) {
+            const { sticker } = Utilities.findInReactTree(stickerClickable, e => e && e.sticker && e.sticker.id) || {};
+            if (!sticker) continue;
+            const url = StickerUtils.getStickerAssetUrl(sticker);
+            XenoLib.createSharedContext(stickerClickable, () => XenoLib.createContextMenuGroup([
+              this.constructMenu(url.split('?')[0], 'Sticker', sticker.name, () => { }, undefined, '', { id: sticker.id, type: sticker.format_type })
+            ]));
+          }
+        })
+      }
+
       patchContextMenus() {
         this.patchUserContextMenus();
         this.patchImageContextMenus();
@@ -509,12 +553,13 @@ module.exports = (() => {
           );
           if (!Array.isArray(menu)) return;
           const [state, setState] = React.useState({});
+          const extraData = {};
           let src;
           let saveType = 'File';
           let url = '';
           let proxiedUrl = '';
           let customName = '';
-          if (isImageMenu && (Utilities.getNestedProp(props, 'target.parentNode.className') || '').indexOf(XenoLib.getSingleClass('clickable imageWrapper')) !== -1) {
+          if (isImageMenu && (Utilities.getNestedProp(props, 'target.parentNode.className') || '').indexOf(ImageWrapperClassname) !== -1) {
             const inst = ReactTools.getOwnerInstance(Utilities.getNestedProp(props, 'target.parentNode.parentNode'));
             proxiedUrl = props.src;
             if (inst) src = inst.props.original;
@@ -524,6 +569,17 @@ module.exports = (() => {
               src = proxiedUrl;
               proxiedUrl = '';
             }
+          }
+          const targetClassName = Utilities.getNestedProp(props, 'target.className') || '';
+          if (StickerClasses && (targetClassName.indexOf(StickerClasses.lottieCanvas.split(' ')[0]) !== -1 || targetClassName.indexOf(StickerClasses.pngImage.split(' ')[0]) !== -1)) {
+            const { memoizedProps } = Utilities.findInTree(ReactTools.getReactInstance(props.target), e => e && e.type && e.type.displayName === 'StickerMessage', { walkable: ['return'] });
+            const { sticker } = memoizedProps || {};
+            if (!sticker) return;
+            src = StickerUtils.getStickerAssetUrl(sticker);
+            customName = sticker.name;
+            extraData.type = sticker.format_type;
+            extraData.id = sticker.id;
+            saveType = 'Sticker';
           }
           if (!src) src = Utilities.getNestedProp(props, 'attachment.href') || Utilities.getNestedProp(props, 'attachment.url');
           /* is that enough specific cases? */
@@ -572,42 +628,44 @@ module.exports = (() => {
           }
           url = src;
           if (!url) return;
-          if (isImage(url) || url.indexOf('//steamuserimages') !== -1) saveType = 'Image';
-          else if (isVideo(url)) saveType = 'Video';
-          else if (isAudio(url)) saveType = 'Audio';
-          if (url.indexOf('app.com/emojis/') !== -1) {
-            saveType = 'Emoji';
-            const emojiId = url.split('emojis/')[1].split('.')[0];
-            const emoji = EmojiUtils.getDisambiguatedEmojiContext().getById(emojiId);
-            if (!emoji) {
-              if (!DiscordAPI.currentChannel || !this.channelMessages[DiscordAPI.currentChannel.id]) return;
-              const message = this.channelMessages[DiscordAPI.currentChannel.id]._array.find(m => m.content.indexOf(emojiId) !== -1);
-              if (message && message.content) {
-                const group = message.content.match(new RegExp(`<a?:([^:>]*):${emojiId}>`));
-                if (group && group[1]) customName = group[1];
+          if (saveType !== 'Sticker') {
+            if (isImage(url) || url.indexOf('//steamuserimages') !== -1) saveType = 'Image';
+            else if (isVideo(url)) saveType = 'Video';
+            else if (isAudio(url)) saveType = 'Audio';
+            if (url.indexOf('app.com/emojis/') !== -1) {
+              saveType = 'Emoji';
+              const emojiId = url.split('emojis/')[1].split('.')[0];
+              const emoji = EmojiUtils.getDisambiguatedEmojiContext().getById(emojiId);
+              if (!emoji) {
+                if (!DiscordAPI.currentChannel || !this.channelMessages[DiscordAPI.currentChannel.id]) return;
+                const message = this.channelMessages[DiscordAPI.currentChannel.id]._array.find(m => m.content.indexOf(emojiId) !== -1);
+                if (message && message.content) {
+                  const group = message.content.match(new RegExp(`<a?:([^:>]*):${emojiId}>`));
+                  if (group && group[1]) customName = group[1];
+                }
+                if (!customName) {
+                  const alt = props.target.alt;
+                  if (alt) customName = alt.split(':')[1] || alt;
+                }
+              } else customName = emoji.name;
+            } else if (state.__STR_extension) {
+              if (isImage(state.__STR_extension)) saveType = 'Image';
+              else if (isVideo(state.__STR_extension)) saveType = 'Video';
+              else if (isAudio(state.__STR_extension)) saveType = 'Audio';
+            } else if (url.indexOf('//discordapp.com/assets/') !== -1 && props.target && props.target.className.indexOf('emoji') !== -1) {
+              const alt = props.target.alt;
+              if (alt) {
+                customName = alt.split(':')[1] || alt;
+                const name = EmojiStore.convertSurrogateToName(customName);
+                if (name) {
+                  const match = name.match(EmojiStore.EMOJI_NAME_RE);
+                  if (match) customName = EmojiStore.getByName(match[1]).uniqueName;
+                }
               }
-              if (!customName) {
-                const alt = props.target.alt;
-                if (alt) customName = alt.split(':')[1] || alt;
-              }
-            } else customName = emoji.name;
-          } else if (state.__STR_extension) {
-            if (isImage(state.__STR_extension)) saveType = 'Image';
-            else if (isVideo(state.__STR_extension)) saveType = 'Video';
-            else if (isAudio(state.__STR_extension)) saveType = 'Audio';
-          } else if (url.indexOf('//discordapp.com/assets/') !== -1 && props.target && props.target.className.indexOf('emoji') !== -1) {
-            const alt = props.target.alt;
-            if (alt) {
-              customName = alt.split(':')[1] || alt;
-              const name = EmojiStore.convertSurrogateToName(customName);
-              if (name) {
-                const match = name.match(EmojiStore.EMOJI_NAME_RE);
-                if (match) customName = EmojiStore.getByName(match[1]).uniqueName;
-              }
-            }
-            saveType = 'Emoji';
-          } else if (url.indexOf('.plugin.js') === url.length - 10) saveType = 'Plugin';
-          else if (url.indexOf('.theme.css') === url.length - 10) saveType = 'Theme';
+              saveType = 'Emoji';
+            } else if (url.indexOf('.plugin.js') === url.length - 10) saveType = 'Plugin';
+            else if (url.indexOf('.theme.css') === url.length - 10) saveType = 'Theme';
+          }
           try {
             const submenu = this.constructMenu(
               url.split('?')[0],
@@ -618,14 +676,15 @@ module.exports = (() => {
                 if (!isTrustedDomain(targetUrl)) return;
                 state.__STR_requesting = true;
                 RequestModule.head(targetUrl, (err, res) => {
-                  if (err) return setState({ __STR_requesting: false, __STR_requested: true });
+                  if (err || res.statusCode !== 200) return setState({ __STR_requesting: false, __STR_requested: true });
                   const extension = MimeTypesModule.extension(res.headers['content-type']);
                   setState({ __STR_requesting: false, __STR_requested: true, __STR_extension: extension });
                 });
                 targetUrl;
               },
               state.__STR_extension,
-              proxiedUrl
+              proxiedUrl,
+              extraData
             );
             const group = XenoLib.createContextMenuGroup([submenu]);
             if (this.settings.misc.contextMenuOnBottom) menu.push(group);
@@ -743,7 +802,7 @@ module.exports = (() => {
         return ret;
       }
 
-      formatURL(url, requiresSize, customName, fallbackExtension, proxiedUrl, failNum = 0, forceKeepOriginal = false) {
+      formatURL(url, requiresSize, customName, fallbackExtension, proxiedUrl, failNum = 0, forceKeepOriginal = false, forceExtension = false) {
         // url = url.replace(/\/$/, '');
         if (requiresSize) url += '?size=2048';
         else if (url.indexOf('twimg.com/') !== -1) url = url.replace(':small', ':orig').replace(':medium', ':orig').replace(':large', ':orig');
@@ -753,7 +812,7 @@ module.exports = (() => {
         }
         const match = url.match(/(?:\/)([^\/]+?)(?:(?:\.)([^.\/?:]+)){0,1}(?:[^\w\/\.]+\w+){0,1}(?:(?:\?[^\/]+){0,1}|(?:\/){0,1})$/);
         let name = customName || match[1];
-        let extension = match[2] || fallbackExtension;
+        let extension = forceExtension || match[2] || fallbackExtension;
         if (url.indexOf('//media.tenor.co') !== -1) {
           extension = name;
           name = url.match(/\/\/media.tenor.co\/[^\/]+\/([^\/]+)\//)[1];
@@ -772,10 +831,17 @@ module.exports = (() => {
         return ret;
       }
 
-      constructMenu(url, type, customName, onNoExtension = () => { }, fallbackExtension, proxiedUrl) {
+      constructMenu(url, type, customName, onNoExtension = () => { }, fallbackExtension, proxiedUrl, extraData = {}) {
         const subItems = [];
         const folderSubMenus = [];
-        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, 0, type === 'Theme' || type === 'Plugin');
+        let forcedExtension = false;
+        if (type === 'Sticker') {
+          if (extraData.isStickerSubMenu) {
+            if (extraData.type === StickerFormat.APNG) forcedExtension = 'apng';
+          }
+          else forcedExtension = extraData.type === StickerFormat.PNG ? 'png' : 'gif';
+        }
+        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, 0, type === 'Theme' || type === 'Plugin', forcedExtension);
         if (!formattedurl.extension) onNoExtension(formattedurl.url);
         let notifId;
         let downloadAttempts = 0;
@@ -796,23 +862,67 @@ module.exports = (() => {
             return `${bytes.toFixed(1)}${noUnit && unit.a === units[u] ? '' : ' ' + units[u]}`;
           }
           const unit = { a: '' };
-          const update = () => XenoLib.Notifications.update(notifId, { content: `Downloading ${type} ${humanFileSize(receivedBytes, false, true, unit)}/${humanFileSize(totalBytes, false, false, unit)}`, progress: (receivedBytes / totalBytes) * 100 });
+          const update = () => XenoLib.Notifications.update(notifId, { content: `Downloading ${type} ${humanFileSize(receivedBytes.length, false, true, unit)}/${humanFileSize(totalBytes, false, false, unit)}`, progress: (receivedBytes.length / totalBytes) * 100 });
           const throttledUpdate = XenoLib._.throttle(update, 50);
           let totalBytes = 0;
-          let receivedBytes = 0;
-          const req = RequestModule(formattedurl.url);
+          let receivedBytes = '';
+          const req = RequestModule({ url: formattedurl.url, encoding: null }, async (_, __, body) => {
+            if (type !== 'Sticker' || extraData.type === StickerFormat.PNG || extraData.isStickerSubMenu) return; // do not convert it
+            XenoLib.Notifications.remove(notifId);
+            notifId = undefined;
+            let sNotifId = XenoLib.Notifications.info(`Converting sticker to gif..`, { timeout: 0, loading: true });
+            let worker = null;
+            let lottieWASM = null;
+            try {
+              worker = new Worker(workerDataURL);
+              if (extraData.type === StickerFormat.APNG) {
+                await new Promise(res => {
+                  worker.onmessage = res;
+                  worker.postMessage(['CONVERT-APNG', body]);
+                });
+              } else {
+                lottieWASM = new WasmLottie(receivedBytes);
+                const size = this.settings.saveOptions.lottieSize ? 320 : 160;
+                const frames = [];
+                for (let i = 0, framesCount = lottieWASM.frames; i < framesCount; i++) frames.push(new Uint8ClampedArray(lottieWASM.get_bgra(i, size, size)));
+                await new Promise(async res => {
+                  worker.onmessage = res;
+                  worker.postMessage(['CONVERT-FRAMES', { width: size, height: size, framerate: 60, frames }]);
+                });
+              }
+              const { data } = await new Promise(res => {
+                worker.onmessage = res;
+                worker.postMessage(['DONE']);
+              });
+              XenoLib.Notifications.update(sNotifId, { content: `Saving..` });
+              FsModule.writeFileSync(path, Buffer.from(data));
+              XenoLib.Notifications.remove(sNotifId);
+              sNotifId = undefined;
+              if (openOnSave) openPath(path);
+              BdApi.showToast(`Saved to '${PathModule.resolve(path)}'`, { type: 'success' });
+            } catch (err) {
+              Logger.stacktrace('Failed converting to GIF', err);
+              BdApi.showToast(`Failed to save sticker..`, { type: 'error' });
+            } finally {
+              if (lottieWASM) lottieWASM.drop();
+              if (worker) worker.terminate();
+            }
+          });
           req
             .on('data', chunk => {
-              receivedBytes += chunk.length;
+              receivedBytes += chunk;
               throttledUpdate();
             })
             .on('response', res => {
               if (res.statusCode == 200) {
                 totalBytes = parseInt(res.headers['content-length']);
                 update();
+                if (type === 'Sticker' && extraData.type !== StickerFormat.PNG && !extraData.isStickerSubMenu) return; // do not stream download because we need to convert it first
                 req
                   .pipe(FsModule.createWriteStream(path))
                   .on('finish', () => {
+                    XenoLib.Notifications.remove(notifId);
+                    notifId = undefined;
                     if (openOnSave) openPath(path);
                     BdApi.showToast(`Saved to '${PathModule.resolve(path)}'`, { type: 'success' });
                   })
@@ -824,7 +934,7 @@ module.exports = (() => {
               } else if (res.statusCode == 404) {
                 if (shouldDoMultiAttempts && downloadAttempts < 2) {
                   downloadAttempts++;
-                  const newUrl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, downloadAttempts, type === 'Theme' || type === 'Plugin').url;
+                  const newUrl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, downloadAttempts, type === 'Theme' || type === 'Plugin', forcedExtension).url;
                   if (newUrl !== formattedurl.url) {
                     formattedurl.url = newUrl;
                     return downloadEx(path, openOnSave);
@@ -1041,7 +1151,7 @@ module.exports = (() => {
           return XenoLib.createContextMenuSubMenu(
             folder.name,
             [
-              XenoLib.createContextMenuItem(
+              extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
                 'Remove Folder',
                 () => {
                   this.folders.splice(idx, 1);
@@ -1050,7 +1160,7 @@ module.exports = (() => {
                 },
                 'remove-folder'
               ),
-              XenoLib.createContextMenuItem(
+              extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
                 'Open Folder',
                 () => {
                   openPath(folder.path);
@@ -1076,7 +1186,7 @@ module.exports = (() => {
                 },
                 'save-and-open'
               ),
-              XenoLib.createContextMenuItem(
+              extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
                 'Edit',
                 () => {
                   let __name = folder.name.slice(0);
@@ -1119,7 +1229,10 @@ module.exports = (() => {
         for (const folderIDX in this.folders) folderSubMenus.push(folderSubMenu(this.folders[folderIDX], folderIDX));
         subItems.push(
           ...folderSubMenus,
-          XenoLib.createContextMenuItem(
+          type === 'Sticker' && !extraData.isStickerSubMenu && extraData.type !== StickerFormat.PNG ?
+            XenoLib.createContextMenuSubMenu(`Save ${extraData.type === StickerFormat.LOTTIE ? 'Lottie JSON' : 'APNG'}`, this.constructMenu(url, type, customName, onNoExtension, fallbackExtension, proxiedUrl, { ...extraData, onlyItems: true, isStickerSubMenu: true, onlyFolderSave: true }), 'str-stickers')
+            : null,
+          extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
             'Add Folder',
             () => {
               dialog
@@ -1215,6 +1328,7 @@ module.exports = (() => {
             )
             : null
         );
+        if (extraData.onlyItems) return subItems;
         return XenoLib.createContextMenuSubMenu(`Save ${type} To`, subItems, 'str', {
           action: () => {
             if (this.lastUsedFolder === -1) return BdApi.showToast('No folder has been used yet', { type: 'error' });
@@ -1272,7 +1386,7 @@ module.exports = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.23') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.26') && (XenoLibOutdated = !0);
+      n(e, '1.2.24') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.29') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
@@ -1300,87 +1414,87 @@ module.exports = (() => {
       stop() { }
       handleMissingLib() {
         const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
-          if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
-          const b = !global.XenoLib,
-            c = !global.ZeresPluginLibrary,
-            d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
-            e = (() => {
-              let a = '';
-              return b || c ? (a += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? ' and outdated' : ''} `) : (XenoLibOutdated || ZeresPluginLibraryOutdated) && (a += `Outdated `), (a += `${d ? 'Libraries' : 'Library'} `), a;
-            })(),
-            f = (() => {
-              let a = `The ${d ? 'libraries' : 'library'} `;
-              return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
-            })(),
-            g = BdApi.findModuleByDisplayName('Text'),
-            h = BdApi.findModuleByDisplayName('ConfirmModal'),
-            i = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
-          if (!a || !h || !g) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (h ? '' : ' ConfirmationModalComponent') + (g ? '' : 'TextElement')}`), i();
-          class j extends BdApi.React.PureComponent {
-            constructor(a) {
-              super(a), (this.state = { hasError: !1 }), (this.componentDidCatch = a => (console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a))), (this.render = () => (this.state.hasError ? null : this.props.children));
-            }
+        if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
+        const b = !global.XenoLib,
+          c = !global.ZeresPluginLibrary,
+          d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
+          e = (() => {
+            let a = '';
+            return b || c ? (a += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? ' and outdated' : ''} `) : (XenoLibOutdated || ZeresPluginLibraryOutdated) && (a += `Outdated `), (a += `${d ? 'Libraries' : 'Library'} `), a;
+          })(),
+          f = (() => {
+            let a = `The ${d ? 'libraries' : 'library'} `;
+            return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
+          })(),
+          g = BdApi.findModuleByDisplayName('Text'),
+          h = BdApi.findModuleByDisplayName('ConfirmModal'),
+          i = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
+        if (!a || !h || !g) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (h ? '' : ' ConfirmationModalComponent') + (g ? '' : 'TextElement')}`), i();
+        class j extends BdApi.React.PureComponent {
+          constructor(a) {
+            super(a), (this.state = { hasError: !1 }), (this.componentDidCatch = a => (console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a))), (this.render = () => (this.state.hasError ? null : this.props.children));
           }
-          let k = !1,
-            l = !1;
-          const m = a.openModal(
-            b => {
-              if (l) return null;
-              try {
-                return BdApi.React.createElement(
-                  j,
-                  { label: 'missing dependency modal', onError: () => (a.closeModal(m), i()) },
-                  BdApi.React.createElement(
-                    h,
-                    Object.assign(
-                      {
-                        header: e,
-                        children: BdApi.React.createElement(g, { size: g.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] }),
-                        red: !1,
-                        confirmText: 'Download Now',
-                        cancelText: 'Cancel',
-                        onCancel: b.onClose,
-                        onConfirm: () => {
-                          if (k) return;
-                          k = !0;
-                          const b = require('request'),
-                            c = require('fs'),
-                            d = require('path'),
-                            e = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
-                            f = () => {
-                              (global.XenoLib && !XenoLibOutdated) ||
-                                b('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (b, f, g) => {
-                                  try {
-                                    if (b || 200 !== f.statusCode) return a.closeModal(m), i();
-                                    c.writeFile(d.join(e, '1XenoLib.plugin.js'), g, () => {});
-                                  } catch (b) {
-                                    console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
-                                  }
-                                });
-                            };
-                          !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
-                            ? b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, g, h) => {
+        }
+        let k = !1,
+          l = !1;
+        const m = a.openModal(
+          b => {
+            if (l) return null;
+            try {
+              return BdApi.React.createElement(
+                j,
+                { label: 'missing dependency modal', onError: () => (a.closeModal(m), i()) },
+                BdApi.React.createElement(
+                  h,
+                  Object.assign(
+                    {
+                      header: e,
+                      children: BdApi.React.createElement(g, { size: g.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] }),
+                      red: !1,
+                      confirmText: 'Download Now',
+                      cancelText: 'Cancel',
+                      onCancel: b.onClose,
+                      onConfirm: () => {
+                        if (k) return;
+                        k = !0;
+                        const b = require('request'),
+                          c = require('fs'),
+                          d = require('path'),
+                          e = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
+                          f = () => {
+                            (global.XenoLib && !XenoLibOutdated) ||
+                              b('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (b, f, g) => {
                                 try {
-                                  if (b || 200 !== g.statusCode) return a.closeModal(m), i();
-                                  c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => {}), f();
+                                  if (b || 200 !== f.statusCode) return a.closeModal(m), i();
+                                  c.writeFile(d.join(e, '1XenoLib.plugin.js'), g, () => { });
                                 } catch (b) {
-                                  console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
+                                  console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
                                 }
-                              })
-                            : f();
-                        }
-                      },
-                      b,
-                      { onClose: () => {} }
-                    )
+                              });
+                          };
+                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
+                          ? b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, g, h) => {
+                            try {
+                              if (b || 200 !== g.statusCode) return a.closeModal(m), i();
+                              c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => { }), f();
+                            } catch (b) {
+                              console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
+                            }
+                          })
+                          : f();
+                      }
+                    },
+                    b,
+                    { onClose: () => { } }
                   )
-                );
-              } catch (b) {
-                return console.error('There has been an error constructing the modal', b), (l = !0), a.closeModal(m), i(), null;
-              }
-            },
-            { modalKey: `${this.name}_DEP_MODAL` }
-          );
+                )
+              );
+            } catch (b) {
+              return console.error('There has been an error constructing the modal', b), (l = !0), a.closeModal(m), i(), null;
+            }
+          },
+          { modalKey: `${this.name}_DEP_MODAL` }
+        );
       }
       get [Symbol.toStringTag]() {
         return 'Plugin';
