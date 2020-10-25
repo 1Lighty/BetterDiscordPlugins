@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.58';
+    return '1.7.59';
   }
   getAuthor() {
     return 'Lighty';
@@ -60,7 +60,7 @@ module.exports = class MessageLoggerV2 {
       const iXenoLib = BdApi.Plugins.get('XenoLib');
       const iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (isOutOfDate(iXenoLib, '1.3.29')) XenoLibOutdated = true;
-      if (isOutOfDate(iZeresPluginLibrary, '1.2.23')) ZeresPluginLibraryOutdated = true;
+      if (isOutOfDate(iZeresPluginLibrary, '1.2.24')) ZeresPluginLibraryOutdated = true;
     }
 
     if (!global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated) {
@@ -164,7 +164,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not working on canary']
+        items: ['Fixed deleted messages sometimes zapping your pfp (and sometimes others)', 'Fixed logger sometimes locking up Discord when opening a channel', 'Fixed some deleted messages not always showing in chat (they do now, no matter what, even ones that didn\'t before)']
       }
     ];
   }
@@ -357,10 +357,9 @@ module.exports = class MessageLoggerV2 {
           if (record.deletedata.deletetime) {
             record.delete_data = {};
             record.delete_data.time = record.deletedata.deletetime;
-            record.delete_data.rel_ids = record.deletedata.relativeids;
           }
           delete record.deletedata;
-        }
+        } else if (record.delete_data && typeof record.delete_data.rel_ids !== 'undefined') delete record.delete_data.rel_ids;
         if (record.editHistory) {
           record.edit_history = [];
           for (let b in record.editHistory) {
@@ -1743,7 +1742,8 @@ module.exports = class MessageLoggerV2 {
       username: user.username,
       avatar: user.avatar,
       id: user.id,
-      bot: user.bot
+      bot: user.bot,
+      public_flags: typeof user.publicFlags !== 'undefined' ? user.publicFlags : user.public_flags
     };
   }
   createMiniFormattedData(message) {
@@ -1792,11 +1792,6 @@ module.exports = class MessageLoggerV2 {
       /* ghost_pinged: false, */
       delete_data: null /*  {
                     time: integer,
-                    rel_ids: [
-                        string,
-                        string,
-                        string
-                    ],
                     hidden: bool
                 } */,
       edit_history: null /* [
@@ -2162,45 +2157,69 @@ module.exports = class MessageLoggerV2 {
       red: false
     });
   }
-  reAddDeletedMessages(messages, id, deletedMessages, purgedMessages) {
-    // hack
-    if (this.antiinfiniteloop.findIndex(m => m === id) != -1) {
-      //this.showToast('Infinite loop detected in data! Faulty ID:' + id, { type: 'error', timeout: 5000 });
-      //ZeresPluginLibrary.Logger.err(this.getName(), `Infinite loop detected in data! Cancelled restore of ${id}!`);
-      // todo: add code to prevent this bullshit
-      return false;
+  _findLastIndex(array, predicate) {
+    let l = array.length;
+    while (l--) {
+      if (predicate(array[l], l, array))
+        return l;
     }
-    const record = this.messageRecord[id];
-    if (!record || !record.delete_data || record.delete_data.hidden || !record.delete_data.rel_ids) return false;
+    return -1;
+  }
+  /*
+  how it works:
+  messages, stripped into IDs and times into var IDs:
+  [1, 2, 3, 4, 5, 6, 7]
+   ^                 ^
+   lowestTime      highestTime
+   deletedMessages, stripped into IDs and times into var savedIDs:
+   sorted by time, newest to oldest
+   lowest IDX that is higher than lowestTime, unless channelEnd, then it's 0
+   highest IDX that is lower than highestTime, unless channelStart, then it's savedIDs.length - 1
 
-    this.antiinfiniteloop.push(record.message.id);
-
-    for (let prev in record.delete_data.rel_ids) {
-      let relID = record.delete_data.rel_ids[prev];
-      let mIDX = (messages.length && messages.length - 1) || 0;
-      let addIn = false;
-      if (relID != 'CHANNELEND') {
-        mIDX = messages.findIndex(m => m.id === relID);
-      }
-      if (mIDX !== -1) addIn = true;
-      else {
-        if (deletedMessages && deletedMessages.findIndex(m => m === relID) === -1 && (!this.settings.showPurgedMessages || !purgedMessages || purgedMessages.findIndex(m => m === relID) === -1)) continue;
-        if (this.reAddDeletedMessages(messages, relID)) addIn = true;
-      }
-      if (addIn) {
-        mIDX = messages.findIndex(m => m.id === relID);
-        //let copy = Object.assign({}, record.message);
-        //for (let attachmentIDX in copy.attachments) {
-        //    let attachment = copy.attachments[attachmentIDX];
-        //    console.log(attachment.proxy_url);
-        //    attachment.proxy_url = this.imageCacheIdToDataURL(attachment.proxy_url);
-        //    console.log(attachment.proxy_url);
-        //}
-        messages.splice(mIDX, 0, record.message);
-        return true;
-      }
+   savedIDs sliced start lowest IDX, end highest IDX + 1
+   appended IDs
+   sorted by time, oldest to newest
+   iterated, checked if ID is in messages, if not, fetch from this.messageRecord and splice it in at
+   specified index
+  */
+  reAddDeletedMessages(messages, deletedMessages, channelStart, channelEnd) {
+    if (!messages.length || !deletedMessages.length) return;
+    const DISCORD_EPOCH = 14200704e5;
+    const IDs = [];
+    const savedIDs = [];
+    for (let i = 0, len = messages.length; i < len; i++) {
+      const { id } = messages[i];
+      IDs.push({ id: id, time: (id / 4194304) + DISCORD_EPOCH });
     }
-    return false;
+    for (let i = 0, len = deletedMessages.length; i < len; i++) {
+      const id = deletedMessages[i];
+      const record = this.messageRecord[id];
+      if (!record) continue;
+      if (!record.delete_data) {
+        /* SOME WIZARD BROKE THE LOGGER LIKE THIS, WTFFFF */
+        this.deleteMessageFromRecords(recordID);
+        continue;
+      }
+      if (record.delete_data.hidden) continue;
+      savedIDs.push({ id: id, time: (id / 4194304) + DISCORD_EPOCH });
+    }
+    savedIDs.sort((a, b) => a.time - b.time);
+    if (!savedIDs.length) return;
+    const { time: lowestTime } = IDs[IDs.length - 1];
+    const [{ time: highestTime }] = IDs;
+    const lowestIDX = channelEnd ? 0 : savedIDs.findIndex(e => e.time > lowestTime);
+    if (lowestIDX === -1) return;
+    const highestIDX = channelStart ? savedIDs.length - 1 : this._findLastIndex(savedIDs, e => e.time < highestTime);
+    if (highestIDX === -1) return;
+    const reAddIDs = savedIDs.slice(lowestIDX, highestIDX + 1);
+    reAddIDs.push(...IDs);
+    reAddIDs.sort((a, b) => b.time - a.time);
+    for (let i = 0, len = reAddIDs.length; i < len; i++) {
+      const { id } = reAddIDs[i];
+      if (messages.findIndex((e) => e.id === id) !== -1) continue;
+      const { message } = this.messageRecord[id];
+      messages.splice(i, 0, message);
+    }
   }
   getLiteralName(guildId, channelId, useTags = false) {
     // TODO, custom channel server failure text
@@ -2238,28 +2257,6 @@ module.exports = class MessageLoggerV2 {
       return 'DMs';
     }
   }
-  getRelativeMessages(id, channelId) {
-    const messages = this.channelMessages[channelId];
-    // ready check may be redundant, discord may not save the message if the channel isn't ready
-    if (messages && messages.ready && messages._array.length) {
-      let foundMessage = false;
-      let relMessages = [];
-      for (let i = messages._array.length - 1; i >= 0; i--) {
-        const message = messages._array[i];
-        if (!foundMessage && message.id == id) {
-          foundMessage = true;
-          continue;
-        }
-        if (foundMessage) relMessages.push(message.id);
-        if (relMessages.length >= 3) return relMessages;
-      } // todo, better caching if hasMoreBefore = true
-      if (!messages.hasMoreBefore) {
-        relMessages.push('CHANNELEND');
-        return relMessages;
-      }
-    }
-    return null;
-  }
   saveDeletedMessage(message, targetMessageRecord) {
     let result = this.createMiniFormattedData(message);
     result.delete_data = {};
@@ -2267,10 +2264,6 @@ module.exports = class MessageLoggerV2 {
     const channelId = message.channel_id;
     result.delete_data.time = new Date().getTime();
     result.ghost_pinged = result.local_mentioned; // it's simple bruh
-    if (!(result.delete_data.rel_ids = this.getRelativeMessages(id, channelId))) {
-      //console.error(`[${this.getName()}]: saveDeletedMessage -> Failed to get relative IDs!`);
-      //if (this.settings.displayInChat) ZeresPluginLibrary.Toasts.error(`Failed to get relative IDs! Deleted message will not show in chat after reload!`, { timeout: 7500 });
-    }
     if (!Array.isArray(targetMessageRecord[channelId])) targetMessageRecord[channelId] = [];
     if (this.messageRecord[id]) {
       const record = this.messageRecord[id];
@@ -2625,42 +2618,26 @@ module.exports = class MessageLoggerV2 {
         if (dispatch.jump && dispatch.jump.ML2) delete dispatch.jump;
         const deletedMessages = this.deletedMessageRecord[channel.id];
         const purgedMessages = this.purgedMessageRecord[channel.id];
+        try {
+          const recordIDs = [...(deletedMessages || []), ...(purgedMessages || [])];
+          const fetchUser = id => this.tools.getUser(id) || dispatch.messages.find(e => e.author.id === id)
+          for (let i = 0, len = recordIDs.length; i < len; i++) {
+            const id = recordIDs[i];
+            if (!this.messageRecord[id]) continue;
+            const { message } = this.messageRecord[id];
+            for (let j = 0, len2 = message.mentions.length; j < len2; j++) {
+              const user = message.mentions[j];
+              const cachedUser = fetchUser(user.id || user);
+              if (cachedUser) message.mentions[j] = this.cleanupUserObject(cachedUser);
+            }
+            const author = fetchUser(message.author.id);
+            if (!author) continue;
+            message.author = this.cleanupUserObject(author);
+          }
+        } catch { }
         if ((!deletedMessages && !purgedMessages) || (!this.settings.showPurgedMessages && !this.settings.showDeletedMessages)) return callDefault(...args);
-        //console.log('Recursively adding deleted messages');
-        /* return callDefault(...args); */
-        if (this.settings.showDeletedMessages && deletedMessages) {
-          for (let messageIDX in deletedMessages) {
-            let recordID = deletedMessages[messageIDX];
-            if (!this.messageRecord[recordID]) continue;
-            if (!this.messageRecord[recordID].delete_data) {
-              /* SOME WIZARD BROKE THE LOGGER LIKE THIS, WTFFFF */
-              this.deleteMessageFromRecords(recordID);
-              continue;
-            }
-            if (this.messageRecord[recordID].delete_data.hidden) {
-              const mIDX = dispatch.messages.findIndex(m => m.id === recordID);
-              if (mIDX != -1) dispatch.messages.splice(mIDX, 1);
-              continue;
-            }
-            if (this.messageRecord[recordID].message.channel_id != dispatch.channelId || dispatch.messages.findIndex(m => m.id === recordID) != -1) continue;
-            this.antiinfiniteloop = [];
-            this.reAddDeletedMessages(dispatch.messages, recordID, deletedMessages, purgedMessages);
-          }
-        }
-        if (this.settings.showPurgedMessages && purgedMessages) {
-          for (let messageIDX in purgedMessages) {
-            let recordID = purgedMessages[messageIDX];
-            if (!this.messageRecord[recordID]) continue;
-            if (this.messageRecord[recordID].delete_data.hidden) {
-              const mIDX = dispatch.messages.findIndex(m => m.id === recordID);
-              if (mIDX != -1) dispatch.messages.splice(mIDX, 1);
-              continue;
-            }
-            if (this.messageRecord[recordID].message.channel_id != dispatch.channelId || dispatch.messages.findIndex(m => m.id == recordID) != -1) continue;
-            this.antiinfiniteloop = [];
-            this.reAddDeletedMessages(dispatch.messages, recordID, deletedMessages, purgedMessages);
-          }
-        }
+        if (this.settings.showDeletedMessages && deletedMessages) this.reAddDeletedMessages(dispatch.messages, deletedMessages, !dispatch.hasMoreAfter && !dispatch.isBefore, !dispatch.hasMoreBefore && !dispatch.isAfter);
+        if (this.settings.showPurgedMessages && purgedMessages) this.reAddDeletedMessages(dispatch.messages, purgedMessages, !dispatch.hasMoreAfter && !dispatch.isBefore, !dispatch.hasMoreBefore && !dispatch.isAfter);
         return callDefault(...args);
       }
 
@@ -4109,7 +4086,6 @@ module.exports = class MessageLoggerV2 {
         ml2Data: true,
         className: this.style.menuRoot,
         ref: e => {
-          console.log(ref);
           if (!e) return;
           /* advanced tech! */
           const stateNode = ZeresPluginLibrary.Utilities.getNestedProp(e, '_reactInternalFiber.return.return.stateNode.firstChild.childNodes.1.firstChild');

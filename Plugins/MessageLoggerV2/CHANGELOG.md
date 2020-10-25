@@ -1,4 +1,9 @@
 # [MessageLoggerV2](https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2 "MessageLoggerV2") Changelog
+### 1.7.59
+- Fixed deleted messages sometimes zapping your pfp (and sometimes others)
+- Fixed logger sometimes locking up Discord when opening a channel
+- Fixed some deleted messages not always showing in chat (they do now, no matter what, even ones that didn't before)
+
 ### 1.7.58
 - Fixed not working on canary
 
