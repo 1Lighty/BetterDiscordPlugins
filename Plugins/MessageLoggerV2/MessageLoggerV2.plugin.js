@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.59';
+    return '1.7.60';
   }
   getAuthor() {
     return 'Lighty';
@@ -164,7 +164,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed deleted messages sometimes zapping your pfp (and sometimes others)', 'Fixed logger sometimes locking up Discord when opening a channel', 'Fixed some deleted messages not always showing in chat (they do now, no matter what, even ones that didn\'t before)']
+        items: ['Fixed some issues related to extremely poor decision making in the powercord "injector" aka patcher, `Failed to patch message components, edit history and deleted tint will not show!` *should* no longer show up and instead work as intended.']
       }
     ];
   }
@@ -2930,8 +2930,8 @@ module.exports = class MessageLoggerV2 {
     const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => ZeresPluginLibrary.DiscordModules.React.createElement(Tooltip, { text: e.timestamp ? TimeUtils.dateFormat(e.timestamp, 'LLLL') : null }, tt => ZeresPluginLibrary.DiscordModules.React.createElement('time', Object.assign({ dateTime: e.timestamp.toISOString(), className: this.multiClasses.edited, role: 'note' }, tt), `(${ZeresPluginLibrary.DiscordModules.LocaleManager.Messages.MESSAGE_EDITED})`)));
     SuffixEdited.displayName = 'SuffixEdited';
     const parseContent = ZeresPluginLibrary.WebpackModules.getByProps('renderMessageMarkupToAST').default;
-    const MessageContent = ZeresPluginLibrary.WebpackModules.find(m => m.type && m.type.displayName === 'MessageContent');
-    const MemoMessage = ZeresPluginLibrary.WebpackModules.find(m => m.type && m.type.toString().indexOf('useContextMenuMessage') !== -1);
+    const MessageContent = ZeresPluginLibrary.WebpackModules.find(m => m.type && m.type.displayName === 'MessageContent' || m.__powercordOriginal_type && m.__powercordOriginal_type.displayName === 'MessageContent');
+    const MemoMessage = ZeresPluginLibrary.WebpackModules.find(m => m.type && m.type.toString().indexOf('useContextMenuMessage') !== -1 || m.__powercordOriginal_type && m.__powercordOriginal_type.toString().indexOf('useContextMenuMessage') !== -1);
     if (!MessageContent || !MemoMessage) return XenoLib.Notifications.error('Failed to patch message components, edit history and deleted tint will not show!', { timeout: 0 });
     this.unpatches.push(
       ZeresPluginLibrary.Patcher.after(this.getName(), MessageContent, 'type', (_, [props], ret) => {
@@ -4532,7 +4532,7 @@ module.exports = class MessageLoggerV2 {
 
     this.unpatches.push(
       Patcher.after(
-        WebpackModules.find(({ default: defaul }) => defaul && defaul.displayName === 'ChannelListTextChannelContextMenu' && defaul.toString().search(/\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w\),\w=\(0,\w\.default\)\(\w\.id\)/) !== -1),
+        WebpackModules.find((e) => e && (e.default.displayName === 'ChannelListTextChannelContextMenu' && e.default.toString().search(/\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w\),\w=\(0,\w\.default\)\(\w\.id\)/) !== -1 || e.__powercordOriginal_default.displayName === 'ChannelListTextChannelContextMenu' && e.__powercordOriginal_default.toString().search(/\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w\),\w=\(0,\w\.default\)\(\w\.id\)/) !== -1)),
         'default',
         (_, [props], ret) => {
           const newItems = [];
