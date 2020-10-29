@@ -1,4 +1,7 @@
 # [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux") Changelog
+### 1.0.9
+- Fixed not working on channels.
+
 ### 1.0.8
 - Fixed not working on channels.
 
