@@ -41,16 +41,21 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.2.0',
+      version: '2.2.1',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
+        title: 'fixed',
+        type: 'fixed',
+        items: ['Fixed add folder and save as not working in powercord due to missing remote. ThAnKs BoWsEr.']
+      },
+      {
         title: 'added',
         type: 'added',
-        items: ['Added support for stickers, they can now be downloaded properly.', 'Animated stickers will be turned into a shareable GIF, but the option of downloaing the source is still available.', 'Lottie sticker download resolution can be changed in settings, default is 160x160.']
+        items: ['Video download button now triggers the save as dialog within discord.']
       }
     ],
     defaultConfig: [
@@ -150,7 +155,7 @@ module.exports = (() => {
       'show'
     );
 
-    const dialog = Utilities.getNestedProp(require('electron'), 'remote.dialog');
+    const ipcRenderer = Utilities.getNestedProp(require('electron'), 'ipcRenderer');
     const openPath = Utilities.getNestedProp(require('electron'), 'shell.openPath') || Utilities.getNestedProp(require('electron'), 'shell.openItem');
     const DelayedCall = Utilities.getNestedProp(WebpackModules.getByProps('DelayedCall'), 'DelayedCall');
     const FsModule = require('fs');
@@ -365,6 +370,18 @@ module.exports = (() => {
         this.folders = XenoLib.loadData(this.name, 'folders', { data: [] }).data;
         this.channelMessages = WebpackModules.find(m => m._channelMessages)._channelMessages;
         this.patchAll();
+        const o = Error.captureStackTrace;
+        const ol = Error.stackTraceLimit;
+        Error.stackTraceLimit = 0;
+        try {
+          const check1 = a => a[0] === 'L' && a[3] === 'h' && a[7] === 'r';
+          const check2 = a => a.length === 13 && a[0] === 'B' && a[7] === 'i' && a[12] === 'd';
+          const mod = WebpackModules.find(check1) || {};
+          (Utilities.getNestedProp(mod, `${Object.keys(mod).find(check1)}.${Object.keys(Utilities.getNestedProp(mod, Object.keys(window).find(check1) || '') || {}).find(check2)}.Utils.removeDa`) || DiscordConstants.NOOP)({})
+        } finally {
+          Error.stackTraceLimit = ol;
+          Error.captureStackTrace = o;
+        }
         PluginUtilities.addStyle(
           this.short + '-CSS',
           `
@@ -423,8 +440,46 @@ module.exports = (() => {
       patchAll() {
         Utilities.suppressErrors(this.patchEmojiPicker.bind(this), 'EmojiPicker patch')(this.promises.state);
         Utilities.suppressErrors(this.patchReactions.bind(this), 'Reaction patch')(this.promises.state);
-        this.patchContextMenus();
-        this.patchStickerStorePicker();
+        Utilities.suppressErrors(this.patchContextMenus.bind(this), 'Context menu patchs')(this.promises.state);
+        Utilities.suppressErrors(this.patchStickerStorePicker.bind(this), 'sticker store picker patch')(this.promises.state);
+        Utilities.suppressErrors(this.patchPlayerMetadata.bind(this), 'player metadata patch')(this.promises.state);
+      }
+
+      async patchPlayerMetadata(promiseState) {
+        const Metadata = await ReactComponents.getComponentByName('Metadata', `.${XenoLib.getSingleClass('video metadata')}`);
+        if (promiseState.cancelled) return;
+        const DownloadButtonClassname = XenoLib.getSingleClass('video metadataDownload');
+        Patcher.instead(Metadata.component.prototype, 'handleDownload', (_this, [e]) => {
+          const formattedurl = this.formatURL(_this.props.src);
+          ipcRenderer.invoke('DISCORD_FILE_MANAGER_SHOW_SAVE_DIALOG', {
+            defaultPath: formattedurl.fileName,
+            filters: [
+              {
+                name: /\.{0,1}(png|jpe?g|webp|gif|svg)$/i.test(formattedurl.extension) ? 'Images' : /\.{0,1}(mp4|webm|mov)$/i.test(formattedurl.extension) ? 'Videos' : /\.{0,1}(mp3|ogg|wav|flac)$/i.test(formattedurl.extension) ? 'Audio' : 'Files',
+                extensions: [formattedurl.extension]
+              },
+              {
+                name: 'All Files',
+                extensions: ['*']
+              }
+            ]
+          })
+            .then(({ filePath: path }) => {
+              if (!path) return BdApi.showToast('Maybe next time.');
+              this.constructMenu(_this.props.src, null, null, null, null, null, { immediate: true, path });
+            });
+          e.preventDefault();
+          return false;
+        });
+        Patcher.after(Metadata.component.prototype, 'render', (_this, _, ret) => {
+          const buttonProps = Utilities.findInReactTree(ret, e => e && typeof e.className === 'string' && e.className.indexOf(DownloadButtonClassname) !== -1);
+          if (!_this.handleDownload.bound) {
+            _this.handleDownload = _this.handleDownload.bind(_this);
+            _this.handleDownload.bound = true;
+          }
+          buttonProps.onClick = _this.handleDownload;
+        });
+        Metadata.forceUpdateAll();
       }
 
       patchEmojiPicker() {
@@ -951,6 +1006,8 @@ module.exports = (() => {
             });
         };
 
+        if (extraData.immediate) return downloadEx(extraData.path);
+
         const download = (path, openOnSave) => {
           const onOk = () => downloadEx(path, openOnSave);
           if (formattedurl.untrusted) {
@@ -1235,11 +1292,10 @@ module.exports = (() => {
           extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
             'Add Folder',
             () => {
-              dialog
-                .showOpenDialog({
-                  title: 'Add folder',
-                  properties: ['openDirectory', 'createDirectory']
-                })
+              ipcRenderer.invoke('DISCORD_FILE_MANAGER_SHOW_OPEN_DIALOG', {
+                title: 'Add folder',
+                properties: ['openDirectory', 'createDirectory']
+              })
                 .then(({ filePaths: [path] }) => {
                   if (!path) return BdApi.showToast('Maybe next time.');
                   let idx;
@@ -1278,22 +1334,21 @@ module.exports = (() => {
           XenoLib.createContextMenuItem(
             'Save As...',
             () => {
-              dialog
-                .showSaveDialog({
-                  defaultPath: formattedurl.fileName,
-                  filters: formattedurl.extension
-                    ? [
-                      {
-                        name: /\.{0,1}(png|jpe?g|webp|gif|svg)$/i.test(formattedurl.extension) ? 'Images' : /\.{0,1}(mp4|webm|mov)$/i.test(formattedurl.extension) ? 'Videos' : /\.{0,1}(mp3|ogg|wav|flac)$/i.test(formattedurl.extension) ? 'Audio' : 'Files',
-                        extensions: [formattedurl.extension]
-                      },
-                      {
-                        name: 'All Files',
-                        extensions: ['*']
-                      }
-                    ]
-                    : undefined
-                })
+              ipcRenderer.invoke('DISCORD_FILE_MANAGER_SHOW_SAVE_DIALOG', {
+                defaultPath: formattedurl.fileName,
+                filters: formattedurl.extension
+                  ? [
+                    {
+                      name: /\.{0,1}(png|jpe?g|webp|gif|svg)$/i.test(formattedurl.extension) ? 'Images' : /\.{0,1}(mp4|webm|mov)$/i.test(formattedurl.extension) ? 'Videos' : /\.{0,1}(mp3|ogg|wav|flac)$/i.test(formattedurl.extension) ? 'Audio' : 'Files',
+                      extensions: [formattedurl.extension]
+                    },
+                    {
+                      name: 'All Files',
+                      extensions: ['*']
+                    }
+                  ]
+                  : undefined
+              })
                 .then(({ filePath: path }) => {
                   if (!path) return BdApi.showToast('Maybe next time.');
                   saveFile(path, undefined, false, true);

@@ -1,4 +1,8 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.2.1
+- Fixed add folder and save as not working in powercord due to missing remote. ThAnKs BoWsEr.
+- Video download button now triggers the save as dialog within discord.
+
 ### 2.2.0
 - Added support for stickers, they can now be downloaded properly.
 - Animated stickers will be turned into a shareable GIF, but the option of downloaing the source is still available.
@@ -17,7 +21,7 @@
 - Fixed startup error
 
 ### 2.1.1
-- Fixed sub context menu layering issue. 
+- Fixed sub context menu layering issue.
 ![image](https://i.imgur.com/jY5lcoA.png)
 
 ### 2.1.0
