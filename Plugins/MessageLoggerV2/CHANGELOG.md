@@ -1,4 +1,7 @@
 # [MessageLoggerV2](https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2 "MessageLoggerV2") Changelog
+### 1.4.4
+- Fixed plugin not working from the great canary update plugin massacre.
+
 ### 1.7.60
 - Fixed some issues related to extremely poor decision making in the powercord "injector" aka patcher, `Failed to patch message components, edit history and deleted tint will not show!` *should* no longer show up and instead work as intended.
 

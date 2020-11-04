@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.4.4
+- Fixed plugin not working from the great canary update plugin massacre.
+
 ### 1.4.3
 - Fixed images being off to the side
 - The cake is a lie
@@ -61,7 +64,7 @@
 ### 1.2.0
 - Image previews will take up as much space as possible, larger images will be easier to view.
 - Image pixel will always be the same size as a physical pixel, this means all images will look sharp no matter what scaling your Discord (and system) is set to. Unless the image has been downscaled.
-- Added a way to load the images at full resolution instead of downscaled.  
+- Added a way to load the images at full resolution instead of downscaled.
 **Pro tip**: don't fucking enable this, you *WILL NOT* notice a god damn difference. You can also force it to load the full res by *CTRL + CLICK*ing the preview. When it's loading the full res image, the first resolution at bottom right will turn red.
 
 ### 1.1.3

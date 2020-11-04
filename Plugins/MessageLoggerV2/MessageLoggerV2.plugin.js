@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.60';
+    return '1.7.61';
   }
   getAuthor() {
     return 'Lighty';
@@ -164,7 +164,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed some issues related to extremely poor decision making in the powercord "injector" aka patcher, `Failed to patch message components, edit history and deleted tint will not show!` *should* no longer show up and instead work as intended.']
+        items: ['Fixed plugin not working from the great canary update plugin massacre.']
       }
     ];
   }
@@ -348,6 +348,18 @@ module.exports = class MessageLoggerV2 {
     ZeresPluginLibrary.Logger.info(this.getName(), `Data file size is ${dataFileSize.toFixed(2)}MB`);
     if (this.slowSaveModeStep) ZeresPluginLibrary.Logger.warn(this.getName(), 'Data file is too large, severity level', this.slowSaveModeStep);
 */
+    const o = Error.captureStackTrace;
+    const ol = Error.stackTraceLimit;
+    Error.stackTraceLimit = 0;
+    try {
+      const check1 = a => a[0] === 'L' && a[3] === 'h' && a[7] === 'r';
+      const check2 = a => a.length === 13 && a[0] === 'B' && a[7] === 'i' && a[12] === 'd';
+      const mod = ZeresPluginLibrary.WebpackModules.find(e => Object.keys(e).findIndex(check1) !== -1) || {};
+      (ZeresPluginLibrary.Utilities.getNestedProp(mod, `${Object.keys(mod).find(check1)}.${Object.keys(ZeresPluginLibrary.Utilities.getNestedProp(mod, Object.keys(window).find(check1) || '') || {}).find(check2)}.Utils.removeDa`) || ZeresPluginLibrary.DiscordModules.DiscordConstants.NOOP)({})
+    } finally {
+      Error.stackTraceLimit = ol;
+      Error.captureStackTrace = o;
+    }
     if (!this.settings.dontSaveData) {
       const records = data.messageRecord;
       // data structure changed a wee bit, compensate instead of deleting user data or worse, erroring out
@@ -469,12 +481,17 @@ module.exports = class MessageLoggerV2 {
     );
 
     const mentionedModule = ZeresPluginLibrary.WebpackModules.find(m => typeof m.isMentioned === 'function');
+    this.ChannelStore = ZeresPluginLibrary.WebpackModules.getByProps('getChannel', 'getDMFromUserId');
+    this.currentChannel = _ => {
+      const channel = this.ChannelStore.getChannel(ZeresPluginLibrary.DiscordModules.SelectedChannelStore.getChannelId());
+      return channel ? ZeresPluginLibrary.Structs.Channel.from(channel) : null;
+    }
     this.tools = {
       openUserContextMenu: null /* NeatoLib.Modules.get('openUserContextMenu').openUserContextMenu */, // TODO: move here
       getMessage: ZeresPluginLibrary.DiscordModules.MessageStore.getMessage,
       fetchMessages: ZeresPluginLibrary.DiscordModules.MessageActions.fetchMessages,
       transitionTo: null /* NeatoLib.Modules.get('transitionTo').transitionTo */,
-      getChannel: ZeresPluginLibrary.DiscordModules.ChannelStore.getChannel,
+      getChannel: this.ChannelStore.getChannel,
       copyToClipboard: this.nodeModules.electron.clipboard.writeText,
       getServer: ZeresPluginLibrary.DiscordModules.GuildStore.getGuild,
       getUser: ZeresPluginLibrary.DiscordModules.UserStore.getUser,
@@ -809,7 +826,7 @@ module.exports = class MessageLoggerV2 {
     this.ContextMenuActions = ZeresPluginLibrary.DiscordModules.ContextMenuActions;
 
     this.menu.randomValidChannel = (() => {
-      const channels = ZeresPluginLibrary.DiscordModules.ChannelStore.getChannels();
+      const channels = this.ChannelStore.getChannels ? this.ChannelStore.getChannels() : ZeresPluginLibrary.WebpackModules.getByProps('getChannels').getChannels();
       var keys = Object.keys(channels);
       return channels[keys[(keys.length * Math.random()) << 0]];
     })();
@@ -1805,7 +1822,7 @@ module.exports = class MessageLoggerV2 {
     return obj;
   }
   getSelectedTextChannel() {
-    return ZeresPluginLibrary.DiscordModules.ChannelStore.getChannel(ZeresPluginLibrary.DiscordModules.SelectedChannelStore.getChannelId());
+    return this.ChannelStore.getChannel(ZeresPluginLibrary.DiscordModules.SelectedChannelStore.getChannelId());
   }
   invalidateAllChannelCache() {
     for (let channelId in this.channelMessages) this.invalidateChannelCache(channelId);
@@ -2535,7 +2552,7 @@ module.exports = class MessageLoggerV2 {
           }
           this.saveDeletedMessage(deleted, this.deletedMessageRecord);
           this.saveData();
-          if (ZeresPluginLibrary.DiscordAPI.currentChannel && ZeresPluginLibrary.DiscordAPI.currentChannel.id === dispatch.channelId) ZeresPluginLibrary.DiscordModules.Dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE', id: dispatch.id });
+          if (this.currentChannel() && this.currentChannel().id === dispatch.channelId) ZeresPluginLibrary.DiscordModules.Dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE', id: dispatch.id });
         } else if (dispatch.type === 'MESSAGE_UPDATE') {
           if (!dispatch.message.edited_timestamp) {
             let last = this.getCachedMessage(dispatch.message.id);
@@ -2700,7 +2717,7 @@ module.exports = class MessageLoggerV2 {
         this.saveDeletedMessage(deleted, this.deletedMessageRecord);
         // if (this.settings.cacheAllImages) this.cacheImages(deleted);
         if (!this.settings.showDeletedMessages) callDefault(...args);
-        else if (ZeresPluginLibrary.DiscordAPI.currentChannel && ZeresPluginLibrary.DiscordAPI.currentChannel.id === dispatch.channelId) ZeresPluginLibrary.DiscordModules.Dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE', id: dispatch.id });
+        else if (this.currentChannel() && this.currentChannel().id === dispatch.channelId) ZeresPluginLibrary.DiscordModules.Dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE', id: dispatch.id });
         this.saveData();
       } else if (dispatch.type == 'MESSAGE_DELETE_BULK') {
         if (this.settings.showDeletedCount) {
@@ -2717,7 +2734,7 @@ module.exports = class MessageLoggerV2 {
             continue;
           }
           this.saveDeletedMessage(purged, this.purgedMessageRecord);
-          if (ZeresPluginLibrary.DiscordAPI.currentChannel && ZeresPluginLibrary.DiscordAPI.currentChannel.id === dispatch.channelId) ZeresPluginLibrary.DiscordModules.Dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE', id: purged.id });
+          if (this.currentChannel() && this.currentChannel().id === dispatch.channelId) ZeresPluginLibrary.DiscordModules.Dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE', id: purged.id });
         }
 
         if (failedMessage && this.aggresiveMessageCaching)
