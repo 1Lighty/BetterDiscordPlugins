@@ -1,4 +1,7 @@
 # [InAppNotifications](https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications "InAppNotifications") Changelog
+### 1.0.9
+- Fixed plugin not working from the great canary update plugin massacre.
+
 ### 1.0.8
 - Fixed error on canary.
 

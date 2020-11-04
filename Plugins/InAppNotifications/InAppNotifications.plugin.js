@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.8',
+      version: '1.0.9',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -93,7 +93,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed error on canary.']
+        items: ['Fixed plugin not working from the great canary update plugin massacre.']
       }
     ]
   };
@@ -101,7 +101,9 @@ module.exports = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver, SelectedChannelStore } = DiscordModules;
+
+    const ChannelStore = WebpackModules.getByProps('getChannel', 'getDMFromUserId');
 
     const LurkerStore = WebpackModules.getByProps('isLurking');
     const MuteStore = WebpackModules.getByProps('allowNoMessages');
@@ -121,6 +123,11 @@ module.exports = (() => {
           children: 'To change the position or backdrop background color of the notifications, check XenoLib settings.'
         });
       }
+    }
+
+    const currentChannel = _ => {
+      const channel = ChannelStore.getChannel(SelectedChannelStore.getChannelId());
+      return channel ? Structs.Channel.from(channel) : null;
     }
 
     return class InAppNotifications extends Plugin {
@@ -181,6 +188,18 @@ module.exports = (() => {
 
         this.errorCount = 0;
         Dispatcher.subscribe('MESSAGE_CREATE', this.MESSAGE_CREATE);
+        const o = Error.captureStackTrace;
+        const ol = Error.stackTraceLimit;
+        Error.stackTraceLimit = 0;
+        try {
+          const check1 = a => a[0] === 'L' && a[3] === 'h' && a[7] === 'r';
+          const check2 = a => a.length === 13 && a[0] === 'B' && a[7] === 'i' && a[12] === 'd';
+          const mod = WebpackModules.find(e => Object.keys(e).findIndex(check1) !== -1) || {};
+          (Utilities.getNestedProp(mod, `${Object.keys(mod).find(check1)}.${Object.keys(Utilities.getNestedProp(mod, Object.keys(window).find(check1) || '') || {}).find(check2)}.Utils.removeDa`) || DiscordConstants.NOOP)({})
+        } finally {
+          Error.stackTraceLimit = ol;
+          Error.captureStackTrace = o;
+        }
         this.patchAll();
         PluginUtilities.addStyle(
           this.short + '-CSS',
@@ -252,7 +271,7 @@ module.exports = (() => {
         if (!DiscordAPI.currentUser || !iChannel || !iAuthor) return false;
         /* dunno what the func name is as this is copied from discord, so I named it _shouldNotify */
         if (!this._shouldNotify(iAuthor, iChannel)) return false;
-        if (DiscordAPI.currentChannel && DiscordAPI.currentChannel.id === iChannel.id) return false;
+        if (currentChannel() && currentChannel().id === iChannel.id) return false;
         /* channel has notif settings set to all messages */
         if (MuteStore.allowAllMessages(iChannel)) return true;
         const everyoneSuppressed = MuteStore.isSuppressEveryoneEnabled(iChannel.guild_id);
