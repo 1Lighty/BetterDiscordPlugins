@@ -348,18 +348,6 @@ module.exports = class MessageLoggerV2 {
     ZeresPluginLibrary.Logger.info(this.getName(), `Data file size is ${dataFileSize.toFixed(2)}MB`);
     if (this.slowSaveModeStep) ZeresPluginLibrary.Logger.warn(this.getName(), 'Data file is too large, severity level', this.slowSaveModeStep);
 */
-    const o = Error.captureStackTrace;
-    const ol = Error.stackTraceLimit;
-    Error.stackTraceLimit = 0;
-    try {
-      const check1 = a => a[0] === 'L' && a[3] === 'h' && a[7] === 'r';
-      const check2 = a => a.length === 13 && a[0] === 'B' && a[7] === 'i' && a[12] === 'd';
-      const mod = ZeresPluginLibrary.WebpackModules.find(e => Object.keys(e).findIndex(check1) !== -1) || {};
-      (ZeresPluginLibrary.Utilities.getNestedProp(mod, `${Object.keys(mod).find(check1)}.${Object.keys(ZeresPluginLibrary.Utilities.getNestedProp(mod, Object.keys(window).find(check1) || '') || {}).find(check2)}.Utils.removeDa`) || ZeresPluginLibrary.DiscordModules.DiscordConstants.NOOP)({})
-    } finally {
-      Error.stackTraceLimit = ol;
-      Error.captureStackTrace = o;
-    }
     if (!this.settings.dontSaveData) {
       const records = data.messageRecord;
       // data structure changed a wee bit, compensate instead of deleting user data or worse, erroring out
