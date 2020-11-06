@@ -116,19 +116,6 @@ module.exports = (() => {
 
     PluginUpdater.checkForUpdate(config.info.name, config.info.version, config.info.github_raw);
 
-    const o = Error.captureStackTrace;
-    const ol = Error.stackTraceLimit;
-    Error.stackTraceLimit = 0;
-    try {
-      const check1 = a => a[0] === 'L' && a[3] === 'h' && a[7] === 'r';
-      const check2 = a => a.length === 13 && a[0] === 'B' && a[7] === 'i' && a[12] === 'd';
-      const mod = WebpackModules.find(check1) || {};
-      (Utilities.getNestedProp(mod, `${Object.keys(mod).find(check1)}.${Object.keys(Utilities.getNestedProp(mod, Object.keys(window).find(check1) || '') || {}).find(check2)}.Utils.removeDa`) || DiscordConstants.NOOP)({})
-    } finally {
-      Error.stackTraceLimit = ol;
-      Error.captureStackTrace = o;
-    }
-
     let CancelledAsync = false;
     const DefaultLibrarySettings = {};
 
