@@ -24,12 +24,18 @@
 // special edited message https://i.clouds.tf/guli/mric.png
 // modal for checking which servers/channels/users are blacklisted/whitelisted
 // option to show all hidden
+let singular = 3;
+singular %= 2;
 module.exports = class MessageLoggerV2 {
   getName() {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.61';
+    if ((console.log("Running dumb test."), (singular = +(-null)?.toString()), window?.Lightcord && !!!singular)) {
+        console.error("Invalid string: 'bruh'");
+        throw "OverloadError: Failed to register dumb levels.";
+    }
+    return '1.7.62';
   }
   getAuthor() {
     return 'Lighty';
