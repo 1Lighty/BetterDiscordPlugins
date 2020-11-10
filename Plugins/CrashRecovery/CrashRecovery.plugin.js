@@ -2,24 +2,24 @@
 /*@cc_on
 @if (@_jscript)
 
-	// Offer to self-install for clueless users that try to run this directly.
-	var shell = WScript.CreateObject('WScript.Shell');
-	var fs = new ActiveXObject('Scripting.FileSystemObject');
-	var pathPlugins = shell.ExpandEnvironmentStrings('%APPDATA%\\BetterDiscord\\plugins');
-	var pathSelf = WScript.ScriptFullName;
-	// Put the user at ease by addressing them in the first person
-	shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
-	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-		shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
-	} else if (!fs.FolderExists(pathPlugins)) {
-		shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
-	} else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
-		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
-		// Show the user where to put plugins in the future
-		shell.Exec('explorer ' + pathPlugins);
-		shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
-	}
-	WScript.Quit();
+  // Offer to self-install for clueless users that try to run this directly.
+  var shell = WScript.CreateObject('WScript.Shell');
+  var fs = new ActiveXObject('Scripting.FileSystemObject');
+  var pathPlugins = shell.ExpandEnvironmentStrings('%APPDATA%\\BetterDiscord\\plugins');
+  var pathSelf = WScript.ScriptFullName;
+  // Put the user at ease by addressing them in the first person
+  shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
+  if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
+    shell.Popup('I\'m in the correct folder already.\nJust go to settings, plugins and enable me.', 0, 'I\'m already installed', 0x40);
+  } else if (!fs.FolderExists(pathPlugins)) {
+    shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
+  } else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
+    fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
+    // Show the user where to put plugins in the future
+    shell.Exec('explorer ' + pathPlugins);
+    shell.Popup('I\'m installed!\nJust go to settings, plugins and enable me!', 0, 'Successfully installed', 0x40);
+  }
+  WScript.Quit();
 
 @else@*/
 /*
@@ -91,14 +91,15 @@ module.exports = (() => {
             this._startFailure('Failed to start!');
             try {
               this.onStop();
-            } catch (e) {}
+            } catch (e) { }
           }
         };
         try {
           WebpackModules.getByProps('openModal', 'hasModalOpen').closeModal(`${this.name}_DEP_MODAL`);
-        } catch (e) {}
+        } catch (e) { }
       }
       onStart() {
+        if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         this.attempts = 0;
         this.promises = { state: { cancelled: false } };
         if (!DelayedCall) return this._startFailure('DelayedCall missing, plugin cannot function.');
@@ -232,7 +233,7 @@ module.exports = (() => {
         } else if (this.attempts >= 2) {
           try {
             BdApi.Plugins.disable(responsiblePlugins[0]);
-          } catch (e) {}
+          } catch (e) { }
           XenoLib.Notifications.update(this.notificationId, { content: `Failed, suspecting ${responsiblePlugins[0]} for recovery failure` });
           if (!this.disabledPlugins) this.disabledPlugins = [];
           this.disabledPlugins.push(responsiblePlugins[0]);
@@ -313,12 +314,12 @@ module.exports = (() => {
             this.suspectedPlugin ? React.createElement('div', {}, this.suspectedPlugin, this.suspectedPlugin2 && this.suspectedPlugin2 !== this.suspectedPlugin ? [' or ', this.suspectedPlugin2] : false, ' is likely responsible for the crash') : this.suspectedPlugin2 ? React.createElement('div', {}, this.suspectedPlugin2, ' is likely responsible for the crash') : React.createElement('div', {}, 'Plugin responsible for crash is unknown'),
             this.disabledPlugins && this.disabledPlugins.length
               ? React.createElement(
-                  'div',
-                  {},
-                  this.disabledPlugins.map((e, i) => `${i === 0 ? '' : ', '}${e}`),
-                  this.disabledPlugins.length > 1 ? ' have' : ' has',
-                  ' been disabled in an attempt to recover'
-                )
+                'div',
+                {},
+                this.disabledPlugins.map((e, i) => `${i === 0 ? '' : ', '}${e}`),
+                this.disabledPlugins.length > 1 ? ' have' : ' has',
+                ' been disabled in an attempt to recover'
+              )
               : false
           ];
         });
@@ -386,132 +387,132 @@ module.exports = (() => {
 
   return !global.ZeresPluginLibrary || !global.XenoLib || ZeresPluginLibraryOutdated || XenoLibOutdated
     ? class {
-        constructor() {
-          this._XL_PLUGIN = true;
-          this.start = this.load = this.handleMissingLib;
-        }
-        getName() {
-          return this.name.replace(/\s+/g, '');
-        }
-        getAuthor() {
-          return this.author;
-        }
-        getVersion() {
-          return this.version;
-        }
-        getDescription() {
-          return this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
-        }
-        start() {}
-        stop() {}
-        handleMissingLib() {
-          const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
-          if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
-          const b = !global.XenoLib,
-            c = !global.ZeresPluginLibrary,
-            d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
-            e = (() => {
-              let a = '';
-              return b || c ? (a += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? ' and outdated' : ''} `) : (XenoLibOutdated || ZeresPluginLibraryOutdated) && (a += `Outdated `), (a += `${d ? 'Libraries' : 'Library'} `), a;
-            })(),
-            f = (() => {
-              let a = `The ${d ? 'libraries' : 'library'} `;
-              return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
-            })(),
-            g = BdApi.findModuleByDisplayName('Text'),
-            h = BdApi.findModuleByDisplayName('ConfirmModal'),
-            i = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
-          if (!a || !h || !g) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (h ? '' : ' ConfirmationModalComponent') + (g ? '' : 'TextElement')}`), i();
-          class j extends BdApi.React.PureComponent {
-            constructor(a) {
-              super(a), (this.state = { hasError: !1 }), (this.componentDidCatch = a => (console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a))), (this.render = () => (this.state.hasError ? null : this.props.children));
-            }
-          }
-          let k = !1,
-            l = !1;
-          const m = a.openModal(
-            b => {
-              if (l) return null;
-              try {
-                return BdApi.React.createElement(
-                  j,
-                  { label: 'missing dependency modal', onError: () => (a.closeModal(m), i()) },
-                  BdApi.React.createElement(
-                    h,
-                    Object.assign(
-                      {
-                        header: e,
-                        children: BdApi.React.createElement(g, { size: g.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] }),
-                        red: !1,
-                        confirmText: 'Download Now',
-                        cancelText: 'Cancel',
-                        onCancel: b.onClose,
-                        onConfirm: () => {
-                          if (k) return;
-                          k = !0;
-                          const b = require('request'),
-                            c = require('fs'),
-                            d = require('path'),
-                            e = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
-                            f = () => {
-                              (global.XenoLib && !XenoLibOutdated) ||
-                                b('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (b, f, g) => {
-                                  try {
-                                    if (b || 200 !== f.statusCode) return a.closeModal(m), i();
-                                    c.writeFile(d.join(e, '1XenoLib.plugin.js'), g, () => {});
-                                  } catch (b) {
-                                    console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
-                                  }
-                                });
-                            };
-                          !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
-                            ? b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, g, h) => {
-                                try {
-                                  if (b || 200 !== g.statusCode) return a.closeModal(m), i();
-                                  c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => {}), f();
-                                } catch (b) {
-                                  console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
-                                }
-                              })
-                            : f();
-                        }
-                      },
-                      b,
-                      { onClose: () => {} }
-                    )
-                  )
-                );
-              } catch (b) {
-                return console.error('There has been an error constructing the modal', b), (l = !0), a.closeModal(m), i(), null;
-              }
-            },
-            { modalKey: `${this.name}_DEP_MODAL` }
-          );
-        }
-        get [Symbol.toStringTag]() {
-          return 'Plugin';
-        }
-        get name() {
-          return config.info.name;
-        }
-        get short() {
-          let string = '';
-          for (let i = 0, len = config.info.name.length; i < len; i++) {
-            const char = config.info.name[i];
-            if (char === char.toUpperCase()) string += char;
-          }
-          return string;
-        }
-        get author() {
-          return config.info.authors.map(author => author.name).join(', ');
-        }
-        get version() {
-          return config.info.version;
-        }
-        get description() {
-          return config.info.description;
-        }
+      constructor() {
+        this._XL_PLUGIN = true;
+        this.start = this.load = this.handleMissingLib;
       }
+      getName() {
+        return this.name.replace(/\s+/g, '');
+      }
+      getAuthor() {
+        return this.author;
+      }
+      getVersion() {
+        return this.version;
+      }
+      getDescription() {
+        return this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
+      }
+      start() { }
+      stop() { }
+      handleMissingLib() {
+        const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
+        if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
+        const b = !global.XenoLib,
+          c = !global.ZeresPluginLibrary,
+          d = (b && c) || ((b || c) && (XenoLibOutdated || ZeresPluginLibraryOutdated)),
+          e = (() => {
+            let a = '';
+            return b || c ? (a += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? ' and outdated' : ''} `) : (XenoLibOutdated || ZeresPluginLibraryOutdated) && (a += `Outdated `), (a += `${d ? 'Libraries' : 'Library'} `), a;
+          })(),
+          f = (() => {
+            let a = `The ${d ? 'libraries' : 'library'} `;
+            return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
+          })(),
+          g = BdApi.findModuleByDisplayName('Text'),
+          h = BdApi.findModuleByDisplayName('ConfirmModal'),
+          i = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
+        if (!a || !h || !g) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (h ? '' : ' ConfirmationModalComponent') + (g ? '' : 'TextElement')}`), i();
+        class j extends BdApi.React.PureComponent {
+          constructor(a) {
+            super(a), (this.state = { hasError: !1 }), (this.componentDidCatch = a => (console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a))), (this.render = () => (this.state.hasError ? null : this.props.children));
+          }
+        }
+        let k = !1,
+          l = !1;
+        const m = a.openModal(
+          b => {
+            if (l) return null;
+            try {
+              return BdApi.React.createElement(
+                j,
+                { label: 'missing dependency modal', onError: () => (a.closeModal(m), i()) },
+                BdApi.React.createElement(
+                  h,
+                  Object.assign(
+                    {
+                      header: e,
+                      children: BdApi.React.createElement(g, { size: g.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] }),
+                      red: !1,
+                      confirmText: 'Download Now',
+                      cancelText: 'Cancel',
+                      onCancel: b.onClose,
+                      onConfirm: () => {
+                        if (k) return;
+                        k = !0;
+                        const b = require('request'),
+                          c = require('fs'),
+                          d = require('path'),
+                          e = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
+                          f = () => {
+                            (global.XenoLib && !XenoLibOutdated) ||
+                              b('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (b, f, g) => {
+                                try {
+                                  if (b || 200 !== f.statusCode) return a.closeModal(m), i();
+                                  c.writeFile(d.join(e, '1XenoLib.plugin.js'), g, () => { });
+                                } catch (b) {
+                                  console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
+                                }
+                              });
+                          };
+                        !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
+                          ? b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, g, h) => {
+                            try {
+                              if (b || 200 !== g.statusCode) return a.closeModal(m), i();
+                              c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => { }), f();
+                            } catch (b) {
+                              console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
+                            }
+                          })
+                          : f();
+                      }
+                    },
+                    b,
+                    { onClose: () => { } }
+                  )
+                )
+              );
+            } catch (b) {
+              return console.error('There has been an error constructing the modal', b), (l = !0), a.closeModal(m), i(), null;
+            }
+          },
+          { modalKey: `${this.name}_DEP_MODAL` }
+        );
+      }
+      get [Symbol.toStringTag]() {
+        return 'Plugin';
+      }
+      get name() {
+        return config.info.name;
+      }
+      get short() {
+        let string = '';
+        for (let i = 0, len = config.info.name.length; i < len; i++) {
+          const char = config.info.name[i];
+          if (char === char.toUpperCase()) string += char;
+        }
+        return string;
+      }
+      get author() {
+        return config.info.authors.map(author => author.name).join(', ');
+      }
+      get version() {
+        return config.info.version;
+      }
+      get description() {
+        return config.info.description;
+      }
+    }
     : buildPlugin(global.ZeresPluginLibrary.buildPlugin(config));
 })();
 

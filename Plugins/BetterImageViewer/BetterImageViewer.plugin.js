@@ -1362,6 +1362,7 @@ module.exports = (() => {
         }
         document.querySelector('#app-mount').append(overlayDOMNode);
         this.promises = { state: { cancelled: false } };
+        if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         if (PluginBrokenFatal) return this._startFailure('Plugin is in a broken state.');
         if (NoImageZoom) this._startFailure('Image zoom is broken.');
         if (this.settings.zoom.enabled && !NoImageZoom && BdApi.getPlugin('ImageZoom') && BdApi.Plugins.isEnabled('ImageZoom')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageZoom** while having the zoom function in **${this.name}** enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });

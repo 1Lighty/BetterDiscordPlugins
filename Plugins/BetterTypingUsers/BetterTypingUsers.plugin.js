@@ -2,24 +2,24 @@
 /*@cc_on
 @if (@_jscript)
 
-	// Offer to self-install for clueless users that try to run this directly.
-	var shell = WScript.CreateObject('WScript.Shell');
-	var fs = new ActiveXObject('Scripting.FileSystemObject');
-	var pathPlugins = shell.ExpandEnvironmentStrings('%APPDATA%\\BetterDiscord\\plugins');
-	var pathSelf = WScript.ScriptFullName;
-	// Put the user at ease by addressing them in the first person
-	shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
-	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-		shell.Popup('I\'m in the correct folder already.\nJust reload Discord with Ctrl+R.', 0, 'I\'m already installed', 0x40);
-	} else if (!fs.FolderExists(pathPlugins)) {
-		shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
-	} else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
-		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
-		// Show the user where to put plugins in the future
-		shell.Exec('explorer ' + pathPlugins);
-		shell.Popup('I\'m installed!\nJust reload Discord with Ctrl+R.', 0, 'Successfully installed', 0x40);
-	}
-	WScript.Quit();
+  // Offer to self-install for clueless users that try to run this directly.
+  var shell = WScript.CreateObject('WScript.Shell');
+  var fs = new ActiveXObject('Scripting.FileSystemObject');
+  var pathPlugins = shell.ExpandEnvironmentStrings('%APPDATA%\\BetterDiscord\\plugins');
+  var pathSelf = WScript.ScriptFullName;
+  // Put the user at ease by addressing them in the first person
+  shell.Popup('It looks like you\'ve mistakenly tried to run me directly. \n(Don\'t do that!)', 0, 'I\'m a plugin for BetterDiscord', 0x30);
+  if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
+    shell.Popup('I\'m in the correct folder already.\nJust reload Discord with Ctrl+R.', 0, 'I\'m already installed', 0x40);
+  } else if (!fs.FolderExists(pathPlugins)) {
+    shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
+  } else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
+    fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
+    // Show the user where to put plugins in the future
+    shell.Exec('explorer ' + pathPlugins);
+    shell.Popup('I\'m installed!\nJust reload Discord with Ctrl+R.', 0, 'Successfully installed', 0x40);
+  }
+  WScript.Quit();
 
 @else@*/
 /*
@@ -170,9 +170,10 @@ module.exports = (() => {
         super();
         try {
           WebpackModules.getByProps('openModal', 'hasModalOpen').closeModal(`${this.name}_DEP_MODAL`);
-        } catch (e) {}
+        } catch (e) { }
       }
       onStart() {
+        if (window.Lightcord && window.XenoLib) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         this.promises = { state: { cancelled: false } };
         this.patchAll();
         PluginUtilities.addStyle(
@@ -341,121 +342,121 @@ module.exports = (() => {
 
   return !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
     ? class {
-        constructor() {
-          this._config = config;
-          this.start = this.load = this.handleMissingLib;
-        }
-        getName() {
-          return this.name.replace(/\s+/g, '');
-        }
-        getAuthor() {
-          return this.author;
-        }
-        getVersion() {
-          return this.version;
-        }
-        getDescription() {
-          return this.description + ' You are missing ZeresPluginLibrary for this plugin, please enable the plugin and click Download Now.';
-        }
-        start() {}
-        stop() {}
-        handleMissingLib() {
-          const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
-          if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
-          const b = !global.ZeresPluginLibrary,
-            c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
-            d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
-            e = BdApi.findModuleByDisplayName('Text'),
-            f = BdApi.findModuleByDisplayName('ConfirmModal'),
-            g = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
-          if (!a || !f || !e) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (f ? '' : ' ConfirmationModalComponent') + (e ? '' : 'TextElement')}`), g();
-          class h extends BdApi.React.PureComponent {
-            constructor(a) {
-              super(a), (this.state = { hasError: !1 });
-            }
-            componentDidCatch(a) {
-              console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a);
-            }
-            render() {
-              return this.state.hasError ? null : this.props.children;
-            }
-          }
-          let i = !1,
-            j = !1;
-          const k = a.openModal(
-            b => {
-              if (j) return null;
-              try {
-                return BdApi.React.createElement(
-                  h,
-                  {
-                    label: 'missing dependency modal',
-                    onError: () => {
-                      a.closeModal(k), g();
-                    }
-                  },
-                  BdApi.React.createElement(
-                    f,
-                    Object.assign(
-                      {
-                        header: c,
-                        children: BdApi.React.createElement(e, { size: e.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] }),
-                        red: !1,
-                        confirmText: 'Download Now',
-                        cancelText: 'Cancel',
-                        onCancel: b.onClose,
-                        onConfirm: () => {
-                          if (i) return;
-                          i = !0;
-                          const b = require('request'),
-                            c = require('fs'),
-                            d = require('path');
-                          b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, e, f) => {
-                            try {
-                              if (b || 200 !== e.statusCode) return a.closeModal(k), g();
-                              c.writeFile(d.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => {});
-                            } catch (b) {
-                              console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(k), g();
-                            }
-                          });
-                        }
-                      },
-                      b,
-                      { onClose: () => {} }
-                    )
-                  )
-                );
-              } catch (b) {
-                return console.error('There has been an error constructing the modal', b), (j = !0), a.closeModal(k), g(), null;
-              }
-            },
-            { modalKey: `${this.name}_DEP_MODAL` }
-          );
-        }
-        get [Symbol.toStringTag]() {
-          return 'Plugin';
-        }
-        get name() {
-          return config.info.name;
-        }
-        get short() {
-          let string = '';
-          for (let i = 0, len = config.info.name.length; i < len; i++) {
-            const char = config.info.name[i];
-            if (char === char.toUpperCase()) string += char;
-          }
-          return string;
-        }
-        get author() {
-          return config.info.authors.map(author => author.name).join(', ');
-        }
-        get version() {
-          return config.info.version;
-        }
-        get description() {
-          return config.info.description;
-        }
+      constructor() {
+        this._config = config;
+        this.start = this.load = this.handleMissingLib;
       }
+      getName() {
+        return this.name.replace(/\s+/g, '');
+      }
+      getAuthor() {
+        return this.author;
+      }
+      getVersion() {
+        return this.version;
+      }
+      getDescription() {
+        return this.description + ' You are missing ZeresPluginLibrary for this plugin, please enable the plugin and click Download Now.';
+      }
+      start() { }
+      stop() { }
+      handleMissingLib() {
+        const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
+        if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
+        const b = !global.ZeresPluginLibrary,
+          c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
+          d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
+          e = BdApi.findModuleByDisplayName('Text'),
+          f = BdApi.findModuleByDisplayName('ConfirmModal'),
+          g = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
+        if (!a || !f || !e) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (f ? '' : ' ConfirmationModalComponent') + (e ? '' : 'TextElement')}`), g();
+        class h extends BdApi.React.PureComponent {
+          constructor(a) {
+            super(a), (this.state = { hasError: !1 });
+          }
+          componentDidCatch(a) {
+            console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a);
+          }
+          render() {
+            return this.state.hasError ? null : this.props.children;
+          }
+        }
+        let i = !1,
+          j = !1;
+        const k = a.openModal(
+          b => {
+            if (j) return null;
+            try {
+              return BdApi.React.createElement(
+                h,
+                {
+                  label: 'missing dependency modal',
+                  onError: () => {
+                    a.closeModal(k), g();
+                  }
+                },
+                BdApi.React.createElement(
+                  f,
+                  Object.assign(
+                    {
+                      header: c,
+                      children: BdApi.React.createElement(e, { size: e.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] }),
+                      red: !1,
+                      confirmText: 'Download Now',
+                      cancelText: 'Cancel',
+                      onCancel: b.onClose,
+                      onConfirm: () => {
+                        if (i) return;
+                        i = !0;
+                        const b = require('request'),
+                          c = require('fs'),
+                          d = require('path');
+                        b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, e, f) => {
+                          try {
+                            if (b || 200 !== e.statusCode) return a.closeModal(k), g();
+                            c.writeFile(d.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => { });
+                          } catch (b) {
+                            console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(k), g();
+                          }
+                        });
+                      }
+                    },
+                    b,
+                    { onClose: () => { } }
+                  )
+                )
+              );
+            } catch (b) {
+              return console.error('There has been an error constructing the modal', b), (j = !0), a.closeModal(k), g(), null;
+            }
+          },
+          { modalKey: `${this.name}_DEP_MODAL` }
+        );
+      }
+      get [Symbol.toStringTag]() {
+        return 'Plugin';
+      }
+      get name() {
+        return config.info.name;
+      }
+      get short() {
+        let string = '';
+        for (let i = 0, len = config.info.name.length; i < len; i++) {
+          const char = config.info.name[i];
+          if (char === char.toUpperCase()) string += char;
+        }
+        return string;
+      }
+      get author() {
+        return config.info.authors.map(author => author.name).join(', ');
+      }
+      get version() {
+        return config.info.version;
+      }
+      get description() {
+        return config.info.description;
+      }
+    }
     : buildPlugin(global.ZeresPluginLibrary.buildPlugin(config));
 })();
 
