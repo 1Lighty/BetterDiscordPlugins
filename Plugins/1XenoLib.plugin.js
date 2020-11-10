@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.30',
+      version: '1.3.31',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'Boring changes',
         type: 'fixed',
-        items: ['Fixed color picker not working.', 'Fixed file picker using remote.', 'Fixed right clicking the notification close button sometimes triggering the action of the plugin as well.']
+        items: ['Fixed notifications not working on canary when trying to mention a channel (like from a logger).']
       }
     ],
     defaultConfig: [
@@ -956,7 +956,7 @@ module.exports = (() => {
       const ParsersModule = WebpackModules.getByProps('astParserFor', 'parse');
       try {
         const DeepClone = WebpackModules.find(m => m.default && m.default.toString().indexOf('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(') !== -1 && !m.useVirtualizedAnchor).default;
-        const ReactParserRules = WebpackModules.find(m => m.default && m.default.toString().search(/function\(\){return \w}$/) !== -1).default; /* thanks Zere for not fixing the bug ._. */
+        const ReactParserRules = (WebpackModules.find(m => m.default && m.default.toString().search(/function\(\w\){return \w\({},\w,{link:\(0,\w\.default\)\(\w\)}\)}$/) !== -1) || WebpackModules.find(m => m.default && m.default.toString().search(/function\(\){return \w}$/) !== -1)).default; /* thanks Zere for not fixing the bug ._. */
         const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES').RULES, ReactParserRules()]);
         const { defaultRules } = WebpackModules.getByProps('defaultParse');
         FANCY_PANTS_PARSER_RULES.image = defaultRules.image;
@@ -972,6 +972,7 @@ module.exports = (() => {
         }
       }
     })();
+    if (window.Lightcord && Math.random() < 0.5) return;
     const AnchorClasses = WebpackModules.getByProps('anchor', 'anchorUnderlineOnHover') || {};
     const EmbedVideo = (() => {
       try {
