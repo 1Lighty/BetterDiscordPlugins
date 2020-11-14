@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.2.1',
+      version: '2.2.2',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -50,12 +50,11 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed add folder and save as not working in powercord due to missing remote. ThAnKs BoWsEr.']
+        items: ['Fixed misc crashes in regards to conflicting files.']
       },
       {
-        title: 'added',
-        type: 'added',
-        items: ['Video download button now triggers the save as dialog within discord.']
+        type: 'description',
+        content: 'When saving something that has an identical name as something already saved, it asks you what it should do, with some options using a radio group.\nThis radio group was fetched from Zeres library, however, Zere fetched the component using some props instead of the displayName RadioGroup, and in a recent update, those props were changed or removed so now the component is not found and it causes crashes because of that.\n**NOT** because of metadata, SaveToRedux does not read metadata.\n*cough* tropical *cough*'
       }
     ],
     defaultConfig: [
@@ -119,7 +118,7 @@ module.exports = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Settings, Utilities, WebpackModules, DiscordModules, DiscordClasses, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, ReactTools } = Api;
-    const { React, ContextMenuActions, GuildStore, DiscordConstants, Dispatcher, SwitchRow, EmojiUtils, EmojiStore, RadioGroup, EmojiInfo } = DiscordModules;
+    const { React, ContextMenuActions, GuildStore, DiscordConstants, Dispatcher, SwitchRow, EmojiUtils, EmojiStore, EmojiInfo } = DiscordModules;
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const ConfirmModal = ZeresPluginLibrary.WebpackModules.getByDisplayName('ConfirmModal');
@@ -168,6 +167,8 @@ module.exports = (() => {
     const AvatarModule = WebpackModules.getByProps('getChannelIconURL');
     const MessageShit = WebpackModules.find(m => m.default && m.getMessage);
     const TrustStore = WebpackModules.getByProps('isTrustedDomain');
+    const StickerPackStore = WebpackModules.getByProps('getStickerPack');
+    const StickerPackUtils = WebpackModules.getByProps('fetchStickerPack');
 
     const isTrustedDomain = url => {
       for (const domain of isTrustedDomain.domains) if (url.search(domain) !== -1) return true;
@@ -185,6 +186,8 @@ module.exports = (() => {
         }
       })()
     };
+
+    const RadioGroup = WebpackModules.getByDisplayName('RadioGroup');
 
     class FolderEditor extends React.Component {
       constructor(props) {
@@ -265,6 +268,22 @@ module.exports = (() => {
     class PreviewField extends Settings.SettingField {
       constructor(name, note, data, onChange) {
         super(name, note, onChange, Preview, data);
+      }
+    }
+
+    class RadioGroupField extends Settings.SettingField {
+      constructor(name, note, defaultValue, values, onChange, options = {}) {
+        super(name, note, onChange, RadioGroup, {
+          noteOnTop: true,
+          disabled: !!options.disabled,
+          options: values,
+          onChange: reactElement => option => {
+            reactElement.props.value = option.value;
+            reactElement.forceUpdate();
+            this.onChange(option.value);
+          },
+          value: defaultValue
+        });
       }
     }
 
@@ -361,7 +380,6 @@ module.exports = (() => {
         } catch (e) { }
       }
       onStart() {
-        if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         this.promises = { state: { cancelled: false } };
         if (faultyVars.length) {
           Logger.error(`Following vars are invalid: ${faultyVars.map(e => '\n' + e).reduce((e, b) => e + b, '')}`);
@@ -401,6 +419,9 @@ module.exports = (() => {
         div[id$="-str-stickers"] + .${XenoLib.getSingleClass('layerContainer layer')} {
           z-index: 2;
         }
+        div[id$="-str-stickers-pack"] + .${XenoLib.getSingleClass('layerContainer layer')} {
+          z-index: 2;
+        }
         `
         );
         this.lastUsedFolder = -1;
@@ -423,6 +444,10 @@ module.exports = (() => {
             rand: this.rand(),
             formatFilename: this.formatFilename
           });
+        } else if (data.type === 'radio') {
+          const comp = new RadioGroupField(data.name, data.note, data.value, data.options, data.onChange, { disabled: data.disabled });
+          if (data.id) comp.id = data.id;
+          return comp;
         }
         return super.buildSetting(data);
       }
@@ -555,7 +580,7 @@ module.exports = (() => {
             if (!sticker) continue;
             const url = StickerUtils.getStickerAssetUrl(sticker);
             XenoLib.createSharedContext(stickerClickable, () => XenoLib.createContextMenuGroup([
-              this.constructMenu(url.split('?')[0], 'Sticker', sticker.name, () => { }, undefined, '', { id: sticker.id, type: sticker.format_type })
+              this.constructMenu(url.split('?')[0], 'Sticker', sticker.name, () => { }, undefined, '', { id: sticker.id, type: sticker.format_type, packId: sticker.pack_id })
             ]));
           }
         })
@@ -635,6 +660,7 @@ module.exports = (() => {
             customName = sticker.name;
             extraData.type = sticker.format_type;
             extraData.id = sticker.id;
+            extraData.packId = sticker.pack_id;
             saveType = 'Sticker';
           }
           if (!src) src = Utilities.getNestedProp(props, 'attachment.href') || Utilities.getNestedProp(props, 'attachment.url');
@@ -891,6 +917,8 @@ module.exports = (() => {
         const subItems = [];
         const folderSubMenus = [];
         let forcedExtension = false;
+        let entirePack = type === 'Sticker' ? StickerPackStore.getStickerPack(extraData.packId) : null;
+        if (type === 'Sticker' && !entirePack) StickerPackUtils.fetchStickerPack(extraData.packId).then(_ => (entirePack = WebpackModules.getByProps('getStickerPack').getStickerPack(extraData.packId)));
         if (type === 'Sticker') {
           if (extraData.isStickerSubMenu) {
             if (extraData.type === StickerFormat.APNG) forcedExtension = 'apng';
@@ -899,6 +927,7 @@ module.exports = (() => {
         }
         const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, 0, type === 'Theme' || type === 'Plugin', forcedExtension);
         if (!formattedurl.extension) onNoExtension(formattedurl.url);
+        if (extraData.entirePack) formattedurl.filename = '';
         let notifId;
         let downloadAttempts = 0;
         const shouldDoMultiAttempts = url.indexOf('.e621.net/') !== -1 || url.indexOf('.e926.net/') !== -1;
@@ -1032,10 +1061,6 @@ module.exports = (() => {
         const saveAs = (folder, onOk) => {
           let val = formattedurl.name;
           let inputRef = null;
-          /*           let delayedCall = new DelayedCall(350, () => {
-            inputRef.props.value = val = sanitizeFileName(val, 255 - (formattedurl.extension ? formattedurl.extension.length + 1 : 0));
-            inputRef.forceUpdate();
-          }); */
           Modals.showModal(
             'Save as...',
             React.createElement(
@@ -1287,9 +1312,12 @@ module.exports = (() => {
         for (const folderIDX in this.folders) folderSubMenus.push(folderSubMenu(this.folders[folderIDX], folderIDX));
         subItems.push(
           ...folderSubMenus,
-          type === 'Sticker' && !extraData.isStickerSubMenu && extraData.type !== StickerFormat.PNG ?
+          type === 'Sticker' && !extraData.entirePack && !extraData.isStickerSubMenu && extraData.type !== StickerFormat.PNG ?
             XenoLib.createContextMenuSubMenu(`Save ${extraData.type === StickerFormat.LOTTIE ? 'Lottie JSON' : 'APNG'}`, this.constructMenu(url, type, customName, onNoExtension, fallbackExtension, proxiedUrl, { ...extraData, onlyItems: true, isStickerSubMenu: true, onlyFolderSave: true }), 'str-stickers')
             : null,
+          // type === 'Sticker' && !extraData.entirePack ?
+          //   XenoLib.createContextMenuSubMenu(`Save Entire Pack${extraData.isStickerSubMenu ? ' JSON' : ''}`, this.constructMenu(url, type, customName, onNoExtension, fallbackExtension, proxiedUrl, { ...extraData, onlyItems: true, isStickerSubMenu: true, onlyFolderSave: true, entirePack: true }), 'str-stickers-pack', { disabled: !entirePack })
+          //   : null,
           extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
             'Add Folder',
             () => {

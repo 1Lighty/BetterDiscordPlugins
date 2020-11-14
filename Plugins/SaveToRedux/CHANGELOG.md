@@ -1,4 +1,7 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.2.2
+- Fixed misc crashes in regards to conflicting files.
+
 ### 2.2.1
 - Fixed add folder and save as not working in powercord due to missing remote. ThAnKs BoWsEr.
 - Video download button now triggers the save as dialog within discord.
