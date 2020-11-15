@@ -1,2 +1,2 @@
 # MultiUploads [![download](https://i.imgur.com/OAHgjZu.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=MultiUploads&dl=1 "MultiUploads")
-Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one.
+Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.

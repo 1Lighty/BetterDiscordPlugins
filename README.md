@@ -27,7 +27,7 @@ Show a notification in Discord when someone sends a message, just like on mobile
 Saves all deleted and purged messages, as well as all edit history and ghost pings. With highly configurable ignore options, and even restoring deleted messages after restarting Discord.
 
 ##  [MultiUploads](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/MultiUploads "MultiUploads")
-Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one.
+Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.
 
 ## [SaveToRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/SaveToRedux "SaveToRedux")
 Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.

@@ -41,16 +41,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.0',
-      description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one.',
+      version: '1.1.0',
+      description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
     },
     changelog: [
       {
-        title: 'Public release',
+        title: 'added',
         type: 'added',
-        items: ['Public release of plugin!']
+        items: ['Added ability to paste multiple times.']
       }
     ]
   };
@@ -254,6 +254,12 @@ module.exports = (() => {
             }
           }
         });
+        const promptToUpload = WebpackModules.getByString('.Messages.UPLOAD_AREA_TOO_LARGE_TITLE');
+        Patcher.after(Upload.component.prototype, 'render', (_this, _, ret) => {
+          const channelTextEditorContainer = Utilities.findInReactTree(ret, e => Utilities.getNestedProp(e, 'type.type.render.displayName') === 'ChannelTextAreaContainer');
+          if (!channelTextEditorContainer) return;
+          channelTextEditorContainer.props.promptToUpload = promptToUpload;
+        })
         Upload.forceUpdateAll();
       }
 
