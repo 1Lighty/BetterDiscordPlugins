@@ -1,4 +1,8 @@
 # [CrashRecovery](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery "CrashRecovery") Changelog
+### 1.0.0
+- Added extra info in console, mainly a cleaned up stack trace, decoded react errors and a component stack, to help plugin developers.
+- Powercord support has been added, plugin can now detect and potentially disable any misbehaving plugins that are causing the client to repeatedly crash.
+
 ### 0.1.8
 - Crash fix.
 
