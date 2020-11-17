@@ -39,20 +39,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.0',
+      version: '1.0.1',
       description: 'In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
     },
     changelog: [
       {
-        title: 'Added',
-        type: 'added',
-        items: ['Added extra info in console, mainly a cleaned up stack trace, decoded react errors and a component stack, to help plugin developers.', 'Powercord support has been added, plugin can now detect and potentially disable any misbehaving plugins that are causing the client to repeatedly crash.']
-      },
-      {
-        type: 'description',
-        content: 'Ty <@324622488644616195> (Juby210) for help on the Powercord side of things :heart:'
+        title: 'Fixed',
+        type: 'fixed',
+        items: ['Fixed some binding issue causing an error.']
       }
     ],
     defaultConfig: [
@@ -137,7 +133,7 @@ module.exports = (() => {
           this._lastStackFrames = frames;
           return error.stack
         }
-        Utilities.suppressErrors(this.patchErrorBoundary)(this.promises.state);
+        Utilities.suppressErrors(this.patchErrorBoundary.bind(this))(this.promises.state);
         if (!this.settings.lastErrorMapUpdate || Date.now() - this.settings.lastErrorMapUpdate > 2.628e+9) {
           const https = require('https');
           const req = https.request(INVARIANTS_URL, { headers: { 'origin': 'discord.com' } }, res => {
