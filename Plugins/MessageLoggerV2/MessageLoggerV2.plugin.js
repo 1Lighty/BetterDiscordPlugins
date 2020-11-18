@@ -2232,8 +2232,8 @@ module.exports = class MessageLoggerV2 {
     const guild = this.tools.getServer(guildId);
     const channel = this.tools.getChannel(channelId); // todo
     /* if (typeof guildNameBackup !== 'number' && guild && guildNameBackup)  */ if (guildId) {
-      const channelName = channel ? channel.name : 'unknown-channel';
-      const guildName = guild ? guild.name : 'unknown-server';
+      const channelName = (channel ? channel.name : 'unknown-channel').replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      const guildName = (guild ? guild.name : 'unknown-server').replace(/</g,"&lt;").replace(/>/g,"&gt;");
       if (useTags && channel) return `${guildName}, <#${channel.id}>`;
       return `${guildName}, #${channelName}`;
     } else if (channel && channel.name.length) {
