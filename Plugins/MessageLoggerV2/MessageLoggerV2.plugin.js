@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.62';
+    return '1.7.63';
   }
   getAuthor() {
     return 'Lighty';
@@ -171,7 +171,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not logging replies.']
+        items: ['Fixed not logging replies.', 'Fixed forgetting to remove a console.log', 'XSS fix by [clv](https://github.com/clv-2) on GitHub']
       }
     ];
   }
@@ -2659,7 +2659,6 @@ module.exports = class MessageLoggerV2 {
           const channelMessages = this.channelMessages[channel.id];
           if (!channelMessages || !channelMessages.ready) this.cacheChannelMessages(channel.id);
         }
-        if (this.currentChannel().id === channel.id) console.log(dispatch, deleted);
 
         if (!deleted) return callDefault(...args); // nothing we can do past this point..
 
@@ -3204,7 +3203,7 @@ module.exports = class MessageLoggerV2 {
     const element = isStart
       ? this.parseHTML(`<div class="${classes.extra[0]}">
                                       <div class="${classes.extra[12]}">
-                                        <img src="${getAvatarOf(message.author)}" class="${classes.extra[3]}" alt=" "><h2 class="${classes.extra[2]}"><span class="${classes.extra[4]}" role="button">${message.author.username}</span>${(isBot && `<span class="${classes.botTag}">BOT</span>`) || ''}<span class="${classes.extra[5]}"><span >${details}</span></span></h2>
+                                        <img src="${getAvatarOf(message.author)}" class="${classes.extra[3]}" alt=" "><h2 class="${classes.extra[2]}"><span class="${classes.extra[4]}" role="button">${message.author.username}</span>${(isBot && `<span class="${classes.botTag}">BOT</span>`) || ''}<span class="${classes.extra[5]}"><span >${escape(details)}</span></span></h2>
                                         <div class="${classes.extra[6]}"></div>
                                       </div>
                                       <div class="${classes.extra[7]}"></div>

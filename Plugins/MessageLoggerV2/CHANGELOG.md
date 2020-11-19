@@ -1,4 +1,8 @@
 # [MessageLoggerV2](https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2 "MessageLoggerV2") Changelog
+### 1.7.63
+- Fixed forgetting to remove a console.log
+- XSS fix by [clv](https://github.com/clv-2) on GitHub
+
 ### 1.7.62
 - Fixed not logging replies.
 
