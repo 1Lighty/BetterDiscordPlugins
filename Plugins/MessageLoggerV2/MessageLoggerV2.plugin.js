@@ -2233,8 +2233,8 @@ module.exports = class MessageLoggerV2 {
     const guild = this.tools.getServer(guildId);
     const channel = this.tools.getChannel(channelId); // todo
     /* if (typeof guildNameBackup !== 'number' && guild && guildNameBackup)  */ if (guildId) {
-      const channelName = (channel ? channel.name : 'unknown-channel').replace(/</g,"&lt;").replace(/>/g,"&gt;");
-      const guildName = (guild ? guild.name : 'unknown-server').replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      const channelName = (channel ? channel.name : 'unknown-channel');
+      const guildName = (guild ? guild.name : 'unknown-server');
       if (useTags && channel) return `${guildName}, <#${channel.id}>`;
       return `${guildName}, #${channelName}`;
     } else if (channel && channel.name.length) {
@@ -3178,6 +3178,7 @@ module.exports = class MessageLoggerV2 {
 
     details += `at ${this.createTimeStamp(timestamp, true)}`;
 
+    details = details.replace(/[<>"&]/g, c=>({"<":"&lt;",">":"&gt;","\"":"&quot;","&":"&amp;"})[c]);
     const classes = this.createMessageGroup.classes;
     const getAvatarOf = user => {
       if (!user.avatar) return '/assets/322c936a8c8be1b803cd94861bdfa868.png';
@@ -3203,7 +3204,7 @@ module.exports = class MessageLoggerV2 {
     const element = isStart
       ? this.parseHTML(`<div class="${classes.extra[0]}">
                                       <div class="${classes.extra[12]}">
-                                        <img src="${getAvatarOf(message.author)}" class="${classes.extra[3]}" alt=" "><h2 class="${classes.extra[2]}"><span class="${classes.extra[4]}" role="button">${message.author.username}</span>${(isBot && `<span class="${classes.botTag}">BOT</span>`) || ''}<span class="${classes.extra[5]}"><span >${details}</span></span></h2>
+                                        <img src="${getAvatarOf(message.author)}" class="${classes.extra[3]}" alt=" "><h2 class="${classes.extra[2]}"><span class="${classes.extra[4]}" role="button">${message.author.username.replace(/[<>"]/g, c=>({"<":"&lt;",">":"&gt;","\"":"&quot;"})[c])}</span>${(isBot && `<span class="${classes.botTag}">BOT</span>`) || ''}<span class="${classes.extra[5]}"><span >${details}</span></span></h2>
                                         <div class="${classes.extra[6]}"></div>
                                       </div>
                                       <div class="${classes.extra[7]}"></div>
