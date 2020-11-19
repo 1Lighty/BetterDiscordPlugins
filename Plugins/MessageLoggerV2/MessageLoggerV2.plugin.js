@@ -3178,7 +3178,7 @@ module.exports = class MessageLoggerV2 {
 
     details += `at ${this.createTimeStamp(timestamp, true)}`;
 
-    details = details.replace(/[<>"]/g, c=>({"<":"&lt;",">":"&gt;","\"":"&quot;"})[c]);
+    details = details.replace(/[<>"&]/g, c=>({"<":"&lt;",">":"&gt;","\"":"&quot;","&":"&amp;"})[c]);
     const classes = this.createMessageGroup.classes;
     const getAvatarOf = user => {
       if (!user.avatar) return '/assets/322c936a8c8be1b803cd94861bdfa868.png';
