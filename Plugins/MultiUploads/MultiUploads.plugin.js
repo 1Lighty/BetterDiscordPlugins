@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.0',
+      version: '1.1.1',
       description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'added',
         type: 'added',
-        items: ['Added ability to paste multiple times.']
+        items: ['Fixed not being able to use the reply feature and send a file at the same time.']
       }
     ]
   };
@@ -131,6 +131,7 @@ module.exports = (() => {
           // each field being file(file index) so file0 file1 file2 file3 file4 etc, with file being the default single upload
           if (Array.isArray(file)) file.forEach((file, idx) => req.attach('file' + idx, file, (message.hasSpoiler ? 'SPOILER_' : '') + file.name));
           else req.attach('file', file, (message.hasSpoiler ? 'SPOILER_' : '') + file.name);
+          req.field('payload_json', JSON.stringify(noSpoilerMessage));
           // attach all other fields, sometimes value is a non valid type though
           _.each(noSpoilerMessage, (value, key) => {
             if (!value) return;
