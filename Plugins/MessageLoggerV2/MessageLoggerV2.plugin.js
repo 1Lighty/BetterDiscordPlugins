@@ -3203,7 +3203,7 @@ module.exports = class MessageLoggerV2 {
     const element = isStart
       ? this.parseHTML(`<div class="${classes.extra[0]}">
                                       <div class="${classes.extra[12]}">
-                                        <img src="${getAvatarOf(message.author)}" class="${classes.extra[3]}" alt=" "><h2 class="${classes.extra[2]}"><span class="${classes.extra[4]}" role="button">${message.author.username}</span>${(isBot && `<span class="${classes.botTag}">BOT</span>`) || ''}<span class="${classes.extra[5]}"><span >${escape(details)}</span></span></h2>
+                                        <img src="${getAvatarOf(message.author)}" class="${classes.extra[3]}" alt=" "><h2 class="${classes.extra[2]}"><span class="${classes.extra[4]}" role="button">${message.author.username}</span>${(isBot && `<span class="${classes.botTag}">BOT</span>`) || ''}<span class="${classes.extra[5]}"><span >${details}</span></span></h2>
                                         <div class="${classes.extra[6]}"></div>
                                       </div>
                                       <div class="${classes.extra[7]}"></div>
