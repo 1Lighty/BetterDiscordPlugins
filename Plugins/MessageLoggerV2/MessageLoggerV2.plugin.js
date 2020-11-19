@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.63';
+    return '1.7.64';
   }
   getAuthor() {
     return 'Lighty';
@@ -298,7 +298,7 @@ module.exports = class MessageLoggerV2 {
       this.automaticallyUpdate();
     }
     if (this.settings.versionInfo !== this.getVersion() && this.settings.displayUpdateNotes) {
-      XenoLib.showChangelog(`${this.getName()} has been updated!`, this.getVersion(), this.getChanges());
+      // XenoLib.showChangelog(`${this.getName()} has been updated!`, this.getVersion(), this.getChanges());
       this.settings.versionInfo = this.getVersion();
       this.saveSettings();
       settingsChanged = false;
