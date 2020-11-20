@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.1',
+      version: '1.1.2',
       description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'added',
         type: 'added',
-        items: ['Fixed not being able to use the reply feature and send a file at the same time.']
+        items: ['Fixed not being able to send multiple files with identical names (woops).\nNever noticed this bug due to another plugin randomizing all uploaded filenames, my bad!']
       }
     ]
   };
@@ -129,8 +129,30 @@ module.exports = (() => {
           // if it's multiple files, attach them, each having a different field name
           // this was reversed by snooping mobile uploads, apparently each file is its own field
           // each field being file(file index) so file0 file1 file2 file3 file4 etc, with file being the default single upload
-          if (Array.isArray(file)) file.forEach((file, idx) => req.attach('file' + idx, file, (message.hasSpoiler ? 'SPOILER_' : '') + file.name));
+          if (Array.isArray(file)) {
+            const numMap = {};
+            file.forEach((e, idx) => {
+              let name = e.name;
+              // ensure no other file has the same name, otherwise we'll be in a world of pain
+              if (file.find((e_, idx_) => e_.name === name && idx_ < idx)) {
+                if (!numMap[name]) numMap[name] = 0;
+                numMap[name]++;
+                const split = name.split('.');
+                // no extention, just append the number
+                if (split.length === 1) name = `${numMap[name]}`;
+                else {
+                  // extract everything before the extension, add number, then the extension
+                  const beforeExt = split.slice(0, -1);
+                  const ext = split.slice(-1);
+                  name = `${beforeExt.join('.')}${numMap[name]}.${ext}`;
+                }
+              }
+              // attach, with its own unique file field
+              req.attach('file' + idx, e, (message.hasSpoiler ? 'SPOILER_' : '') + name);
+            });
+          }
           else req.attach('file', file, (message.hasSpoiler ? 'SPOILER_' : '') + file.name);
+          // added on replies update, dunno why? throws error if it's not here
           req.field('payload_json', JSON.stringify(noSpoilerMessage));
           // attach all other fields, sometimes value is a non valid type though
           _.each(noSpoilerMessage, (value, key) => {
