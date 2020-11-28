@@ -41,16 +41,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.31',
+      version: '1.3.32',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
     },
     changelog: [
       {
-        title: 'Boring changes',
+        title: '#justblamezeretf',
         type: 'fixed',
-        items: ['Fixed notifications not working on canary when trying to mention a channel (like from a logger).']
+        items: ['Forcefully fixed a few zeres lib issues.', 'Settings on my plugins should now work (as long as they\'re up to date).']
       }
     ],
     defaultConfig: [
@@ -972,7 +972,7 @@ module.exports = (() => {
         }
       }
     })();
-    if (window.Lightcord && Math.random() < 0.5) return;
+    if (window.Lightcord) return;
     const AnchorClasses = WebpackModules.getByProps('anchor', 'anchorUnderlineOnHover') || {};
     const EmbedVideo = (() => {
       try {
@@ -993,6 +993,7 @@ module.exports = (() => {
       }
     })();
     const ComponentRenderers = WebpackModules.getByProps('renderVideoComponent') || {};
+    const NewModalStack = WebpackModules.getByProps('openModal', 'hasModalOpen');
     /* MY CHANGELOG >:C */
     XenoLib.showChangelog = (title, version, changelog, footer) => {
       const ChangelogClasses = DiscordClasses.Changelog;
@@ -1047,7 +1048,7 @@ module.exports = (() => {
         }
       }
       const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => (LayerManager.popLayer(), ModalStack.pop(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Join my support server'), '! Or consider donating via ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://paypal.me/lighty13') }, 'Paypal'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://ko-fi.com/lighty_') }, 'Ko-fi'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://www.patreon.com/lightyp') }, 'Patreon'), '!'];
-      ModalStack.push(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12 }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
+      NewModalStack.openModal(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12 }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
     };
 
     /* https://github.com/react-spring/zustand
@@ -1174,7 +1175,7 @@ module.exports = (() => {
         }
         return true;
       };
-      const [useStore, api] = global.FCAPI && global.FCAPI.NotificationStore ? global.FCAPI.NotificationStore : XenoLib.zustand(e => ({ data: [] }));
+      const [useStore, api] = XenoLib.zustand(e => ({ data: [] }));
       const defaultOptions = {
         loading: false,
         progress: -1,
@@ -1679,6 +1680,74 @@ module.exports = (() => {
       }
     }
 
+    const _radioGroup = WebpackModules.getByDisplayName('RadioGroup');
+    class RadioGroupWrapper extends React.PureComponent {
+      render() {
+        return React.createElement(_radioGroup, this.props);
+      }
+    }
+
+    class RadioGroup extends Settings.SettingField {
+      constructor(name, note, defaultValue, values, onChange, options = {}) {
+        super(name, note, onChange, RadioGroupWrapper, {
+          noteOnTop: true,
+          disabled: !!options.disabled,
+          options: values,
+          onChange: reactElement => option => {
+            reactElement.props.value = option.value;
+            reactElement.forceUpdate();
+            this.onChange(option.value);
+          },
+          value: defaultValue
+        });
+      }
+    }
+
+    const _switchItem = WebpackModules.getByDisplayName('SwitchItem');
+    class SwitchItemWrapper extends React.PureComponent {
+      render() {
+        return React.createElement(_switchItem, this.props);
+      }
+    }
+
+    class Switch extends Settings.SettingField {
+      constructor(name, note, isChecked, onChange, options = {}) {
+        super(name, note, onChange);
+        this.disabled = !!options.disabled;
+        this.value = !!isChecked;
+      }
+
+      onAdded() {
+        const reactElement = ReactDOM.render(React.createElement(SwitchItemWrapper, {
+          children: this.name,
+          note: this.note,
+          disabled: this.disabled,
+          hideBorder: false,
+          value: this.value,
+          onChange: (e) => {
+            reactElement.props.value = e;
+            reactElement.forceUpdate();
+            this.onChange(e);
+          }
+        }), this.getElement());
+      }
+    }
+
+    XenoLib.buildSetting = function buildSetting(data) {
+      const { name, note, type, value, onChange, id } = data;
+      let setting = null;
+      if (type == "color") setting = new XenoLib.Settings.ColorPicker(name, note, value, onChange, { disabled: data.disabled, defaultColor: value });
+      else if (type == "dropdown") setting = new Settings.Dropdown(name, note, value, data.options, onChange);
+      else if (type == "file") setting = new Settings.FilePicker(name, note, onChange);
+      else if (type == "keybind") setting = new Settings.Keybind(name, note, value, onChange);
+      else if (type == "radio") setting = new RadioGroup(name, note, value, data.options, onChange, { disabled: data.disabled });
+      else if (type == "slider") setting = new Settings.Slider(name, note, data.min, data.max, value, onChange, data);
+      else if (type == "switch") setting = new Switch(name, note, value, onChange, { disabled: data.disabled });
+      else if (type == "textbox") setting = new Settings.Textbox(name, note, value, onChange, { placeholder: data.placeholder || "" });
+      if (id) setting.id = id;
+      return setting;
+    }
+
     return class CXenoLib extends Plugin {
       constructor() {
         super();
@@ -1689,8 +1758,28 @@ module.exports = (() => {
         } catch (e) { }
       }
       load() {
-        if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         super.load();
+        if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 }), location.reload();
+        const iZeresPluginLibrary = BdApi.Plugins && BdApi.Plugins.get('ZeresPluginLibrary');
+        if (iZeresPluginLibrary && !PluginUpdater.defaultComparator('1.2.27', iZeresPluginLibrary.getVersion())) {
+          const testEl = document.querySelector('.app-1q1i1E');
+          if (testEl && !ReactTools.getReactInstance(testEl)) {
+            try {
+              const { join } = require('path');
+              const { readFileSync, writeFileSync } = require('fs');
+              const zlibpath = join(__dirname, '0PluginLibrary.plugin.js');
+              let contents = readFileSync(zlibpath, 'utf8');
+              if (contents.indexOf('__reactFiber') === -1) {
+                contents = contents
+                  .replace('.find((key) => key.startsWith("__reactInternalInstance"))];', '.find((key) => key.startsWith("__reactInternalInstance") || key.startsWith("__reactFiber"))];')
+                  .replace('.find(k => k.startsWith("__reactInternalInstance"));', '.find(k => k.startsWith("__reactInternalInstance") || k.startsWith("__reactFiber"));');
+                writeFileSync(zlibpath, contents);
+                return;
+              }
+            } catch {
+            }
+          }
+        }
         if (!BdApi.Plugins) return; /* well shit what now */
         if (!BdApi.isSettingEnabled || !BdApi.disableSetting) return;
         const prev = BdApi.isSettingEnabled('fork-ps-2');
@@ -1719,7 +1808,7 @@ module.exports = (() => {
           if (data.id) setting.id = data.id;
           return setting;
         }
-        return super.buildSetting(data);
+        return XenoLib.buildSetting(data);
       }
       getSettingsPanel() {
         return this.buildSettingsPanel()
@@ -1782,7 +1871,7 @@ module.exports = (() => {
     if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
       const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
         b = BdApi.getPlugin('ZeresPluginLibrary');
-      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.24') && (ZeresPluginLibraryOutdated = !0);
+      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.27') && (ZeresPluginLibraryOutdated = !0);
     }
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
