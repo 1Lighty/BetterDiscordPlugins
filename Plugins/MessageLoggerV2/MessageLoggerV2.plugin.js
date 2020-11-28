@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.64';
+    return '1.7.65';
   }
   getAuthor() {
     return 'Lighty';
@@ -59,7 +59,7 @@ module.exports = class MessageLoggerV2 {
       const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion) || typeof global.isTab !== 'undefined';
       const iXenoLib = BdApi.Plugins.get('XenoLib');
       const iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
-      if (isOutOfDate(iXenoLib, '1.3.31')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.3.32')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '1.2.26')) ZeresPluginLibraryOutdated = true;
     }
 
@@ -171,7 +171,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not logging replies.', 'Fixed forgetting to remove a console.log', 'XSS fix by [clv](https://github.com/clv-2) on GitHub']
+        items: ['Fixed settings not working', 'Fixed some periodic lag spikes']
       }
     ];
   }
@@ -495,17 +495,14 @@ module.exports = class MessageLoggerV2 {
       getUserAsync: ZeresPluginLibrary.WebpackModules.getByProps('getUser', 'acceptAgreements').getUser,
       isBlocked: ZeresPluginLibrary.WebpackModules.getByProps('isBlocked').isBlocked,
       createMomentObject: ZeresPluginLibrary.WebpackModules.getByProps('createFromInputFallback'),
-      isMentioned:
-        mentionedModule.isMentioned.length > 4
-          ? (e, id) =>
-            mentionedModule.isMentioned(
-              id,
-              e.channel_id,
-              e.mentionEveryone || e.mention_everyone,
-              e.mentions.map(e => e.id || e),
-              e.mentionRoles || e.mention_roles
-            )
-          : mentionedModule.isMentioned,
+      isMentioned: (e, id) =>
+        mentionedModule.isMentioned(
+          id,
+          e.channel_id,
+          e.mentionEveryone || e.mention_everyone,
+          e.mentions.map(e => e.id || e),
+          e.mentionRoles || e.mention_roles
+        ),
       DiscordUtils: ZeresPluginLibrary.WebpackModules.getByProps('bindAll', 'debounce')
     };
 
@@ -1032,31 +1029,8 @@ module.exports = class MessageLoggerV2 {
     }
   }
   buildSetting(data) {
-    // copied from ZLib actually
-    const { name, note, type, value, onChange, id } = data;
-    let setting = null;
-    if (type == 'color') {
-      setting = new ZeresPluginLibrary.Settings.ColorPicker(name, note, value, onChange, { disabled: data.disabled }); // DOESN'T WORK, REEEEEEEEEE
-    } else if (type === 'dropdown') {
-      setting = new ZeresPluginLibrary.Settings.Dropdown(name, note, value, data.options, onChange);
-    } else if (type === 'file') {
-      setting = new ZeresPluginLibrary.Settings.FilePicker(name, note, onChange);
-    } else if (type === 'keybind') {
-      setting = new ZeresPluginLibrary.Settings.Keybind(name, note, value, onChange);
-    } else if (type === 'radio') {
-      setting = new ZeresPluginLibrary.Settings.RadioGroup(name, note, value, data.options, onChange, { disabled: data.disabled });
-    } else if (type === 'slider') {
-      const options = {};
-      if (typeof data.markers != 'undefined') options.markers = data.markers;
-      if (typeof data.stickToMarkers != 'undefined') options.stickToMarkers = data.stickToMarkers;
-      setting = new ZeresPluginLibrary.Settings.Slider(name, note, data.min, data.max, value, onChange, options);
-    } else if (type === 'switch') {
-      setting = new ZeresPluginLibrary.Settings.Switch(name, note, value, onChange, { disabled: data.disabled });
-    } else if (type === 'textbox') {
-      setting = new ZeresPluginLibrary.Settings.Textbox(name, note, value, onChange, { placeholder: data.placeholder || '' });
-    } else if (type === 'path') {
-      setting = new XenoLib.Settings.FilePicker(name, note, value, onChange, { properties: ['openDirectory', 'createDirectory'], placeholder: 'Path to folder', defaultPath: this.pluginDir + '/MLV2_IMAGE_CACHE', saveOnEnter: true });
-    }
+    const { id } = data;
+    const setting = XenoLib.buildSetting(data);
     if (id) setting.getElement().id = this.obfuscatedClass(id);
     return setting;
   }
@@ -2392,15 +2366,22 @@ module.exports = class MessageLoggerV2 {
           }
         }
       };
-      const checkIsInRecords = (channelId, messageId) => {
-        for (let map of [this.deletedMessageRecord, this.editedMessageRecord, this.purgedMessageRecord]) if (map[channelId] && map[channelId].findIndex(m => m === messageId) != -1) return true;
-        return false;
-      };
-
       for (let map of [this.deletedMessageRecord, this.editedMessageRecord, this.purgedMessageRecord]) handleInvalidEntries(map);
-      for (let messageId in this.messageRecord) {
-        if (!checkIsInRecords(this.messageRecord[messageId].message.channel_id, messageId)) delete this.messageRecord[messageId];
-      }
+      // I have no idea how to optimize this, HELP!
+      //const checkIsInRecords = (channelId, messageId) => {
+      //  // for (let map of [this.deletedMessageRecord, this.editedMessageRecord, this.purgedMessageRecord]) if (map[channelId] && map[channelId].indexOf(messageId) !== -1) return true;
+      //  let map = this.deletedMessageRecord[channelId];
+      //  if (map && map.indexOf(messageId) !== -1) return true;
+      //  map = this.editedMessageRecord[channelId];
+      //  if (map && map.indexOf(messageId) !== -1) return true;
+      //  map = this.purgedMessageRecord[channelId];
+      //  if (map && map.indexOf(messageId) !== -1) return true;
+      //  return false;
+      //};
+
+      //for (const messageId in this.messageRecord) {
+      //  if (!checkIsInRecords(this.messageRecord[messageId].message.channel_id, messageId)) {/*  delete this.messageRecord[messageId]; */ }
+      //}
       let deletedMessages = extractAllMessageIds(this.deletedMessageRecord);
       let editedMessages = extractAllMessageIds(this.editedMessageRecord);
       let purgedMessages = extractAllMessageIds(this.purgedMessageRecord);
@@ -2409,23 +2390,22 @@ module.exports = class MessageLoggerV2 {
       if (!this.settings.cacheAllImages) return;
       if (!this.settings.dontDeleteCachedImages) {
         const savedImages = this.nodeModules.fs.readdirSync(this.settings.imageCacheDir);
+        const msgs = Object.values(this.messageRecord)
+          .filter(e => e.delete_data)
+          .map(({ message: { attachments } }) => attachments)
+          .filter(e => e.length);
         for (let img of savedImages) {
-          if (img.indexOf('ImageCache.config.json') !== -1) continue;
-          const attId = img.match(/(\d*).[a-z]+/i)[1];
+          const [attId] = img.split('.');
+          if (isNaN(attId)) continue;
           let found = false;
-          for (const msgId in this.messageRecord) {
-            const message = this.messageRecord[msgId];
-            if (message.message.attachments.findIndex(m => m.id === attId) !== -1) {
+          for (let i = 0, len = msgs.length; i < len; i++) {
+            if (msgs[i].findIndex(({ id }) => id === attId) !== -1) {
               found = true;
               break;
             }
           }
           if (found) continue;
-          try {
-            this.nodeModules.fs.unlinkSync(`${this.settings.imageCacheDir}/${img}`);
-          } catch (e) {
-            ZeresPluginLibrary.Logger.err(this.getName(), 'Error deleting unreferenced image, what the shit', e);
-          }
+          this.nodeModules.fs.unlink(`${this.settings.imageCacheDir}/${img}`, e => e && ZeresPluginLibrary.Logger.err(this.getName(), 'Error deleting unreferenced image, what the shit', e));
         }
       }
       // 10 minutes
@@ -3178,7 +3158,7 @@ module.exports = class MessageLoggerV2 {
 
     details += `at ${this.createTimeStamp(timestamp, true)}`;
 
-    details = details.replace(/[<>"&]/g, c=>({"<":"&lt;",">":"&gt;","\"":"&quot;","&":"&amp;"})[c]);
+    details = details.replace(/[<>"&]/g, c => ({ "<": "&lt;", ">": "&gt;", "\"": "&quot;", "&": "&amp;" })[c]);
     const classes = this.createMessageGroup.classes;
     const getAvatarOf = user => {
       if (!user.avatar) return '/assets/322c936a8c8be1b803cd94861bdfa868.png';
@@ -3204,7 +3184,7 @@ module.exports = class MessageLoggerV2 {
     const element = isStart
       ? this.parseHTML(`<div class="${classes.extra[0]}">
                                       <div class="${classes.extra[12]}">
-                                        <img src="${getAvatarOf(message.author)}" class="${classes.extra[3]}" alt=" "><h2 class="${classes.extra[2]}"><span class="${classes.extra[4]}" role="button">${message.author.username.replace(/[<>"]/g, c=>({"<":"&lt;",">":"&gt;","\"":"&quot;"})[c])}</span>${(isBot && `<span class="${classes.botTag}">BOT</span>`) || ''}<span class="${classes.extra[5]}"><span >${details}</span></span></h2>
+                                        <img src="${getAvatarOf(message.author)}" class="${classes.extra[3]}" alt=" "><h2 class="${classes.extra[2]}"><span class="${classes.extra[4]}" role="button">${message.author.username.replace(/[<>"]/g, c => ({ "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c])}</span>${(isBot && `<span class="${classes.botTag}">BOT</span>`) || ''}<span class="${classes.extra[5]}"><span >${details}</span></span></h2>
                                         <div class="${classes.extra[6]}"></div>
                                       </div>
                                       <div class="${classes.extra[7]}"></div>
