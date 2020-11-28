@@ -1,4 +1,12 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.5.0
+- Fixed plugin settings.
+- Fixed image scaling fix being disabled when disabling zoom.
+- Fixed opening image in inbox while in friends list throwing an error, still can't scroll thru the images tho!
+- Added option to rescale images in chat to be sharper if not at 100% zoom in Discord or Windows.Enabled by default.
+- Added option to resize chat images to be way larger (this is a BETA feature, it is leftover code that was never utilized, therefore it has BUGS that I am NOT planning to fix so don't ping me about it).
+Disabled by default because unmaintained beta code.
+
 ### 1.4.4
 - Fixed plugin not working from the great canary update plugin massacre.
 

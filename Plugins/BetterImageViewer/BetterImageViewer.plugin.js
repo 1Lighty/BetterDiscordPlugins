@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.4',
+      version: '1.5.0',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,12 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed plugin not working from the great canary update plugin massacre.']
+        items: ['Fixed plugin settings.', 'Fixed image scaling fix being disabled when disabling zoom.', 'Fixed opening image in inbox while in friends list throwing an error, still can\'t scroll thru the images tho!']
+      },
+      {
+        title: 'Added',
+        type: 'added',
+        items: ['Added option to rescale images in chat to be sharper if not at 100% zoom in Discord or Windows.\nEnabled by default.', 'Added option to resize chat images to be way larger (this is a BETA feature, it is leftover code that was never utilized, therefore it has BUGS that I am NOT planning to fix so don\'t ping me about it).\nDisabled by default because unmaintained beta code.']
       }
     ],
     defaultConfig: [
@@ -123,6 +128,27 @@ module.exports = (() => {
             note: 'do not touch',
             id: 'debug',
             type: 'switch',
+            value: false
+          }
+        ]
+      },
+      {
+        type: 'category',
+        id: 'chat',
+        name: 'Chat image settings',
+        collapsible: true,
+        shown: false,
+        settings: [
+          {
+            name: 'Scale images to be sharper',
+            id: 'scale',
+            type: 'switch',
+            value: true
+          },
+          {
+            name: 'Resize images to take up more space',
+            id: 'resize',
+            type: 'switchbeta',
             value: false
           }
         ]
@@ -352,6 +378,7 @@ module.exports = (() => {
             }
           }
         }
+        if (!this.props.__BIV_settings.enabled) return;
         if (!this._ref) return Logger.warn('this._ref is null!');
         this._bcr = this._ref.getBoundingClientRect();
       }
@@ -366,6 +393,7 @@ module.exports = (() => {
         Dispatcher.dirtyDispatch({ type: 'BIV_LENS_WH_CHANGE', value: this.state.panelWH });
       }
       handleMouseDown(e) {
+        if (!this.props.__BIV_settings.enabled) return;
         if (e.button !== DiscordConstants.MouseButtons.PRIMARY) return;
         if (e.ctrlKey) {
           Dispatcher.dirtyDispatch({ type: 'BIV_LOAD_FULLRES' });
@@ -406,6 +434,7 @@ module.exports = (() => {
         this.updateController({ panelX, panelY, offsetX, offsetY, panelWH, immediate: start });
       }
       handleMouseWheel(e) {
+        if (!this.props.__BIV_settings.enabled) return;
         /* scroll to toggle mode */
         const scrollToggle = this.props.__BIV_settings.enableMode === 2;
         if ((!scrollToggle || (scrollToggle && e.shiftKey)) && !this.state.zooming) return;
@@ -500,8 +529,9 @@ module.exports = (() => {
       render() {
         const ret = super.render();
         if (this.__BIV_crash) return ret;
-        ret.props.onMouseDown = this.handleMouseDown;
         for (const prop in ret.props) if (!prop.indexOf('__BIV')) delete ret.props[prop];
+        if (!this.props.__BIV_settings.enabled) return ret;
+        ret.props.onMouseDown = this.handleMouseDown;
         ret.ref = this.setRef;
         if (this.state.visible) {
           ret.props.children.push(
@@ -732,6 +762,10 @@ module.exports = (() => {
           return;
         }
         try {
+          if (!currentChannel()) {
+            this.state.internalError = true;
+            return;
+          }
           const filtered = this.filterMessages(true);
           if (!props.__BIV_isSearch && filtered.findIndex(m => m.id === this.state.__BIV_data.messageId) === -1) {
             this.state.internalError = true;
@@ -1117,9 +1151,10 @@ module.exports = (() => {
       render() {
         if (this.state.internalError === -1) throw 'If you see this, something went HORRIBLY wrong!';
         for (const prop of ImageProps) this.props[prop] = this.state[prop];
-        const message = this.state.__BIV_data && this.getMessage(this.state.__BIV_data.messageId);
         const ret = super.render();
-        if (this.state.internalError || (!message && this.state.__BIV_data)) return ret;
+        if (this.state.internalError) return ret;
+        const message = this.state.__BIV_data && this.getMessage(this.state.__BIV_data.messageId);
+        if ((!message && this.state.__BIV_data)) return ret;
         if (!message) {
           if (!this.__couldNotFindMessage) XenoLib.Notifications.error(`[**${config.info.name}**] Something went wrong.. Could not find associated message for current image.`, { timeout: 7500 });
           this.__couldNotFindMessage = true;
@@ -1328,6 +1363,8 @@ module.exports = (() => {
         return ret;
       }
     }
+
+    const BetaClasses = WebpackModules.find(e => e.beta && !e.channel);
 
     return class BetterImageViewer extends Plugin {
       constructor() {
@@ -1539,6 +1576,21 @@ module.exports = (() => {
         overlayDOMNode = null;
       }
 
+      buildSetting(data) {
+        if (data.type === 'switchbeta') {
+          data.type = 'switch';
+          data.name = [data.name, React.createElement('sup', { className: BetaClasses.beta }, 'BETA')];
+        }
+        return XenoLib.buildSetting(data);
+      }
+
+      saveSettings(category, setting, value) {
+        super.saveSettings(category, setting, value);
+        if (category === 'chat') {
+          this._MA.forceUpdateAll();
+        }
+      }
+
       saveHiddenSettings() {
         PluginUtilities.saveData(this.name, 'hidden', this.hiddenSettings);
       }
@@ -1726,6 +1778,7 @@ module.exports = (() => {
           ret = null;
         });
         MessageAccessories.forceUpdateAll();
+        this._MA = MessageAccessories;
       }
 
       patchImageModal() {
@@ -1889,36 +1942,49 @@ module.exports = (() => {
       patchLazyImage() {
         if (NoImageZoom) return;
         const LazyImage = WebpackModules.getByDisplayName('LazyImage');
-        const SectionStore = WebpackModules.find(m => m.getSection && !m.getProps);
+        // BETA CODE!
+        const SectionStore = WebpackModules.find(m => m.getSection && !m.getProps && !m.getStats);
         const NO_SIDEBAR = 0.666178623635432;
         const SEARCH_SIDEBAR = 0.3601756956193265;
         const MEMBERS_SIDEBAR = 0.49048316246120055;
-        // Patcher.instead(LazyImage.prototype, 'handleSidebarChange', (_this, [forced]) => {
-        //   const { state } = _this;
-        //   if (!currentChannel()) {
-        //     state.__BIV_sidebarMultiplier = null;
-        //     return;
-        //   }
-        //   const section = SectionStore.getSection();
-        //   let newMultiplier;
-        //   if (section === 'SEARCH') newMultiplier = SEARCH_SIDEBAR;
-        //   else if (section !== 'MEMBERS' || (!SelectedGuildStore.getGuildId() && currentChannel().type !== 'GROUP_DM')) newMultiplier = NO_SIDEBAR;
-        //   else newMultiplier = MEMBERS_SIDEBAR;
-        //   if (!forced && newMultiplier !== state.__BIV_sidebarMultiplier) _this.setState({ __BIV_sidebarMultiplier: newMultiplier });
-        //   else state.__BIV_sidebarMultiplier = newMultiplier;
-        // });
-        // Patcher.after(LazyImage.prototype, 'componentDidMount', _this => {
-        //   if (typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) {
-        //     _this.handleSidebarChange = null;
-        //     return;
-        //   }
-        //   _this.handleSidebarChange = _this.handleSidebarChange.bind(_this);
-        //   SectionStore.addChangeListener(_this.handleSidebarChange);
-        // });
-        // Patcher.after(LazyImage.prototype, 'componentWillUnmount', _this => {
-        //   if (!_this.handleSidebarChange) return;
-        //   SectionStore.removeChangeListener(_this.handleSidebarChange);
-        // });
+        Patcher.instead(LazyImage.prototype, 'handleSidebarChange', (_this, [forced]) => {
+          if (!this.settings.chat.resize) return;
+          const { state } = _this;
+          if (!currentChannel()) {
+            state.__BIV_sidebarMultiplier = null;
+            return;
+          }
+          const section = SectionStore.getSection();
+          let newMultiplier;
+          if (section === 'SEARCH') newMultiplier = SEARCH_SIDEBAR;
+          else if (section !== 'MEMBERS' || (!DiscordModules.SelectedGuildStore.getGuildId() && currentChannel().type !== 'GROUP_DM')) newMultiplier = NO_SIDEBAR;
+          else newMultiplier = MEMBERS_SIDEBAR;
+          if (!forced && newMultiplier !== state.__BIV_sidebarMultiplier) _this.setState({ __BIV_sidebarMultiplier: newMultiplier });
+          else state.__BIV_sidebarMultiplier = newMultiplier;
+        });
+        Patcher.after(LazyImage.prototype, 'componentDidMount', _this => {
+          if (typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) {
+            _this.handleSidebarChange = null;
+            return;
+          }
+          _this.handleSidebarChange = _this.handleSidebarChange.bind(_this);
+          SectionStore.addChangeListener(_this.handleSidebarChange);
+        });
+        Patcher.after(LazyImage.prototype, 'componentWillUnmount', _this => {
+          if (!_this.handleSidebarChange) return;
+          SectionStore.removeChangeListener(_this.handleSidebarChange);
+        });
+        Patcher.before(LazyImage.prototype, 'getRatio', _this => {
+          if (!this.settings.chat.resize) return;
+          if (!_this.handleSidebarChange || typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) return;
+          if (typeof _this.state.__BIV_sidebarType === 'undefined') _this.handleSidebarChange(true);
+          if (_this.state.__BIV_sidebarMultiplier === null) return;
+          const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
+          _this.props.maxWidth = Math.max(Math.min(innerWidth * devicePixelRatio * _this.state.__BIV_sidebarMultiplier * (1 + (1 - devicePixelRatio)), _this.props.width * scale), 400);
+          _this.props.maxHeight = Math.max(Math.min(innerHeight * devicePixelRatio * 0.6777027027027027, _this.props.height * scale), 300);
+        });
+        // BETA CODE!
+
         Patcher.instead(LazyImage.prototype, 'componentDidUpdate', (_this, [props, state]) => {
           /* custom handler, original one caused issues with GIFs not animating */
           const animated = LazyImage.isAnimated(_this.props);
@@ -1928,25 +1994,19 @@ module.exports = (() => {
           } else if (state.readyState !== _this.state.readyState && animated) _this.observeVisibility();
           else if (!animated) _this.unobserveVisibility();
         });
-        // Patcher.before(LazyImage.prototype, 'getRatio', _this => {
-        //   if (!_this.handleSidebarChange || typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) return;
-        //   if (typeof _this.state.__BIV_sidebarType === 'undefined') _this.handleSidebarChange(true);
-        //   if (_this.state.__BIV_sidebarMultiplier === null) return;
-        //   const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
-        //   _this.props.maxWidth = Math.max(Math.min(innerWidth * devicePixelRatio * _this.state.__BIV_sidebarMultiplier * (1 + (1 - devicePixelRatio)), _this.props.width * scale), 400);
-        //   _this.props.maxHeight = Math.max(Math.min(innerHeight * devicePixelRatio * 0.6777027027027027, _this.props.height * scale), 300);
-        // });
         Patcher.instead(LazyImage.prototype, 'getSrc', (_this, [ratio, forcePng], orig) => {
           if (_this.props.__BIV_full_res) return _this.props.src;
           return orig(ratio, forcePng);
         });
         Patcher.after(LazyImage.prototype, 'render', (_this, _, ret) => {
           if (!ret) return;
-          if (!this.settings.zoom.enabled || _this.props.onZoom || _this.state.readyState !== 'READY' || _this.props.__BIV_isVideo) return;
+          if (_this.state.readyState !== 'READY' || _this.props.__BIV_isVideo) return;
           /* fix scaling issues for all images */
+          if (!this.settings.chat.scale && _this.props.onZoom) return;
           const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
           ret.props.width = ret.props.width * scale;
           ret.props.height = ret.props.height * scale;
+          if (_this.props.onZoom) return;
           if (_this.props.animated && ret.props.children) {
             /* dirty */
             try {
@@ -2022,7 +2082,7 @@ module.exports = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.23') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.26') && (XenoLibOutdated = !0);
+      n(e, '1.2.26') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.32') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
