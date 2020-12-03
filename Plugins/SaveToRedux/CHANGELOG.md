@@ -1,4 +1,9 @@
 # [SaveToRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux "SaveToRedux") Changelog
+### 2.3.0
+- Fixed conflicting file modal crashing you now.
+- Fixed settings not working.
+- Added the ability to create subfolders when using custom name.
+
 ### 2.2.2
 - Fixed misc crashes in regards to conflicting files.
 

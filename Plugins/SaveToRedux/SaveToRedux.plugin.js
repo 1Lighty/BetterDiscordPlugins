@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.2.2',
+      version: '2.3.0',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -50,11 +50,12 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed misc crashes in regards to conflicting files.']
+        items: ['Fixed conflicting file modal crashing you now.', 'Fixed settings not working.']
       },
       {
-        type: 'description',
-        content: 'When saving something that has an identical name as something already saved, it asks you what it should do, with some options using a radio group.\nThis radio group was fetched from Zeres library, however, Zere fetched the component using some props instead of the displayName RadioGroup, and in a recent update, those props were changed or removed so now the component is not found and it causes crashes because of that.\n**NOT** because of metadata, SaveToRedux does not read metadata.\n*cough* tropical *cough*'
+        title: 'added',
+        type: 'added',
+        items: ['Added the ability to create subfolders when using custom name.']
       }
     ],
     defaultConfig: [
@@ -118,7 +119,7 @@ module.exports = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Settings, Utilities, WebpackModules, DiscordModules, DiscordClasses, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, ReactTools } = Api;
-    const { React, ContextMenuActions, GuildStore, DiscordConstants, Dispatcher, SwitchRow, EmojiUtils, EmojiStore, EmojiInfo } = DiscordModules;
+    const { React, ContextMenuActions, GuildStore, DiscordConstants, Dispatcher, EmojiUtils, EmojiStore, EmojiInfo } = DiscordModules;
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const ConfirmModal = ZeresPluginLibrary.WebpackModules.getByDisplayName('ConfirmModal');
@@ -187,9 +188,15 @@ module.exports = (() => {
       })()
     };
 
-    const RadioGroup = WebpackModules.getByDisplayName('RadioGroup');
+    const RadioGroupFunc = WebpackModules.getByDisplayName('RadioGroup');
 
-    class FolderEditor extends React.Component {
+    class RadioGroup extends React.PureComponent {
+      render() {
+        return React.createElement(RadioGroupFunc, this.props);
+      }
+    }
+
+    class FolderEditor extends React.PureComponent {
       constructor(props) {
         super(props);
         this.state = {
@@ -240,7 +247,7 @@ module.exports = (() => {
       }
     }
 
-    class Preview extends React.Component {
+    class Preview extends React.PureComponent {
       constructor(props) {
         super(props);
         this.state = {
@@ -261,7 +268,10 @@ module.exports = (() => {
         else this.forceUpdate();
       }
       render() {
-        return React.createElement(TextComponent, {}, this.props.formatFilename('unknown', this.state.date, this.state.rand), '.png');
+        return React.createElement(TextComponent, {}, this.props.formatFilename('unknown', {
+          previewDate: this.state.date,
+          previewRand: this.state.rand
+        }), '.png');
       }
     }
 
@@ -271,19 +281,10 @@ module.exports = (() => {
       }
     }
 
-    class RadioGroupField extends Settings.SettingField {
-      constructor(name, note, defaultValue, values, onChange, options = {}) {
-        super(name, note, onChange, RadioGroup, {
-          noteOnTop: true,
-          disabled: !!options.disabled,
-          options: values,
-          onChange: reactElement => option => {
-            reactElement.props.value = option.value;
-            reactElement.forceUpdate();
-            this.onChange(option.value);
-          },
-          value: defaultValue
-        });
+    const _switchItem = WebpackModules.getByDisplayName('SwitchItem');
+    class SwitchItem extends React.PureComponent {
+      render() {
+        return React.createElement(_switchItem, this.props);
       }
     }
 
@@ -444,12 +445,8 @@ module.exports = (() => {
             rand: this.rand(),
             formatFilename: this.formatFilename
           });
-        } else if (data.type === 'radio') {
-          const comp = new RadioGroupField(data.name, data.note, data.value, data.options, data.onChange, { disabled: data.disabled });
-          if (data.id) comp.id = data.id;
-          return comp;
         }
-        return super.buildSetting(data);
+        return XenoLib.buildSetting(data);
       }
 
       saveSettings(_, setting, value) {
@@ -840,7 +837,8 @@ module.exports = (() => {
         return DiscordAPI.currentChannel.members.reduce((p, c) => (p ? `${p}, ${c.username}` : c.username), '');
       }
 
-      formatFilename(name, previewDate, previewRand, extension, throwFail) {
+      formatFilename(name, options = {}) {
+        const { extension, previewDate = null, previewRand = null, throwFail = false, onlyDir = false } = options;
         const date = previewDate || new Date();
         const rand = previewRand || this.rand();
         let ret = 'INTERNAL_ERROR';
@@ -872,7 +870,13 @@ module.exports = (() => {
               seconds: date.getSeconds(),
               name: this.getLocationName()
             });
+            if (onlyDir) {
+              if (PathModule.dirname(ret) !== '.') return PathModule.dirname(ret);
+              return null;
+            }
+            ret = path.basename(ret);
         }
+        if (onlyDir) return null;
         if (this.settings.saveOptions.fileNameType !== 4) {
           if (this.settings.saveOptions.appendCurrentName && (DiscordAPI.currentGuild || DiscordAPI.currentChannel)) {
             const name = this.getLocationName();
@@ -896,12 +900,12 @@ module.exports = (() => {
         let name = customName || match[1];
         let extension = forceExtension || match[2] || fallbackExtension;
         if (url.indexOf('//media.tenor.co') !== -1) {
-          extension = name;
-          name = url.match(/\/\/media.tenor.co\/[^\/]+\/([^\/]+)\//)[1];
+          if (url.indexOf('//media.tenor.com/images/') === -1) extension = name;
+          name = url.match(/\/\/media.tenor.com?\/[^\/]+\/([^\/]+)\//)[1];
         } else if (url.indexOf('//i.giphy.com/media/') !== -1) name = url.match(/\/\/i\.giphy\.com\/media\/([^\/]+)\//)[1];
         let forceSaveAs = false;
         try {
-          if (!forceKeepOriginal) name = this.formatFilename(name, undefined, undefined, extension, true);
+          if (!forceKeepOriginal) name = this.formatFilename(name, { throwFail: true, extension });
           else name = sanitizeFileName(name, { extLength: extension ? 255 - (extension.length + 1) : 255 });
         } catch (e) {
           if (e !== 'CUST_ERROR_1') throw e;
@@ -917,8 +921,8 @@ module.exports = (() => {
         const subItems = [];
         const folderSubMenus = [];
         let forcedExtension = false;
-        let entirePack = type === 'Sticker' ? StickerPackStore.getStickerPack(extraData.packId) : null;
-        if (type === 'Sticker' && !entirePack) StickerPackUtils.fetchStickerPack(extraData.packId).then(_ => (entirePack = WebpackModules.getByProps('getStickerPack').getStickerPack(extraData.packId)));
+        let entirePack = type === 'Sticker' && extraData.packId ? StickerPackStore.getStickerPack(extraData.packId) : null;
+        if (type === 'Sticker' && !entirePack && extraData.packId) StickerPackUtils.fetchStickerPack(extraData.packId).then(_ => (entirePack = WebpackModules.getByProps('getStickerPack').getStickerPack(extraData.packId)));
         if (type === 'Sticker') {
           if (extraData.isStickerSubMenu) {
             if (extraData.type === StickerFormat.APNG) forcedExtension = 'apng';
@@ -960,6 +964,7 @@ module.exports = (() => {
             let lottieWASM = null;
             try {
               worker = new Worker(workerDataURL);
+              if (extraData.onDone) extraData.onDone();
               if (extraData.type === StickerFormat.APNG) {
                 await new Promise(res => {
                   worker.onmessage = res;
@@ -1128,6 +1133,48 @@ module.exports = (() => {
             Logger.stacktrace('Failed to save to folder', err);
             return BdApi.showToast(`Error saving to folder: ${err.message.match(/.*: (.*), access '/)[1]}`, { type: 'error' });
           }
+          if (extraData.entirePack) {
+            const baseDir = PathModule.dirname(path);
+            const stickerPackDir = PathModule.join(baseDir, sanitizeFileName(entirePack.name, 0));
+            if (FsModule.existsSync(stickerPackDir)) return BdApi.showToast(`Folder with name ${entirePack.name} already exists!`, { type: 'error' });
+            try {
+              FsModule.mkdirSync(stickerPackDir);
+            } catch (err) {
+              return BdApi.showToast(`Failed to create folder with name ${entirePack.name}!`, { type: 'error' });
+            }
+            (async _ => {
+              const nid = XenoLib.Notifications.info('Converting sticker pack, please wait this will take a lot of resources..');
+              for (const sticker of entirePack.stickers) {
+                const type = sticker.format_type;
+                await new Promise(res => this.constructMenu(StickerUtils.getStickerAssetUrl(sticker), 'Sticker', null, null, null, null, {
+                  immediate: true,
+                  path: PathModule.join(stickerPackDir, `${sticker.name}.${extraData.isStickerSubMenu ?
+                    type === StickerFormat.APNG
+                      ? 'apng' : type === StickerFormat.PNG
+                        ? 'png' : 'json'
+                    : type === StickerFormat.PNG
+                      ? 'png' : 'gif'}`),
+                  type: type,
+                  isStickerSubMenu: extraData.isStickerSubMenu,
+                  onDone: res
+                }));
+              }
+              XenoLib.Notifications.remove(nid);
+            })()
+            return;
+          }
+          try {
+            const subDirName = this.formatFilename(formattedurl.name, { extention: formattedurl.extension, onlyDir: true });
+            if (subDirName) {
+              basePath = PathModule.join(basePath, subDirName)
+              path = PathModule.join(PathModule.dirname(path), subDirName, PathModule.basename(path));
+              if (!FsModule.existsSync(PathModule.dirname(path))) FsModule.mkdirSync(PathModule.dirname(path));
+            }
+          } catch (err) {
+            Logger.stacktrace('Failed to create path!', err);
+            BdApi.showToast(`Error saving to custom dynamic folder path!`, { type: 'error' });
+            return;
+          }
           const handleSaveAs = invFilename => saveAs(invFilename ? -1 : undefined, fileName => ((formattedurl.forceSaveAs = false), saveFile(`${basePath}/${fileName}${formattedurl.extension ? '.' + formattedurl.extension : ''}`, basePath, openOnSave, dontWarn, true)));
           if (formattedurl.forceSaveAs && !resolved) return handleSaveAs();
           if (!dontWarn && FsModule.existsSync(path)) {
@@ -1198,13 +1245,12 @@ module.exports = (() => {
                       ref1.forceUpdate();
                     }
                   }),
-                  React.createElement(SwitchRow, {
+                  React.createElement(SwitchItem, {
                     children: 'Disable this warning and save this option',
                     note: 'This can be changed in settings',
                     value: 0,
                     ref: e => (ref2 = e),
-                    onChange: e => {
-                      const checked = e.currentTarget.checked;
+                    onChange: checked => {
                       ref2.props.value = checked;
                       ref2.forceUpdate();
                     }
@@ -1315,9 +1361,9 @@ module.exports = (() => {
           type === 'Sticker' && !extraData.entirePack && !extraData.isStickerSubMenu && extraData.type !== StickerFormat.PNG ?
             XenoLib.createContextMenuSubMenu(`Save ${extraData.type === StickerFormat.LOTTIE ? 'Lottie JSON' : 'APNG'}`, this.constructMenu(url, type, customName, onNoExtension, fallbackExtension, proxiedUrl, { ...extraData, onlyItems: true, isStickerSubMenu: true, onlyFolderSave: true }), 'str-stickers')
             : null,
-          // type === 'Sticker' && !extraData.entirePack ?
-          //   XenoLib.createContextMenuSubMenu(`Save Entire Pack${extraData.isStickerSubMenu ? ' JSON' : ''}`, this.constructMenu(url, type, customName, onNoExtension, fallbackExtension, proxiedUrl, { ...extraData, onlyItems: true, isStickerSubMenu: true, onlyFolderSave: true, entirePack: true }), 'str-stickers-pack', { disabled: !entirePack })
-          //   : null,
+          /* type === 'Sticker' && !extraData.entirePack ?
+            XenoLib.createContextMenuSubMenu(`Save Entire Pack${extraData.isStickerSubMenu ? ' JSON' : ''}`, this.constructMenu(url, type, customName, onNoExtension, fallbackExtension, proxiedUrl, { ...extraData, onlyItems: true, onlyFolderSave: true, entirePack: true }), 'str-stickers-pack', { disabled: !entirePack })
+            : null, */
           extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
             'Add Folder',
             () => {
