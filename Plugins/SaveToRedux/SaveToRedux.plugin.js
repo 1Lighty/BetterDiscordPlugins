@@ -1186,7 +1186,7 @@ module.exports = (() => {
                     while (FsModule.existsSync(path)) {
                       path = `${basePath}/${formattedurl.name}(${num})${formattedurl.extension ? '.' + formattedurl.extension : ''}`;
                       num++;
-                      if (num > 99) return Logger.err('Save attempt passed num 99!');
+                      if (num > 999) return Logger.err('Save attempt passed num 999!');
                     }
                   } catch (e) {
                     return Logger.stacktrace('Error finding good number', e);
