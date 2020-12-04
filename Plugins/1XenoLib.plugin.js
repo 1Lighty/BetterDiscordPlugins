@@ -1760,26 +1760,6 @@ module.exports = (() => {
       load() {
         super.load();
         if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 }), location.reload();
-        const iZeresPluginLibrary = BdApi.Plugins && BdApi.Plugins.get('ZeresPluginLibrary');
-        if (iZeresPluginLibrary && !PluginUpdater.defaultComparator('1.2.26', iZeresPluginLibrary.getVersion())) {
-          const testEl = document.querySelector('.app-1q1i1E');
-          if (testEl && !ReactTools.getReactInstance(testEl)) {
-            try {
-              const { join } = require('path');
-              const { readFileSync, writeFileSync } = require('fs');
-              const zlibpath = join(__dirname, '0PluginLibrary.plugin.js');
-              let contents = readFileSync(zlibpath, 'utf8');
-              if (contents.indexOf('__reactFiber') === -1) {
-                contents = contents
-                  .replace('.find((key) => key.startsWith("__reactInternalInstance"))];', '.find((key) => key.startsWith("__reactInternalInstance") || key.startsWith("__reactFiber"))];')
-                  .replace('.find(k => k.startsWith("__reactInternalInstance"));', '.find(k => k.startsWith("__reactInternalInstance") || k.startsWith("__reactFiber"));');
-                writeFileSync(zlibpath, contents);
-                return;
-              }
-            } catch {
-            }
-          }
-        }
         if (!BdApi.Plugins) return; /* well shit what now */
         if (!BdApi.isSettingEnabled || !BdApi.disableSetting) return;
         const prev = BdApi.isSettingEnabled('fork-ps-2');
@@ -1871,7 +1851,7 @@ module.exports = (() => {
     if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
       const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
         b = BdApi.getPlugin('ZeresPluginLibrary');
-      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.26') && (ZeresPluginLibraryOutdated = !0);
+      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.27') && (ZeresPluginLibraryOutdated = !0);
     }
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
