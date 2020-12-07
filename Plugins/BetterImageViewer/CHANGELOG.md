@@ -1,4 +1,7 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
+### 1.5.1
+- Fixed chat rescale (beta feature) causing scrolling issues.
+
 ### 1.5.0
 - Fixed plugin settings.
 - Fixed image scaling fix being disabled when disabling zoom.

@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.5.0',
+      version: '1.5.1',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,12 +46,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed plugin settings.', 'Fixed image scaling fix being disabled when disabling zoom.', 'Fixed opening image in inbox while in friends list throwing an error, still can\'t scroll thru the images tho!']
-      },
-      {
-        title: 'Added',
-        type: 'added',
-        items: ['Added option to rescale images in chat to be sharper if not at 100% zoom in Discord or Windows.\nEnabled by default.', 'Added option to resize chat images to be way larger (this is a BETA feature, it is leftover code that was never utilized, therefore it has BUGS that I am NOT planning to fix so don\'t ping me about it).\nDisabled by default because unmaintained beta code.']
+        items: ['Fixed chat rescale (beta feature) causing scrolling issues.']
       }
     ],
     defaultConfig: [
@@ -2000,12 +1995,13 @@ module.exports = (() => {
         });
         Patcher.after(LazyImage.prototype, 'render', (_this, _, ret) => {
           if (!ret) return;
-          if (_this.state.readyState !== 'READY' || _this.props.__BIV_isVideo) return;
+          if (_this.props.__BIV_isVideo) return;
           /* fix scaling issues for all images */
           if (!this.settings.chat.scale && _this.props.onZoom) return;
           const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
           ret.props.width = ret.props.width * scale;
           ret.props.height = ret.props.height * scale;
+          if (_this.state.readyState !== 'READY') return;
           if (_this.props.onZoom) return;
           if (_this.props.animated && ret.props.children) {
             /* dirty */
@@ -2082,7 +2078,7 @@ module.exports = (() => {
         n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
         e = BdApi.getPlugin('ZeresPluginLibrary'),
         o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.26') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.32') && (XenoLibOutdated = !0);
+      n(e, '1.2.27') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.32') && (XenoLibOutdated = !0);
     }
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
