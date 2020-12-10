@@ -1708,6 +1708,7 @@ module.exports = (() => {
                             __BIV_index: _this.props.__BIV_data ? _this.props.__BIV_data.images.findIndex(m => m.src === _this.props.src) : -1,
                             __BIV_isSearch: isSearch,
                             __BIV_settings: this.settings,
+                            __BIV_shouldRender: true,
                             className: ImageModalClasses.image,
                             shouldAnimate: true
                           },
@@ -1995,7 +1996,8 @@ module.exports = (() => {
         });
         Patcher.after(LazyImage.prototype, 'render', (_this, _, ret) => {
           if (!ret) return;
-          if (_this.props.__BIV_isVideo) return;
+          if (!_this.props.__BIV_shouldRender) return;
+          /*if (_this.props.className = "vz-addon-card-icon-image-wrapper") return;*/
           /* fix scaling issues for all images */
           if (!this.settings.chat.scale && _this.props.onZoom) return;
           const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
@@ -2018,7 +2020,7 @@ module.exports = (() => {
         });
         Patcher.after(WebpackModules.getByDisplayName('LazyVideo').prototype, 'render', (_, __, ret) => {
           if (!ret) return;
-          ret.props.__BIV_isVideo = true;
+          ret.props.__BIV_shouldRender = false;
         });
       }
 
