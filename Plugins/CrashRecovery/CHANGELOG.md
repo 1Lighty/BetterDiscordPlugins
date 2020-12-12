@@ -1,4 +1,11 @@
 # [CrashRecovery](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery "CrashRecovery") Changelog
+### 1.0.2
+- Fixed error fetching responsible plugins sometimes.
+- Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.
+
+### 1.0.1
+- Fixed some binding issue causing an error.
+
 ### 1.0.0
 - Added extra info in console, mainly a cleaned up stack trace, decoded react errors and a component stack, to help plugin developers.
 - Powercord support has been added, plugin can now detect and potentially disable any misbehaving plugins that are causing the client to repeatedly crash.

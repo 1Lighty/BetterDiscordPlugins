@@ -39,7 +39,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.1',
+      version: '1.0.2',
       description: 'In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
@@ -48,7 +48,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed some binding issue causing an error.']
+        items: ['Fixed error fetching responsible plugins sometimes.', 'Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.']
       }
     ],
     defaultConfig: [
@@ -203,7 +203,7 @@ module.exports = (() => {
         try {
           const stack = this._bLastStackFrames
             // filter out blank functions (like from console or whatever)
-            .filter(e => e.getFileName() || e.getFunctionName() || e.getMethodName())
+            .filter(e => e.getFileName() && (e.getFunctionName() || e.getMethodName()))
             // filter out discord functions
             .filter(e => e.getFileName().indexOf(ROOT_FOLDER) !== -1)
             // convert CallSites to only useful info
@@ -456,13 +456,11 @@ module.exports = (() => {
   let ZeresPluginLibraryOutdated = false;
   let XenoLibOutdated = false;
   try {
-    if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
-      const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
-        b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined'),
-        c = BdApi.getPlugin('ZeresPluginLibrary'),
-        d = BdApi.getPlugin('XenoLib');
-      b(c, '1.2.26') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.31') && (XenoLibOutdated = !0);
-    }
+    const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
+      b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined'),
+      c = BdApi.Plugins.get('ZeresPluginLibrary'),
+      d = BdApi.Plugins.get('XenoLib');
+    b(c, '1.2.27') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.32') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }
