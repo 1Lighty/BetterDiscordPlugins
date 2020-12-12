@@ -471,13 +471,11 @@ module.exports = (() => {
   let ZeresPluginLibraryOutdated = false;
   let XenoLibOutdated = false;
   try {
-    if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
-      const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
-        n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
-        e = BdApi.getPlugin('ZeresPluginLibrary'),
-        o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.23') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.26') && (XenoLibOutdated = !0);
-    }
+    const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
+      n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
+      e = BdApi.Plugins.get('ZeresPluginLibrary'),
+      o = BdApi.Plugins.get('XenoLib');
+    n(e, '1.2.27') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.32') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
