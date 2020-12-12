@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.1',
+      version: '1.0.2',
       description: 'Replaces "Several people are typing" with who is actually typing, plus "x others" if it can\'t fit. Number of shown people typing can be changed.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterTypingUsers/BetterTypingUsers.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.']
+        items: ['Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.']
       }
     ],
     defaultConfig: [
@@ -225,7 +225,7 @@ module.exports = (() => {
       }
 
       patchBetterRoleColors() {
-        const BetterRoleColors = BdApi.getPlugin('BetterRoleColors');
+        const BetterRoleColors = BdApi.Plugins.get('BetterRoleColors');
         if (!BetterRoleColors) return;
         /*  stop errors */
         /*  modify BRCs behavior so it won't unexpectedly try to modify an entry that does not exist
@@ -331,11 +331,9 @@ module.exports = (() => {
 
   let ZeresPluginLibraryOutdated = false;
   try {
-    if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
-      const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
-        b = BdApi.getPlugin('ZeresPluginLibrary');
-      ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.23') && (ZeresPluginLibraryOutdated = !0);
-    }
+    const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
+      b = BdApi.Plugins.get('ZeresPluginLibrary');
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.27') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }

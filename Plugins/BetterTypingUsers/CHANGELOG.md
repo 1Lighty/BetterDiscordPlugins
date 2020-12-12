@@ -1,4 +1,7 @@
 # [BetterTypingUsers](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterTypingUsers "BetterTypingUsers") Changelog
+### 1.0.2
+- Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.
+
 ### 1.0.1
 - Changed to module.exports because useless backwards incompatbile changes are the motto for BBD apparently.
 
