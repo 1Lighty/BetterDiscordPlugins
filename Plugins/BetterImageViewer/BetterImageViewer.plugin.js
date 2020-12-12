@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.5.1',
+      version: '1.5.2',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed chat rescale (beta feature) causing scrolling issues.']
+        items: ['Fixed chat rescale (beta feature) causing embed images to go beyond their borders.', 'Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.']
       }
     ],
     defaultConfig: [
@@ -474,7 +474,7 @@ module.exports = (() => {
           const split = src.split('?')[0];
           /* a user experienced some issues due to EXIF data */
           const isJpeg = split.indexOf('//media.discordapp.net/attachments/') !== -1 && split.search(/.jpe?g$/i) !== -1;
-          const SaveToRedux = BdApi.getPlugin && BdApi.getPlugin('SaveToRedux');
+          const SaveToRedux = BdApi.Plugins.get('SaveToRedux');
           const needsSize = src.substr(src.indexOf('?')).indexOf('size=') !== -1;
           try {
             if (SaveToRedux && !PluginUpdater.defaultComparator(SaveToRedux.version, '2.0.12')) return SaveToRedux.formatURL((!isJpeg && this.props.__BIV_original) || '', needsSize, '', '', split, this.__BIV_failNum).url;
@@ -1397,9 +1397,9 @@ module.exports = (() => {
         if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         if (PluginBrokenFatal) return this._startFailure('Plugin is in a broken state.');
         if (NoImageZoom) this._startFailure('Image zoom is broken.');
-        if (this.settings.zoom.enabled && !NoImageZoom && BdApi.getPlugin('ImageZoom') && BdApi.Plugins.isEnabled('ImageZoom')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageZoom** while having the zoom function in **${this.name}** enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });
-        if (BdApi.getPlugin('Better Image Popups') && BdApi.Plugins.isEnabled('Better Image Popups')) XenoLib.Notifications.warning(`[**${this.name}**] Using **Better Image Popups** with **${this.name}** is completely unsupported and will cause issues. **${this.name}** fully supersedes it in terms of features as well, please either disable **Better Image Popups** or delete it to avoid issues.`, { timeout: 0 });
-        if (this.settings.zoom.enabled && BdApi.getPlugin('ImageGallery') && BdApi.Plugins.isEnabled('ImageGallery')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageGallery** with **${this.name}** is completely unsupported and will cause issues, mainly, zoom breaks. **${this.name}** fully supersedes it in terms of features as well, please either disable **ImageGallery** or delete it to avoid issues.`, { timeout: 0 });
+        if (this.settings.zoom.enabled && !NoImageZoom && BdApi.Plugins.get('ImageZoom') && BdApi.Plugins.isEnabled('ImageZoom')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageZoom** while having the zoom function in **${this.name}** enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });
+        if (BdApi.Plugins.get('Better Image Popups') && BdApi.Plugins.isEnabled('Better Image Popups')) XenoLib.Notifications.warning(`[**${this.name}**] Using **Better Image Popups** with **${this.name}** is completely unsupported and will cause issues. **${this.name}** fully supersedes it in terms of features as well, please either disable **Better Image Popups** or delete it to avoid issues.`, { timeout: 0 });
+        if (this.settings.zoom.enabled && BdApi.Plugins.get('ImageGallery') && BdApi.Plugins.isEnabled('ImageGallery')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageGallery** with **${this.name}** is completely unsupported and will cause issues, mainly, zoom breaks. **${this.name}** fully supersedes it in terms of features as well, please either disable **ImageGallery** or delete it to avoid issues.`, { timeout: 0 });
         this.hiddenSettings = XenoLib.loadData(this.name, 'hidden', { panelWH: 500 });
         this.patchAll();
         Dispatcher.subscribe('MESSAGE_DELETE', this.handleMessageDelete);
@@ -1748,6 +1748,7 @@ module.exports = (() => {
               if (!oRenderImageComponent.__BIV_patched) {
                 n.renderImageComponent = function (a) {
                   a.__BIV_data = _this.__BIV_data;
+                  a.__BIV_embed = true;
                   return oRenderImageComponent(a);
                 };
                 n.renderImageComponent.__BIV_patched = true;
@@ -1807,7 +1808,7 @@ module.exports = (() => {
           const height = (props && props.height) || _this.props.height;
           const reqUrl = (() => {
             const split = src.split('?')[0];
-            const SaveToRedux = BdApi.getPlugin && BdApi.getPlugin('SaveToRedux');
+            const SaveToRedux = BdApi.Plugins.get('SaveToRedux');
             const needsSize = src.substr(src.indexOf('?')).indexOf('size=') !== -1;
             try {
               if (SaveToRedux) return SaveToRedux.formatURL(original || '', needsSize, '', '', split).url;
@@ -1958,7 +1959,7 @@ module.exports = (() => {
           else state.__BIV_sidebarMultiplier = newMultiplier;
         });
         Patcher.after(LazyImage.prototype, 'componentDidMount', _this => {
-          if (typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) {
+          if (typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1) || _this.props.__BIV_embed) {
             _this.handleSidebarChange = null;
             return;
           }
@@ -1970,7 +1971,7 @@ module.exports = (() => {
           SectionStore.removeChangeListener(_this.handleSidebarChange);
         });
         Patcher.before(LazyImage.prototype, 'getRatio', _this => {
-          if (!this.settings.chat.resize) return;
+          if (!this.settings.chat.resize || _this.props.__BIV_embed) return;
           if (!_this.handleSidebarChange || typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) return;
           if (typeof _this.state.__BIV_sidebarType === 'undefined') _this.handleSidebarChange(true);
           if (_this.state.__BIV_sidebarMultiplier === null) return;
@@ -1997,7 +1998,7 @@ module.exports = (() => {
           if (!ret) return;
           if (_this.props.__BIV_isVideo) return;
           /* fix scaling issues for all images */
-          if (!this.settings.chat.scale && _this.props.onZoom) return;
+          if (!this.settings.chat.scale && _this.props.onZoom || _this.props.__BIV_embed) return;
           const scale = window.innerWidth / (window.innerWidth * window.devicePixelRatio);
           ret.props.width = ret.props.width * scale;
           ret.props.height = ret.props.height * scale;
@@ -2073,13 +2074,11 @@ module.exports = (() => {
   let ZeresPluginLibraryOutdated = false;
   let XenoLibOutdated = false;
   try {
-    if (global.BdApi && 'function' == typeof BdApi.getPlugin) {
-      const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
-        n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
-        e = BdApi.getPlugin('ZeresPluginLibrary'),
-        o = BdApi.getPlugin('XenoLib');
-      n(e, '1.2.27') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.32') && (XenoLibOutdated = !0);
-    }
+    const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
+      n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
+      e = BdApi.Plugins.get('ZeresPluginLibrary'),
+      o = BdApi.Plugins.get('XenoLib');
+    n(e, '1.2.27') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.32') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
