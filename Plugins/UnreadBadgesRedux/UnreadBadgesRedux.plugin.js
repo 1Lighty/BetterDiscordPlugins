@@ -39,7 +39,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.10',
+      version: '1.0.11',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -48,7 +48,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not working on folders.']
+        items: ['Fixed not working on channels.']
       }
     ],
     defaultConfig: [
@@ -331,10 +331,27 @@ module.exports = (() => {
           );
         }
         Patcher.after(TextChannel.component.prototype, 'render', (_this, _, ret) => {
-          const props = Utilities.findInReactTree(ret, e => e && Array.isArray(e.children) && e.children.find(e => e && e.type && e.type.displayName === 'ConnectedEditButton'));
-          if (!props || !props.children) return;
-          const badge = React.createElement(UnreadBadge, { channelId: _this.props.channel.id, muted: _this.props.muted && !_this.props.selected });
-          props.children.splice(this.settings.misc.channelsDisplayOnLeft ? 0 : 2, 0, badge);
+          const popout = Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Popout');
+          if (!popout || typeof popout.props.children !== 'function') return;
+          const oChildren = popout.props.children;
+          popout.props.children = () => {
+            try {
+              const ret = oChildren();
+              const props = Utilities.findInReactTree(ret, e => e && Array.isArray(e.children) && e.children.find(e => e && e.type && e.type.displayName === 'ConnectedEditButton'));
+              if (!props || !props.children) return ret;
+              const badge = React.createElement(UnreadBadge, { channelId: _this.props.channel.id, muted: _this.props.muted && !_this.props.selected });
+              props.children.splice(this.settings.misc.channelsDisplayOnLeft ? 0 : 2, 0, badge);
+              return ret;
+            } catch (err) {
+              Logger.stacktrace('Failed modifying return of original children in TextChannel!', err);
+              try {
+                return oChildren();
+              } catch (err) {
+                Logger.stacktrace('Failed returning return of original children in TextChannel!', err);
+                return null;
+              }
+            }
+          }
         });
         TextChannel.forceUpdateAll();
       }

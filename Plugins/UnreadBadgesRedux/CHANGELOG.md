@@ -1,4 +1,7 @@
 # [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux") Changelog
+### 1.0.11
+- Fixed not working on channels.
+
 ### 1.0.10
 - Fixed not working on folders.
 
