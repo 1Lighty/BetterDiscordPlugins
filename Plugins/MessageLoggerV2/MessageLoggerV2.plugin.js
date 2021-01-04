@@ -717,6 +717,10 @@ module.exports = class MessageLoggerV2 {
                     color: rgba(0, 0, 0, 0.4);
                 }
 
+                #sent.${this.style.tab} {
+                  display: none;
+                }
+
                 .theme-dark  .${this.style.tabSelected} {
                     border-color: rgb(255, 255, 255);
                     color: rgb(255, 255, 255);
