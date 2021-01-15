@@ -42,7 +42,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.33',
+      version: '1.3.34',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -1185,13 +1185,15 @@ module.exports = (() => {
            * @return {Number} - Notification ID. Store this if you plan on force closing it, changing its content or want to set the progress
            */
           show(content, options = {}) {
-            const { timeout, loading, progress, color, allowDuplicates, onLeave, channelId } = Object.assign(Utilities.deepclone(defaultOptions), options);
+            const { timeout, loading, progress, color, allowDuplicates, onLeave, channelId, onClick, onContext } = Object.assign(Utilities.deepclone(defaultOptions), options);
             return Untitled.n11s.show(content instanceof HTMLElement ? ReactTools.createWrappedElement(content) : content, {
               timeout,
               loading,
               progress,
               color,
               allowDuplicates,
+              onClick,
+              onContext,
               onClose: onLeave,
               markdownOptions: { channelId }
             });
@@ -1210,7 +1212,7 @@ module.exports = (() => {
            */
           update(id, options) {
             const obj = {};
-            for (const key in ['loading', 'progress', 'color']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
+            for (const key in ['loading', 'progress', 'color', 'onClick', 'onContext']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
             if (options.onLeave) obj.onClose = options.onLeave;
             if (options.channelId) obj.markdownOptions = { channelId: options.channelId };
             Untitled.n11s.update(id, obj);
@@ -1893,6 +1895,7 @@ module.exports = (() => {
         }
       }
       showChangelog(footer) {
+        return;
         XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog);
       }
       get name() {
