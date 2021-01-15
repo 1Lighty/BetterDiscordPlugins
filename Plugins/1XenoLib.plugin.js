@@ -23,11 +23,12 @@
 
 @else@*/
 /*
- * Copyright © 2019-2020, _Lighty_
+ * Copyright © 2019-2021, _Lighty_
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
 module.exports = (() => {
+  const canUseUntitledNotifAPI = !!(global.Untitled && Untitled.n11s && Untitled.n11s.n11sApi)
   /* Setup */
   const config = {
     main: 'index.js',
@@ -41,20 +42,20 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.32',
+      version: '1.3.33',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
     },
     changelog: [
       {
-        title: '#justblamezeretf',
+        title: 'future proofing',
         type: 'fixed',
-        items: ['Forcefully fixed a few zeres lib issues.', 'Settings on my plugins should now work (as long as they\'re up to date).']
+        items: ['Implemented notifications proxy for Untitled client mod prealpha users.']
       }
     ],
     defaultConfig: [
-      {
+      canUseUntitledNotifAPI ? {} : {
         type: 'category',
         id: 'notifications',
         name: 'Notification settings',
@@ -1143,438 +1144,512 @@ module.exports = (() => {
       state = createState(setState, getState, api);
       return [useStore, api];
     };
-
     /* NOTIFICATIONS START */
     let UPDATEKEY = {};
     try {
-      const DeepEqualityCheck = (content1, content2) => {
-        if (typeof content1 !== typeof content2) return false;
-        const isCNT1HTML = content1 instanceof HTMLElement;
-        const isCNT2HTML = content2 instanceof HTMLElement;
-        if (isCNT1HTML !== isCNT2HTML) return false;
-        else if (isCNT1HTML) return content1.isEqualNode(content2);
-        if (content1 !== content2) {
-          if (Array.isArray(content1)) {
-            if (content1.length !== content2.length) return false;
-            for (const [index, item] of content1.entries()) {
-              if (!DeepEqualityCheck(item, content2[index])) return false;
-            }
-          } else if (typeof content1 === 'object') {
-            if (content1.type) {
-              if (typeof content1.type !== typeof content2.type) return false;
-              if (content1.type !== content2.type) return false;
-            }
-            if (typeof content1.props !== typeof content2.props) return false;
-            if (content1.props) {
-              if (Object.keys(content1.props).length !== Object.keys(content2.props).length) return false;
-              for (const prop in content1.props) {
-                if (!DeepEqualityCheck(content1.props[prop], content2.props[prop])) return false;
+      if (canUseUntitledNotifAPI) {
+        const defaultOptions = {
+          loading: false,
+          progress: -1,
+          channelId: undefined,
+          timeout: 3500,
+          color: '#2196f3',
+          onLeave: DiscordConstants.NOOP
+        };
+        const utils = {
+          success(content, options = {}) {
+            return this.show(content, Object.assign({ color: '#43b581' }, options));
+          },
+          info(content, options = {}) {
+            return this.show(content, Object.assign({ color: '#4a90e2' }, options));
+          },
+          warning(content, options = {}) {
+            return this.show(content, Object.assign({ color: '#ffa600' }, options));
+          },
+          danger(content, options = {}) {
+            return this.show(content, Object.assign({ color: '#f04747' }, options));
+          },
+          error(content, options = {}) {
+            return this.danger(content, options);
+          },
+          /**
+           * @param {string|HTMLElement|React} content - Content to display. If it's a string, it'll be formatted with markdown, including URL support [like this](https://google.com/)
+           * @param {object} options
+           * @param {string} [options.channelId] Channel ID if content is a string which gets formatted, and you want to mention a role for example.
+           * @param {Number} [options.timeout] Set to 0 to keep it permanently until user closes it, or if you want a progress bar
+           * @param {Boolean} [options.loading] Makes the bar animate differently instead of fading in and out slowly
+           * @param {Number} [options.progress] 0-100, -1 sets it to 100%, setting it to 100% closes the notification automatically
+           * @param {string} [options.color] Bar color
+           * @param {string} [options.allowDuplicates] By default, notifications that are similar get grouped together, use true to disable that
+           * @param {function} [options.onLeave] Callback when notification is leaving
+           * @return {Number} - Notification ID. Store this if you plan on force closing it, changing its content or want to set the progress
+           */
+          show(content, options = {}) {
+            const { timeout, loading, progress, color, allowDuplicates, onLeave, channelId } = Object.assign(Utilities.deepclone(defaultOptions), options);
+            return Untitled.n11s.show(content instanceof HTMLElement ? ReactTools.createWrappedElement(content) : content, {
+              timeout,
+              loading,
+              progress,
+              color,
+              allowDuplicates,
+              onClose: onLeave,
+              markdownOptions: { channelId }
+            });
+          },
+          remove(id) {
+            Untitled.n11s.remove(id);
+          },
+          /**
+           * @param {Number} id Notification ID
+           * @param {object} options
+           * @param {string} [options.channelId] Channel ID if content is a string which gets formatted, and you want to mention a role for example.
+           * @param {Boolean} [options.loading] Makes the bar animate differently instead of fading in and out slowly
+           * @param {Number} [options.progress] 0-100, -1 sets it to 100%, setting it to 100% closes the notification automatically
+           * @param {string} [options.color] Bar color
+           * @param {function} [options.onLeave] Callback when notification is leaving
+           */
+          update(id, options) {
+            const obj = {};
+            for (const key in ['loading', 'progress', 'color']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
+            if (options.onLeave) obj.onClose = options.onLeave;
+            if (options.channelId) obj.markdownOptions = { channelId: options.channelId };
+            Untitled.n11s.update(id, obj);
+          },
+          exists(id) {
+            return Untitled.n11s.exists(id);
+          }
+        };
+        XenoLib.Notifications = utils;
+      } else {
+        const DeepEqualityCheck = (content1, content2) => {
+          if (typeof content1 !== typeof content2) return false;
+          const isCNT1HTML = content1 instanceof HTMLElement;
+          const isCNT2HTML = content2 instanceof HTMLElement;
+          if (isCNT1HTML !== isCNT2HTML) return false;
+          else if (isCNT1HTML) return content1.isEqualNode(content2);
+          if (content1 !== content2) {
+            if (Array.isArray(content1)) {
+              if (content1.length !== content2.length) return false;
+              for (const [index, item] of content1.entries()) {
+                if (!DeepEqualityCheck(item, content2[index])) return false;
               }
-            }
-          } else return false;
-        }
-        return true;
-      };
-      const [useStore, api] = XenoLib.zustand(e => ({ data: [] }));
-      const defaultOptions = {
-        loading: false,
-        progress: -1,
-        channelId: undefined,
-        timeout: 3500,
-        color: '#2196f3',
-        onLeave: DiscordConstants.NOOP
-      };
-      const utils = {
-        success(content, options = {}) {
-          return this.show(content, Object.assign({ color: '#43b581' }, options));
-        },
-        info(content, options = {}) {
-          return this.show(content, Object.assign({ color: '#4a90e2' }, options));
-        },
-        warning(content, options = {}) {
-          return this.show(content, Object.assign({ color: '#ffa600' }, options));
-        },
-        danger(content, options = {}) {
-          return this.show(content, Object.assign({ color: '#f04747' }, options));
-        },
-        error(content, options = {}) {
-          return this.danger(content, options);
-        },
-        /**
-         * @param {string|HTMLElement|React} content - Content to display. If it's a string, it'll be formatted with markdown, including URL support [like this](https://google.com/)
-         * @param {object} options
-         * @param {string} [options.channelId] Channel ID if content is a string which gets formatted, and you want to mention a role for example.
-         * @param {Number} [options.timeout] Set to 0 to keep it permanently until user closes it, or if you want a progress bar
-         * @param {Boolean} [options.loading] Makes the bar animate differently instead of fading in and out slowly
-         * @param {Number} [options.progress] 0-100, -1 sets it to 100%, setting it to 100% closes the notification automatically
-         * @param {string} [options.color] Bar color
-         * @param {string} [options.allowDuplicates] By default, notifications that are similar get grouped together, use true to disable that
-         * @param {function} [options.onLeave] Callback when notification is leaving
-         * @return {Number} - Notification ID. Store this if you plan on force closing it, changing its content or want to set the progress
-         */
-        show(content, options = {}) {
-          let id = null;
-          options = Object.assign(Utilities.deepclone(defaultOptions), options);
-          api.setState(state => {
-            if (!options.allowDuplicates) {
-              const notif = state.data.find(n => DeepEqualityCheck(n.content, content) && n.timeout === options.timeout && !n.leaving);
-              if (notif) {
-                id = notif.id;
-                Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_DUPLICATE', id: notif.id });
-                return state;
+            } else if (typeof content1 === 'object') {
+              if (content1.type) {
+                if (typeof content1.type !== typeof content2.type) return false;
+                if (content1.type !== content2.type) return false;
               }
-            }
-            if (state.data.length >= 100) return state;
-            do {
-              id = Math.floor(4294967296 * Math.random());
-            } while (state.data.findIndex(n => n.id === id) !== -1);
-            return { data: [].concat(state.data, [{ content, ...options, id }]) };
-          });
-          return id;
-        },
-        remove(id) {
-          Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_REMOVE', id });
-        },
-        /**
-         * @param {Number} id Notification ID
-         * @param {object} options
-         * @param {string} [options.channelId] Channel ID if content is a string which gets formatted, and you want to mention a role for example.
-         * @param {Boolean} [options.loading] Makes the bar animate differently instead of fading in and out slowly
-         * @param {Number} [options.progress] 0-100, -1 sets it to 100%, setting it to 100% closes the notification automatically
-         * @param {string} [options.color] Bar color
-         * @param {function} [options.onLeave] Callback when notification is leaving
-         */
-        update(id, options) {
-          delete options.id;
-          api.setState(state => {
-            const idx = state.data.findIndex(n => n.id === id);
-            if (idx === -1) return state;
-            state.data[idx] = Object.assign(state.data[idx], options);
-            return state;
-          });
-          Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_UPDATE', id, ...options });
-        },
-        exists(id) {
-          return api.getState().data.findIndex(e => e.id === id && !e.leaving) !== -1;
-        }
-      };
-      XenoLib.Notifications = utils;
-      const ReactSpring = WebpackModules.getByProps('useTransition');
-      const BadgesModule = WebpackModules.getByProps('NumberBadge');
-      const CloseButton = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M18.4 4L12 10.4L5.6 4L4 5.6L10.4 12L4 18.4L5.6 20L12 13.6L18.4 20L20 18.4L13.6 12L20 5.6L18.4 4Z', fill: 'currentColor' }));
-      class Notification extends React.PureComponent {
-        constructor(props) {
-          super(props);
-          this.state = {
-            closeFast: false /* close button pressed, XL_NOTIFS_REMOVE dispatch */,
-            offscreen: false /* don't do anything special if offscreen, not timeout */,
-            counter: 1 /* how many times this notification was shown */,
-            resetBar: false /* reset bar to 0 in the event counter goes up */,
-            hovered: false,
-            leaving: true /* prevent hover events from messing up things */,
-            loading: props.loading /* loading animation, enable progress */,
-            progress: props.progress /* -1 means undetermined */,
-            content: props.content,
-            contentParsed: this.parseContent(props.content, props.channelId),
-            color: props.color
-          };
-          this._contentRef = null;
-          this._ref = null;
-          this._animationCancel = DiscordConstants.NOOP;
-          this._oldOffsetHeight = 0;
-          this._initialProgress = !this.props.timeout ? (this.state.loading && this.state.progress !== -1 ? this.state.progress : 100) : 0;
-          XenoLib._.bindAll(this, ['closeNow', 'handleDispatch', '_setContentRef']);
-          this.handleResizeEvent = XenoLib._.throttle(this.handleResizeEvent.bind(this), 100);
-          this.resizeObserver = new ResizeObserver(this.handleResizeEvent);
-          this._timeout = props.timeout;
-        }
-        componentDidMount() {
-          this._unsubscribe = api.subscribe(_ => this.checkOffScreen());
-          window.addEventListener('resize', this.handleResizeEvent);
-          Dispatcher.subscribe('XL_NOTIFS_DUPLICATE', this.handleDispatch);
-          Dispatcher.subscribe('XL_NOTIFS_REMOVE', this.handleDispatch);
-          Dispatcher.subscribe('XL_NOTIFS_UPDATE', this.handleDispatch);
-          Dispatcher.subscribe('XL_NOTIFS_ANIMATED', this.handleDispatch);
-          Dispatcher.subscribe('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
-        }
-        componentWillUnmount() {
-          this._unsubscribe();
-          window.window.removeEventListener('resize', this.handleResizeEvent);
-          Dispatcher.unsubscribe('XL_NOTIFS_DUPLICATE', this.handleDispatch);
-          Dispatcher.unsubscribe('XL_NOTIFS_REMOVE', this.handleDispatch);
-          Dispatcher.unsubscribe('XL_NOTIFS_UPDATE', this.handleDispatch);
-          Dispatcher.unsubscribe('XL_NOTIFS_ANIMATED', this.handleDispatch);
-          Dispatcher.unsubscribe('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
-          this.resizeObserver.disconnect();
-          this.resizeObserver = null; /* no mem leaks plz */
-          this._ref = null;
-          this._contentRef = null;
-        }
-        handleDispatch(e) {
-          if (this.state.leaving || this.state.closeFast) return;
-          if (e.type === 'XL_NOTIFS_SETTINGS_UPDATE') {
-            if (e.key !== UPDATEKEY) return;
-            this._animationCancel();
-            this.forceUpdate();
-            return;
-          }
-          if (e.type === 'XL_NOTIFS_ANIMATED') this.checkOffScreen();
-          if (e.id !== this.props.id) return;
-          const { content, channelId, loading, progress, color } = e;
-          const { content: curContent, channelId: curChannelId, loading: curLoading, progress: curProgress, color: curColor } = this.state;
-          switch (e.type) {
-            case 'XL_NOTIFS_REMOVE':
-              this.closeNow();
-              break;
-            case 'XL_NOTIFS_DUPLICATE':
-              this._animationCancel();
-              this.setState({ counter: this.state.counter + 1, resetBar: !!this.props.timeout, closeFast: false });
-              break;
-            case 'XL_NOTIFS_UPDATE':
-              if (!this.state.initialAnimDone) {
-                this.state.content = content || curContent;
-                this.state.channelId = channelId || curChannelId;
-                this.state.contentParsed = this.parseContent(content || curContent, channelId || curChannelId);
-                if (typeof loading !== 'undefined') this.state.loading = loading;
-                if (typeof progress !== 'undefined') this.state.progress = progress;
-                this.state.color = color || curColor;
-                return;
+              if (typeof content1.props !== typeof content2.props) return false;
+              if (content1.props) {
+                if (Object.keys(content1.props).length !== Object.keys(content2.props).length) return false;
+                for (const prop in content1.props) {
+                  if (!DeepEqualityCheck(content1.props[prop], content2.props[prop])) return false;
+                }
               }
-              this._animationCancel();
-              this.setState({
-                content: content || curContent,
-                channelId: channelId || curChannelId,
-                contentParsed: this.parseContent(content || curContent, channelId || curChannelId),
-                loading: typeof loading !== 'undefined' ? loading : curLoading,
-                progress: typeof progress !== 'undefined' ? progress : curProgress,
-                color: color || curColor
-              });
-              break;
+            } else return false;
           }
-        }
-        parseContent(content, channelId) {
-          if (typeof content === 'string') return FancyParser(content, true, { channelId });
-          else if (content instanceof Element) return ReactTools.createWrappedElement(content);
-          else return content;
-        }
-        checkOffScreen() {
-          if (this.state.leaving || !this._contentRef) return;
-          const bcr = this._contentRef.getBoundingClientRect();
-          if (Math.floor(bcr.bottom) - 1 > Structs.Screen.height || Math.ceil(bcr.top) + 1 < 0) {
-            if (!this.state.offscreen) {
+          return true;
+        };
+        const [useStore, api] = XenoLib.zustand(e => ({ data: [] }));
+        const defaultOptions = {
+          loading: false,
+          progress: -1,
+          channelId: undefined,
+          timeout: 3500,
+          color: '#2196f3',
+          onLeave: DiscordConstants.NOOP
+        };
+        const utils = {
+          success(content, options = {}) {
+            return this.show(content, Object.assign({ color: '#43b581' }, options));
+          },
+          info(content, options = {}) {
+            return this.show(content, Object.assign({ color: '#4a90e2' }, options));
+          },
+          warning(content, options = {}) {
+            return this.show(content, Object.assign({ color: '#ffa600' }, options));
+          },
+          danger(content, options = {}) {
+            return this.show(content, Object.assign({ color: '#f04747' }, options));
+          },
+          error(content, options = {}) {
+            return this.danger(content, options);
+          },
+          /**
+           * @param {string|HTMLElement|React} content - Content to display. If it's a string, it'll be formatted with markdown, including URL support [like this](https://google.com/)
+           * @param {object} options
+           * @param {string} [options.channelId] Channel ID if content is a string which gets formatted, and you want to mention a role for example.
+           * @param {Number} [options.timeout] Set to 0 to keep it permanently until user closes it, or if you want a progress bar
+           * @param {Boolean} [options.loading] Makes the bar animate differently instead of fading in and out slowly
+           * @param {Number} [options.progress] 0-100, -1 sets it to 100%, setting it to 100% closes the notification automatically
+           * @param {string} [options.color] Bar color
+           * @param {string} [options.allowDuplicates] By default, notifications that are similar get grouped together, use true to disable that
+           * @param {function} [options.onLeave] Callback when notification is leaving
+           * @return {Number} - Notification ID. Store this if you plan on force closing it, changing its content or want to set the progress
+           */
+          show(content, options = {}) {
+            let id = null;
+            options = Object.assign(Utilities.deepclone(defaultOptions), options);
+            api.setState(state => {
+              if (!options.allowDuplicates) {
+                const notif = state.data.find(n => DeepEqualityCheck(n.content, content) && n.timeout === options.timeout && !n.leaving);
+                if (notif) {
+                  id = notif.id;
+                  Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_DUPLICATE', id: notif.id });
+                  return state;
+                }
+              }
+              if (state.data.length >= 100) return state;
+              do {
+                id = Math.floor(4294967296 * Math.random());
+              } while (state.data.findIndex(n => n.id === id) !== -1);
+              return { data: [].concat(state.data, [{ content, ...options, id }]) };
+            });
+            return id;
+          },
+          remove(id) {
+            Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_REMOVE', id });
+          },
+          /**
+           * @param {Number} id Notification ID
+           * @param {object} options
+           * @param {string} [options.channelId] Channel ID if content is a string which gets formatted, and you want to mention a role for example.
+           * @param {Boolean} [options.loading] Makes the bar animate differently instead of fading in and out slowly
+           * @param {Number} [options.progress] 0-100, -1 sets it to 100%, setting it to 100% closes the notification automatically
+           * @param {string} [options.color] Bar color
+           * @param {function} [options.onLeave] Callback when notification is leaving
+           */
+          update(id, options) {
+            delete options.id;
+            api.setState(state => {
+              const idx = state.data.findIndex(n => n.id === id);
+              if (idx === -1) return state;
+              state.data[idx] = Object.assign(state.data[idx], options);
+              return state;
+            });
+            Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_UPDATE', id, ...options });
+          },
+          exists(id) {
+            return api.getState().data.findIndex(e => e.id === id && !e.leaving) !== -1;
+          }
+        };
+        XenoLib.Notifications = utils;
+        const ReactSpring = WebpackModules.getByProps('useTransition');
+        const BadgesModule = WebpackModules.getByProps('NumberBadge');
+        const CloseButton = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M18.4 4L12 10.4L5.6 4L4 5.6L10.4 12L4 18.4L5.6 20L12 13.6L18.4 20L20 18.4L13.6 12L20 5.6L18.4 4Z', fill: 'currentColor' }));
+        class Notification extends React.PureComponent {
+          constructor(props) {
+            super(props);
+            this.state = {
+              closeFast: false /* close button pressed, XL_NOTIFS_REMOVE dispatch */,
+              offscreen: false /* don't do anything special if offscreen, not timeout */,
+              counter: 1 /* how many times this notification was shown */,
+              resetBar: false /* reset bar to 0 in the event counter goes up */,
+              hovered: false,
+              leaving: true /* prevent hover events from messing up things */,
+              loading: props.loading /* loading animation, enable progress */,
+              progress: props.progress /* -1 means undetermined */,
+              content: props.content,
+              contentParsed: this.parseContent(props.content, props.channelId),
+              color: props.color
+            };
+            this._contentRef = null;
+            this._ref = null;
+            this._animationCancel = DiscordConstants.NOOP;
+            this._oldOffsetHeight = 0;
+            this._initialProgress = !this.props.timeout ? (this.state.loading && this.state.progress !== -1 ? this.state.progress : 100) : 0;
+            XenoLib._.bindAll(this, ['closeNow', 'handleDispatch', '_setContentRef']);
+            this.handleResizeEvent = XenoLib._.throttle(this.handleResizeEvent.bind(this), 100);
+            this.resizeObserver = new ResizeObserver(this.handleResizeEvent);
+            this._timeout = props.timeout;
+          }
+          componentDidMount() {
+            this._unsubscribe = api.subscribe(_ => this.checkOffScreen());
+            window.addEventListener('resize', this.handleResizeEvent);
+            Dispatcher.subscribe('XL_NOTIFS_DUPLICATE', this.handleDispatch);
+            Dispatcher.subscribe('XL_NOTIFS_REMOVE', this.handleDispatch);
+            Dispatcher.subscribe('XL_NOTIFS_UPDATE', this.handleDispatch);
+            Dispatcher.subscribe('XL_NOTIFS_ANIMATED', this.handleDispatch);
+            Dispatcher.subscribe('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
+          }
+          componentWillUnmount() {
+            this._unsubscribe();
+            window.window.removeEventListener('resize', this.handleResizeEvent);
+            Dispatcher.unsubscribe('XL_NOTIFS_DUPLICATE', this.handleDispatch);
+            Dispatcher.unsubscribe('XL_NOTIFS_REMOVE', this.handleDispatch);
+            Dispatcher.unsubscribe('XL_NOTIFS_UPDATE', this.handleDispatch);
+            Dispatcher.unsubscribe('XL_NOTIFS_ANIMATED', this.handleDispatch);
+            Dispatcher.unsubscribe('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null; /* no mem leaks plz */
+            this._ref = null;
+            this._contentRef = null;
+          }
+          handleDispatch(e) {
+            if (this.state.leaving || this.state.closeFast) return;
+            if (e.type === 'XL_NOTIFS_SETTINGS_UPDATE') {
+              if (e.key !== UPDATEKEY) return;
               this._animationCancel();
-              this.setState({ offscreen: true });
+              this.forceUpdate();
+              return;
             }
-          } else if (this.state.offscreen) {
-            this._animationCancel();
-            this.setState({ offscreen: false });
-          }
-        }
-        closeNow() {
-          if (this.state.closeFast) return;
-          this.resizeObserver.disconnect();
-          this._animationCancel();
-          api.setState(state => {
-            const dt = state.data.find(m => m.id === this.props.id);
-            if (dt) dt.leaving = true;
-            return { data: state.data };
-          });
-          this.setState({ closeFast: true });
-        }
-        handleResizeEvent() {
-          if (this._oldOffsetHeight !== this._contentRef.offsetHeight) {
-            this._animationCancel();
-            this.forceUpdate();
-          }
-        }
-        _setContentRef(ref) {
-          if (!ref) return;
-          this._contentRef = ref;
-          this.resizeObserver.observe(ref);
-        }
-        render() {
-          const config = { duration: 200 };
-          if (this._contentRef) this._oldOffsetHeight = this._contentRef.offsetHeight;
-          return React.createElement(
-            ReactSpring.Spring,
-            {
-              native: true,
-              from: { opacity: 0, height: 0, progress: this._initialProgress, loadbrightness: 1 },
-              to: async (next, cancel) => {
-                this.state.leaving = false;
-                this._animationCancel = cancel;
-                if (this.state.offscreen) {
-                  if (this.state.closeFast) {
-                    this.state.leaving = true;
-                    await next({ opacity: 0, height: 0 });
-                    api.setState(state => ({ data: state.data.filter(n => n.id !== this.props.id) }));
-                    return;
-                  }
-                  await next({ opacity: 1, height: this._contentRef.offsetHeight, loadbrightness: 1 });
-                  if (this.props.timeout) {
-                    await next({ progress: 0 });
-                  } else {
-                    if (this.state.loading && this.state.progress !== -1) {
-                      await next({ progress: 0 });
-                    } else {
-                      await next({ progress: 100 });
-                    }
-                  }
+            if (e.type === 'XL_NOTIFS_ANIMATED') this.checkOffScreen();
+            if (e.id !== this.props.id) return;
+            const { content, channelId, loading, progress, color } = e;
+            const { content: curContent, channelId: curChannelId, loading: curLoading, progress: curProgress, color: curColor } = this.state;
+            switch (e.type) {
+              case 'XL_NOTIFS_REMOVE':
+                this.closeNow();
+                break;
+              case 'XL_NOTIFS_DUPLICATE':
+                this._animationCancel();
+                this.setState({ counter: this.state.counter + 1, resetBar: !!this.props.timeout, closeFast: false });
+                break;
+              case 'XL_NOTIFS_UPDATE':
+                if (!this.state.initialAnimDone) {
+                  this.state.content = content || curContent;
+                  this.state.channelId = channelId || curChannelId;
+                  this.state.contentParsed = this.parseContent(content || curContent, channelId || curChannelId);
+                  if (typeof loading !== 'undefined') this.state.loading = loading;
+                  if (typeof progress !== 'undefined') this.state.progress = progress;
+                  this.state.color = color || curColor;
                   return;
                 }
-                const isSettingHeight = this._ref.offsetHeight !== this._contentRef.offsetHeight;
-                await next({ opacity: 1, height: this._contentRef.offsetHeight });
-                if (isSettingHeight) Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
-                this.state.initialAnimDone = true;
-                if (this.state.resetBar || (this.state.hovered && LibrarySettings.notifications.timeoutReset)) {
-                  await next({ progress: 0 }); /* shit gets reset */
-                  this.state.resetBar = false;
-                }
-
-                if (!this.props.timeout && !this.state.closeFast) {
-                  if (!this.state.loading) {
-                    await next({ progress: 100 });
-                  } else {
-                    await next({ loadbrightness: 1 });
-                    if (this.state.progress === -1) await next({ progress: 100 });
-                    else await next({ progress: this.state.progress });
-                  }
-                  if (this.state.progress < 100 || !this.state.loading) return;
-                }
-                if (this.state.hovered && !this.state.closeFast) return;
-                if (!this.state.closeFast && !LibrarySettings.notifications.timeoutReset) this._startProgressing = Date.now();
-                await next({ progress: 100 });
-                if (this.state.hovered && !this.state.closeFast) return; /* race condition: notif is hovered, but it continues and closes! */
-                this.state.leaving = true;
-                if (!this.state.closeFast) {
-                  api.setState(state => {
-                    const dt = state.data.find(m => m.id === this.props.id);
-                    if (dt) dt.leaving = true;
-                    return { data: state.data };
-                  });
-                }
-                this.props.onLeave();
-                await next({ opacity: 0, height: 0 });
-                api.setState(state => ({ data: state.data.filter(n => n.id !== this.props.id) }));
-              },
-              config: key => {
-                if (key === 'progress') {
-                  let duration = this._timeout;
-                  if (this.state.closeFast || !this.props.timeout || this.state.resetBar || this.state.hovered) duration = 150;
-                  if (this.state.offscreen) duration = 0; /* don't animate at all */
-                  return { duration };
-                }
-                if (key === 'loadbrightness') return { duration: 750 };
-                return config;
+                this._animationCancel();
+                this.setState({
+                  content: content || curContent,
+                  channelId: channelId || curChannelId,
+                  contentParsed: this.parseContent(content || curContent, channelId || curChannelId),
+                  loading: typeof loading !== 'undefined' ? loading : curLoading,
+                  progress: typeof progress !== 'undefined' ? progress : curProgress,
+                  color: color || curColor
+                });
+                break;
+            }
+          }
+          parseContent(content, channelId) {
+            if (typeof content === 'string') return FancyParser(content, true, { channelId });
+            else if (content instanceof Element) return ReactTools.createWrappedElement(content);
+            else return content;
+          }
+          checkOffScreen() {
+            if (this.state.leaving || !this._contentRef) return;
+            const bcr = this._contentRef.getBoundingClientRect();
+            if (Math.floor(bcr.bottom) - 1 > Structs.Screen.height || Math.ceil(bcr.top) + 1 < 0) {
+              if (!this.state.offscreen) {
+                this._animationCancel();
+                this.setState({ offscreen: true });
               }
-            },
-            e => {
-              return React.createElement(
-                ReactSpring.animated.div,
-                {
-                  style: {
-                    height: e.height,
-                    opacity: e.opacity
-                  },
-                  className: 'xenoLib-notification',
-                  ref: e => e && (this._ref = e)
-                },
-                React.createElement(
-                  'div',
-                  {
-                    className: 'xenoLib-notification-content-wrapper',
-                    ref: this._setContentRef,
-                    onMouseEnter: e => {
-                      if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
-                      this._animationCancel();
-                      if (this._startProgressing) {
-                        this._timeout -= Date.now() - this._startProgressing;
-                      }
-                      this.state.hovered = true;
-                      this.forceUpdate();
-                    },
-                    onMouseLeave: e => {
-                      if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
-                      this._animationCancel();
-                      this.setState({ hovered: false });
-                    },
-                    style: {
-                      '--grad-one': this.state.color,
-                      '--grad-two': ColorConverter.lightenColor(this.state.color, 20),
-                      '--bar-color': ColorConverter.darkenColor(this.state.color, 30)
-                    },
-                    onClick: e => {
-                      if (!this.props.onClick) return;
-                      if (e.target && e.target.getAttribute('role') === 'button') return;
-                      this.props.onClick();
-                      this.closeNow();
-                    },
-                    onContextMenu: e => {
-                      if (!this.props.onContext) return;
-                      this.props.onContext();
-                      this.closeNow();
+            } else if (this.state.offscreen) {
+              this._animationCancel();
+              this.setState({ offscreen: false });
+            }
+          }
+          closeNow() {
+            if (this.state.closeFast) return;
+            this.resizeObserver.disconnect();
+            this._animationCancel();
+            api.setState(state => {
+              const dt = state.data.find(m => m.id === this.props.id);
+              if (dt) dt.leaving = true;
+              return { data: state.data };
+            });
+            this.setState({ closeFast: true });
+          }
+          handleResizeEvent() {
+            if (this._oldOffsetHeight !== this._contentRef.offsetHeight) {
+              this._animationCancel();
+              this.forceUpdate();
+            }
+          }
+          _setContentRef(ref) {
+            if (!ref) return;
+            this._contentRef = ref;
+            this.resizeObserver.observe(ref);
+          }
+          render() {
+            const config = { duration: 200 };
+            if (this._contentRef) this._oldOffsetHeight = this._contentRef.offsetHeight;
+            return React.createElement(
+              ReactSpring.Spring,
+              {
+                native: true,
+                from: { opacity: 0, height: 0, progress: this._initialProgress, loadbrightness: 1 },
+                to: async (next, cancel) => {
+                  this.state.leaving = false;
+                  this._animationCancel = cancel;
+                  if (this.state.offscreen) {
+                    if (this.state.closeFast) {
+                      this.state.leaving = true;
+                      await next({ opacity: 0, height: 0 });
+                      api.setState(state => ({ data: state.data.filter(n => n.id !== this.props.id) }));
+                      return;
                     }
+                    await next({ opacity: 1, height: this._contentRef.offsetHeight, loadbrightness: 1 });
+                    if (this.props.timeout) {
+                      await next({ progress: 0 });
+                    } else {
+                      if (this.state.loading && this.state.progress !== -1) {
+                        await next({ progress: 0 });
+                      } else {
+                        await next({ progress: 100 });
+                      }
+                    }
+                    return;
+                  }
+                  const isSettingHeight = this._ref.offsetHeight !== this._contentRef.offsetHeight;
+                  await next({ opacity: 1, height: this._contentRef.offsetHeight });
+                  if (isSettingHeight) Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
+                  this.state.initialAnimDone = true;
+                  if (this.state.resetBar || (this.state.hovered && LibrarySettings.notifications.timeoutReset)) {
+                    await next({ progress: 0 }); /* shit gets reset */
+                    this.state.resetBar = false;
+                  }
+
+                  if (!this.props.timeout && !this.state.closeFast) {
+                    if (!this.state.loading) {
+                      await next({ progress: 100 });
+                    } else {
+                      await next({ loadbrightness: 1 });
+                      if (this.state.progress === -1) await next({ progress: 100 });
+                      else await next({ progress: this.state.progress });
+                    }
+                    if (this.state.progress < 100 || !this.state.loading) return;
+                  }
+                  if (this.state.hovered && !this.state.closeFast) return;
+                  if (!this.state.closeFast && !LibrarySettings.notifications.timeoutReset) this._startProgressing = Date.now();
+                  await next({ progress: 100 });
+                  if (this.state.hovered && !this.state.closeFast) return; /* race condition: notif is hovered, but it continues and closes! */
+                  this.state.leaving = true;
+                  if (!this.state.closeFast) {
+                    api.setState(state => {
+                      const dt = state.data.find(m => m.id === this.props.id);
+                      if (dt) dt.leaving = true;
+                      return { data: state.data };
+                    });
+                  }
+                  this.props.onLeave();
+                  await next({ opacity: 0, height: 0 });
+                  api.setState(state => ({ data: state.data.filter(n => n.id !== this.props.id) }));
+                },
+                config: key => {
+                  if (key === 'progress') {
+                    let duration = this._timeout;
+                    if (this.state.closeFast || !this.props.timeout || this.state.resetBar || this.state.hovered) duration = 150;
+                    if (this.state.offscreen) duration = 0; /* don't animate at all */
+                    return { duration };
+                  }
+                  if (key === 'loadbrightness') return { duration: 750 };
+                  return config;
+                }
+              },
+              e => {
+                return React.createElement(
+                  ReactSpring.animated.div,
+                  {
+                    style: {
+                      height: e.height,
+                      opacity: e.opacity
+                    },
+                    className: 'xenoLib-notification',
+                    ref: e => e && (this._ref = e)
                   },
                   React.createElement(
                     'div',
                     {
-                      className: 'xenoLib-notification-content',
-                      style: {
-                        backdropFilter: LibrarySettings.notifications.backdrop ? 'blur(5px)' : undefined,
-                        background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), LibrarySettings.notifications.backdrop ? 0.3 : 1.0),
-                        border: LibrarySettings.notifications.backdrop ? 'none' : undefined
+                      className: 'xenoLib-notification-content-wrapper',
+                      ref: this._setContentRef,
+                      onMouseEnter: e => {
+                        if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
+                        this._animationCancel();
+                        if (this._startProgressing) {
+                          this._timeout -= Date.now() - this._startProgressing;
+                        }
+                        this.state.hovered = true;
+                        this.forceUpdate();
                       },
-                      ref: e => {
-                        if (!LibrarySettings.notifications.backdrop || !e) return;
-                        e.style.setProperty('backdrop-filter', e.style.backdropFilter, 'important');
-                        e.style.setProperty('background', e.style.background, 'important');
-                        e.style.setProperty('border', e.style.border, 'important');
+                      onMouseLeave: e => {
+                        if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
+                        this._animationCancel();
+                        this.setState({ hovered: false });
+                      },
+                      style: {
+                        '--grad-one': this.state.color,
+                        '--grad-two': ColorConverter.lightenColor(this.state.color, 20),
+                        '--bar-color': ColorConverter.darkenColor(this.state.color, 30)
+                      },
+                      onClick: e => {
+                        if (!this.props.onClick) return;
+                        if (e.target && e.target.getAttribute('role') === 'button') return;
+                        this.props.onClick();
+                        this.closeNow();
+                      },
+                      onContextMenu: e => {
+                        if (!this.props.onContext) return;
+                        this.props.onContext();
+                        this.closeNow();
                       }
                     },
-                    React.createElement(ReactSpring.animated.div, {
-                      className: XenoLib.joinClassNames('xenoLib-notification-loadbar', { 'xenoLib-notification-loadbar-striped': !this.props.timeout && this.state.loading, 'xenoLib-notification-loadbar-user': !this.props.timeout && !this.state.loading }),
-                      style: { right: e.progress.to(e => 100 - e + '%'), filter: e.loadbrightness.to(e => `brightness(${e * 100}%)`) }
-                    }),
                     React.createElement(
-                      XenoLib.ReactComponents.Button,
+                      'div',
                       {
-                        look: XenoLib.ReactComponents.Button.Looks.BLANK,
-                        size: XenoLib.ReactComponents.Button.Sizes.NONE,
-                        onClick: e => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          this.closeNow();
+                        className: 'xenoLib-notification-content',
+                        style: {
+                          backdropFilter: LibrarySettings.notifications.backdrop ? 'blur(5px)' : undefined,
+                          background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), LibrarySettings.notifications.backdrop ? 0.3 : 1.0),
+                          border: LibrarySettings.notifications.backdrop ? 'none' : undefined
                         },
-                        onContextMenu: e => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const state = api.getState();
-                          state.data.forEach(notif => utils.remove(notif.id));
-                        },
-                        className: 'xenoLib-notification-close'
+                        ref: e => {
+                          if (!LibrarySettings.notifications.backdrop || !e) return;
+                          e.style.setProperty('backdrop-filter', e.style.backdropFilter, 'important');
+                          e.style.setProperty('background', e.style.background, 'important');
+                          e.style.setProperty('border', e.style.border, 'important');
+                        }
                       },
-                      CloseButton
-                    ),
-                    this.state.counter > 1 && BadgesModule.NumberBadge({ count: this.state.counter, className: 'xenLib-notification-counter', color: '#2196f3' }),
-                    this.state.contentParsed
+                      React.createElement(ReactSpring.animated.div, {
+                        className: XenoLib.joinClassNames('xenoLib-notification-loadbar', { 'xenoLib-notification-loadbar-striped': !this.props.timeout && this.state.loading, 'xenoLib-notification-loadbar-user': !this.props.timeout && !this.state.loading }),
+                        style: { right: e.progress.to(e => 100 - e + '%'), filter: e.loadbrightness.to(e => `brightness(${e * 100}%)`) }
+                      }),
+                      React.createElement(
+                        XenoLib.ReactComponents.Button,
+                        {
+                          look: XenoLib.ReactComponents.Button.Looks.BLANK,
+                          size: XenoLib.ReactComponents.Button.Sizes.NONE,
+                          onClick: e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.closeNow();
+                          },
+                          onContextMenu: e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const state = api.getState();
+                            state.data.forEach(notif => utils.remove(notif.id));
+                          },
+                          className: 'xenoLib-notification-close'
+                        },
+                        CloseButton
+                      ),
+                      this.state.counter > 1 && BadgesModule.NumberBadge({ count: this.state.counter, className: 'xenLib-notification-counter', color: '#2196f3' }),
+                      this.state.contentParsed
+                    )
                   )
-                )
-              );
-            }
-          );
+                );
+              }
+            );
+          }
         }
+        function NotificationsWrapper(e) {
+          const notifications = useStore(e => {
+            return e.data;
+          });
+          return notifications.map(item => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: `Notification ${item.id}`, onError: () => api.setState(state => ({ data: state.data.filter(n => n.id !== item.id) })), key: item.id.toString() }, React.createElement(Notification, { ...item, leaving: false }))).reverse();
+        }
+        NotificationsWrapper.displayName = 'XenoLibNotifications';
+        const DOMElement = document.createElement('div');
+        DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
+        ReactDOM.render(React.createElement(NotificationsWrapper, {}), DOMElement);
+        document.querySelector('#app-mount').appendChild(DOMElement);
       }
-      function NotificationsWrapper(e) {
-        const notifications = useStore(e => {
-          return e.data;
-        });
-        return notifications.map(item => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: `Notification ${item.id}`, onError: () => api.setState(state => ({ data: state.data.filter(n => n.id !== item.id) })), key: item.id.toString() }, React.createElement(Notification, { ...item, leaving: false }))).reverse();
-      }
-      NotificationsWrapper.displayName = 'XenoLibNotifications';
-      const DOMElement = document.createElement('div');
-      DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
-      ReactDOM.render(React.createElement(NotificationsWrapper, {}), DOMElement);
-      document.querySelector('#app-mount').appendChild(DOMElement);
     } catch (e) {
       Logger.stacktrace('There has been an error loading the Notifications system, fallback object has been put in place to prevent errors', e);
       XenoLib.Notifications = {
@@ -1759,7 +1834,7 @@ module.exports = (() => {
       }
       load() {
         super.load();
-        if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 }), location.reload();
+        if (window.Lightcord) return XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         if (!BdApi.Plugins) return; /* well shit what now */
         if (!BdApi.isSettingEnabled || !BdApi.disableSetting) return;
         const prev = BdApi.isSettingEnabled('fork-ps-2');
@@ -1777,6 +1852,7 @@ module.exports = (() => {
           }
         }
         if (prev) BdApi.enableSetting('fork-ps-2');
+        if (window.Lightcord) location.reload();
       }
       buildSetting(data) {
         if (data.type === 'position') {
@@ -1850,7 +1926,7 @@ module.exports = (() => {
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
       b = BdApi.Plugins.get('ZeresPluginLibrary');
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.27') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.28') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
