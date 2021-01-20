@@ -286,12 +286,6 @@ module.exports = class MessageLoggerV2 {
     //   settingsChanged = true;
     // }
 
-    if (!this.settings.obfuscateCSSClasses && BdApi.Themes && BdApi.Themes.getAll().some(theme => typeof theme.author === 'string' && theme.author.toLowerCase().indexOf('nfld99') !== -1 && BdApi.Themes.isEnabled(theme.name))) {
-      XenoLib.Notifications.warning(`[${this.getName()}] Obfuscate CSS classes has been forcefulyl turned on due to untrusted theme.`, { timeout: 0 });
-      this.settings.obfuscateCSSClasses = true;
-      settingsChanged = true;
-    }
-
     if (this.settings.autoUpdate) {
       if (this._autoUpdateInterval) clearInterval(this._autoUpdateInterval);
       this._autoUpdateInterval = setInterval(_ => this.automaticallyUpdate(), 1000 * 60 * 60); // 1 hour
