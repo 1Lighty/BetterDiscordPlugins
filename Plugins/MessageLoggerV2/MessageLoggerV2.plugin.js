@@ -59,8 +59,8 @@ module.exports = class MessageLoggerV2 {
       const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion) || typeof global.isTab !== 'undefined';
       const iXenoLib = BdApi.Plugins.get('XenoLib');
       const iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
-      if (isOutOfDate(iXenoLib, '1.3.32')) XenoLibOutdated = true;
-      if (isOutOfDate(iZeresPluginLibrary, '1.2.27')) ZeresPluginLibraryOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.3.34')) XenoLibOutdated = true;
+      if (isOutOfDate(iZeresPluginLibrary, '1.2.28')) ZeresPluginLibraryOutdated = true;
     }
 
     if (!global.XenoLib || !global.ZeresPluginLibrary || global.DiscordJS || XenoLibOutdated || ZeresPluginLibraryOutdated) {
@@ -93,7 +93,7 @@ module.exports = class MessageLoggerV2 {
           href: "https://betterdiscord.net/ghdl?id=3169",
           target: "_blank"
         }, "Click here to download XenoLib")) : null));
-      if (global.ohgodohfuck) return;
+      if (!global.XenoLib && global.ohgodohfuck) return;
       if (!b || !i || !h) return console.error(`Missing components:${(b ? "" : " ModalStack") + (i ? "" : " ConfirmationModalComponent") + (h ? "" : "TextElement")}`), j();
       class k extends BdApi.React.PureComponent {
         constructor(a) {
