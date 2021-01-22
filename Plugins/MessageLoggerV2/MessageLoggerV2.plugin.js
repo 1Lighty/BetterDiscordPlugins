@@ -93,7 +93,7 @@ module.exports = class MessageLoggerV2 {
           href: "https://betterdiscord.net/ghdl?id=3169",
           target: "_blank"
         }, "Click here to download XenoLib")) : null));
-      if (!global.XenoLib && global.ohgodohfuck) return;
+      if (global.XenoLib && global.ohgodohfuck) return;
       if (!b || !i || !h) return console.error(`Missing components:${(b ? "" : " ModalStack") + (i ? "" : " ConfirmationModalComponent") + (h ? "" : "TextElement")}`), j();
       class k extends BdApi.React.PureComponent {
         constructor(a) {
