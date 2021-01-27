@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.65';
+    return '1.7.66';
   }
   getAuthor() {
     return 'Lighty';
@@ -169,9 +169,9 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'fixed',
+        title: 'Sorry',
         type: 'fixed',
-        items: ['Fixed settings not working', 'Fixed some periodic lag spikes']
+        items: ['Temporarily incapacitate the logger for Powercord until further fixes have been applied.']
       }
     ];
   }
@@ -291,6 +291,7 @@ module.exports = class MessageLoggerV2 {
       this._autoUpdateInterval = setInterval(_ => this.automaticallyUpdate(), 1000 * 60 * 60); // 1 hour
       this.automaticallyUpdate();
     }
+    if (this.__isPowerCord && !window.Untitled) return;
     if (this.settings.versionInfo !== this.getVersion() && this.settings.displayUpdateNotes) {
       // XenoLib.showChangelog(`${this.getName()} has been updated!`, this.getVersion(), this.getChanges());
       this.settings.versionInfo = this.getVersion();
