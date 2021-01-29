@@ -1,4 +1,7 @@
 # [CrashRecovery](https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery "CrashRecovery") Changelog
+### 1.0.3
+- Implemented fixes that allow patches to work properly on canary using Powercord.
+
 ### 1.0.2
 - Fixed error fetching responsible plugins sometimes.
 - Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.

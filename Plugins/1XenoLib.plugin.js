@@ -42,16 +42,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.34',
+      version: '1.3.35',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
     },
     changelog: [
       {
-        title: 'future proofing',
+        title: 'RIP BBD on Canary',
         type: 'fixed',
-        items: ['Implemented notifications proxy for Untitled client mod prealpha users.']
+        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
       }
     ],
     defaultConfig: [
@@ -200,6 +200,16 @@ module.exports = (() => {
     XenoLib.getClass.__warns = {};
     XenoLib.getSingleClass.__warns = {};
 
+    const rendererFunctionClass = (() => {
+      try {
+        const topContext = require('electron').webFrame.top.context;
+        if (topContext === window) return null;
+        return topContext.Function
+      } catch {
+        return null;
+      }
+    })();
+    const originalFunctionClass = Function;
     XenoLib.createSmartPatcher = patcher => {
       const createPatcher = patcher => {
         return (moduleToPatch, functionName, callback, options = {}) => {
@@ -208,8 +218,15 @@ module.exports = (() => {
           } catch (_) {
             return Logger.error(`Failed to patch ${functionName}`);
           }
+          if (rendererFunctionClass && origDef && !(origDef instanceof originalFunctionClass) && origDef instanceof rendererFunctionClass) window.Function = rendererFunctionClass;
           const unpatches = [];
-          unpatches.push(patcher(moduleToPatch, functionName, callback, options));
+          try {
+            unpatches.push(patcher(moduleToPatch, functionName, callback, options) || DiscordConstants.NOOP);
+          } catch (err) {
+            throw err;
+          } finally {
+            if (rendererFunctionClass) window.Function = originalFunctionClass;
+          }
           try {
             if (origDef && origDef.__isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
               /* do NOT patch a patch by ZLIb, that'd be bad and cause double items in context menus */

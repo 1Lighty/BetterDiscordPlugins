@@ -39,16 +39,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.11',
+      version: '1.0.12',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
+        title: 'RIP BBD on Canary',
         type: 'fixed',
-        items: ['Fixed not working on channels.']
+        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
       }
     ],
     defaultConfig: [
@@ -157,8 +157,10 @@ module.exports = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api], BasePlugin) => {
-    const { Settings, Utilities, WebpackModules, DiscordModules, ColorConverter, ReactComponents, Patcher, PluginUtilities, Logger, ReactTools, ModalStack } = Api;
+    const { Settings, Utilities, WebpackModules, DiscordModules, ColorConverter, ReactComponents, PluginUtilities, Logger, ReactTools, ModalStack } = Api;
     const { React, ChannelStore } = DiscordModules;
+
+    const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const ReactSpring = WebpackModules.getByProps('useTransition');
     const BadgesModule = WebpackModules.getByProps('NumberBadge');
@@ -557,7 +559,7 @@ module.exports = (() => {
       b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined'),
       c = BdApi.Plugins.get('ZeresPluginLibrary'),
       d = BdApi.Plugins.get('XenoLib');
-    b(c, '1.2.27') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.32') && (XenoLibOutdated = !0);
+    b(c, '1.2.27') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.35') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }

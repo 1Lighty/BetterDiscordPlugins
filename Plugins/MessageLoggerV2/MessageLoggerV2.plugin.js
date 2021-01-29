@@ -29,7 +29,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.66';
+    return '1.7.67';
   }
   getAuthor() {
     return 'Lighty';
@@ -59,7 +59,7 @@ module.exports = class MessageLoggerV2 {
       const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion) || typeof global.isTab !== 'undefined';
       const iXenoLib = BdApi.Plugins.get('XenoLib');
       const iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
-      if (isOutOfDate(iXenoLib, '1.3.34')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.3.35')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '1.2.28')) ZeresPluginLibraryOutdated = true;
     }
 
@@ -169,9 +169,9 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'Sorry',
+        title: 'RIP BBD on Canary',
         type: 'fixed',
-        items: ['Temporarily incapacitate the logger for Powercord until further fixes have been applied.']
+        items: ['Implemented fixes that allow patches to work properly on canary using Powercord. AKA plugin works now.']
       }
     ];
   }
@@ -291,7 +291,6 @@ module.exports = class MessageLoggerV2 {
       this._autoUpdateInterval = setInterval(_ => this.automaticallyUpdate(), 1000 * 60 * 60); // 1 hour
       this.automaticallyUpdate();
     }
-    if (this.__isPowerCord && !window.Untitled) return;
     if (this.settings.versionInfo !== this.getVersion() && this.settings.displayUpdateNotes) {
       // XenoLib.showChangelog(`${this.getName()} has been updated!`, this.getVersion(), this.getChanges());
       this.settings.versionInfo = this.getVersion();
@@ -460,10 +459,12 @@ module.exports = class MessageLoggerV2 {
       }
     }
 
+    this.Patcher = XenoLib.createSmartPatcher({ before: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.before(this.getName(), moduleToPatch, functionName, callback, options), instead: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.instead(this.getName(), moduleToPatch, functionName, callback, options), after: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.after(this.getName(), moduleToPatch, functionName, callback, options) });
+
     this.unpatches = [];
 
     this.unpatches.push(
-      ZeresPluginLibrary.Patcher.after(this.getName(), ZeresPluginLibrary.DiscordModules.UserStore, 'getUser', (_this, args, ret) => {
+      this.Patcher.after(ZeresPluginLibrary.DiscordModules.UserStore, 'getUser', (_this, args, ret) => {
         if (!ret && !args[1]) {
           const userId = args[0];
           const users = ZeresPluginLibrary.DiscordModules.UserStore.getUsers();
@@ -638,15 +639,14 @@ module.exports = class MessageLoggerV2 {
     this.autoBackupSaveInterupts = 0;
 
     this.unpatches.push(
-      ZeresPluginLibrary.Patcher.instead(
-        this.getName(),
+      this.Patcher.instead(
         ZeresPluginLibrary.WebpackModules.find(m => m.dispatch),
         'dispatch',
         (_, args, original) => this.onDispatchEvent(args, original)
       )
     );
     this.unpatches.push(
-      ZeresPluginLibrary.Patcher.instead(this.getName(), ZeresPluginLibrary.DiscordModules.MessageActions, 'startEditMessage', (_, args, original) => {
+      this.Patcher.instead(ZeresPluginLibrary.DiscordModules.MessageActions, 'startEditMessage', (_, args, original) => {
         const channelId = args[0];
         const messageId = args[1];
         if (this.deletedMessageRecord[channelId] && this.deletedMessageRecord[channelId].indexOf(messageId) !== -1) return;
@@ -797,14 +797,14 @@ module.exports = class MessageLoggerV2 {
     // );
 
     this.unpatches.push(
-      ZeresPluginLibrary.Patcher.instead(this.getName(), ZeresPluginLibrary.WebpackModules.getByDisplayName('TextAreaAutosize').prototype, 'focus', (thisObj, args, original) => {
+      this.Patcher.instead(ZeresPluginLibrary.WebpackModules.getByDisplayName('TextAreaAutosize').prototype, 'focus', (thisObj, args, original) => {
         if (this.menu.open) return;
         return original(...args);
       })
     );
 
     this.unpatches.push(
-      ZeresPluginLibrary.Patcher.instead(this.getName(), ZeresPluginLibrary.WebpackModules.getByDisplayName('LazyImage').prototype, 'getSrc', (thisObj, args, original) => {
+      this.Patcher.instead(ZeresPluginLibrary.WebpackModules.getByDisplayName('LazyImage').prototype, 'getSrc', (thisObj, args, original) => {
         let indx;
         if (((indx = thisObj.props.src.indexOf('?ML2=true')), indx !== -1)) return thisObj.props.src.substr(0, indx);
         return original(...args);
@@ -863,7 +863,7 @@ module.exports = class MessageLoggerV2 {
     if (this.settings.showOpenLogsButton) this.addOpenLogsButton();
 
     this.unpatches.push(
-      ZeresPluginLibrary.Patcher.instead(this.getName(), ZeresPluginLibrary.DiscordModules.MessageActions, 'deleteMessage', (_, args, original) => {
+      this.Patcher.instead(ZeresPluginLibrary.DiscordModules.MessageActions, 'deleteMessage', (_, args, original) => {
         const messageId = args[1];
         if (this.messageRecord[messageId] && this.messageRecord[messageId].delete_data) return;
         this.localDeletes.push(messageId);
@@ -873,7 +873,7 @@ module.exports = class MessageLoggerV2 {
     );
 
     this.unpatches.push(
-      ZeresPluginLibrary.Patcher.instead(this.getName(), ZeresPluginLibrary.DiscordModules.MessageStore, 'getLastEditableMessage', (_this, [channelId]) => {
+      this.Patcher.instead(ZeresPluginLibrary.DiscordModules.MessageStore, 'getLastEditableMessage', (_this, [channelId]) => {
         const me = ZeresPluginLibrary.DiscordAPI.currentUser.id;
         return _this
           .getMessages(channelId)
@@ -928,7 +928,7 @@ module.exports = class MessageLoggerV2 {
     if (this.ChannelContextMenuPatch) tryUnpatch(this.ChannelContextMenuPatch);
     if (this.GuildContextMenuPatch) tryUnpatch(this.GuildContextMenuPatch);
     try {
-      ZeresPluginLibrary.Patcher.unpatchAll(this.getName());
+      this.Patcher.unpatchAll();
     } catch (e) { }
     this.forceReloadMessages();
     // if (this.keybindListener) this.keybindListener.destroy();
@@ -2924,7 +2924,7 @@ module.exports = class MessageLoggerV2 {
     const MemoMessage = ZeresPluginLibrary.WebpackModules.find(m => m.type && m.type.toString().indexOf('useContextMenuMessage') !== -1 || m.__powercordOriginal_type && m.__powercordOriginal_type.toString().indexOf('useContextMenuMessage') !== -1);
     if (!MessageContent || !MemoMessage) return XenoLib.Notifications.error('Failed to patch message components, edit history and deleted tint will not show!', { timeout: 0 });
     this.unpatches.push(
-      ZeresPluginLibrary.Patcher.after(this.getName(), MessageContent, 'type', (_, [props], ret) => {
+      this.Patcher.after(MessageContent, 'type', (_, [props], ret) => {
         const forceUpdate = ZeresPluginLibrary.DiscordModules.React.useState()[1];
         ZeresPluginLibrary.DiscordModules.React.useEffect(
           function () {
@@ -3001,7 +3001,7 @@ module.exports = class MessageLoggerV2 {
       })
     );
     this.unpatches.push(
-      ZeresPluginLibrary.Patcher.after(this.getName(), MemoMessage, 'type', (_, [props], ret) => {
+      this.Patcher.after(MemoMessage, 'type', (_, [props], ret) => {
         const forceUpdate = ZeresPluginLibrary.DiscordModules.React.useState()[1];
         ZeresPluginLibrary.DiscordModules.React.useEffect(
           function () {
@@ -3025,7 +3025,7 @@ module.exports = class MessageLoggerV2 {
     const Message = ZeresPluginLibrary.WebpackModules.getByIndex(ZeresPluginLibrary.WebpackModules.getIndex(m => m.default && (m.default.displayName === 'Message' || (m.default.__originalFunction && m.default.__originalFunction.displayName === 'Message'))));
     if (Message) {
       this.unpatches.push(
-        ZeresPluginLibrary.Patcher.after(this.getName(), Message, 'default', (_, [props], ret) => {
+        this.Patcher.after(Message, 'default', (_, [props], ret) => {
           if (!props.__MLV2_deleteTime) return;
           const oRef = ret.ref;
           ret.ref = e => {
@@ -3044,7 +3044,7 @@ module.exports = class MessageLoggerV2 {
   forceReloadMessages() {
     const instance = ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(document.querySelector('.chat-3bRxxu .content-yTz4x3')), e => e && e.constructor && e.constructor.displayName === 'ChannelChat', { walkable: ['child', 'stateNode'] });
     if (!instance) return;
-    const unpatch = ZeresPluginLibrary.Patcher.after(this.getName() + '_RERENDER', instance, 'render', (_this, _, ret) => {
+    const unpatch = this.Patcher.after(instance, 'render', (_this, _, ret) => {
       unpatch();
       if (!ret) return;
       ret.key = ZeresPluginLibrary.DiscordModules.KeyGenerator();
@@ -4111,10 +4111,10 @@ module.exports = class MessageLoggerV2 {
   /* ==================================================-|| END MENU ||-================================================== */
   /* ==================================================-|| START CONTEXT MENU ||-================================================== */
   patchContextMenus() {
-    const Patcher = XenoLib.createSmartPatcher({ before: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.before(this.getName(), moduleToPatch, functionName, callback, options), instead: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.instead(this.getName(), moduleToPatch, functionName, callback, options), after: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.after(this.getName(), moduleToPatch, functionName, callback, options) });
+    const Patcher = XenoLib.createSmartPatcher({ before: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.before(this.getName(), moduleToPatch, functionName, callback, options), instead: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.instead(this.getName(), moduleToPatch, functionName, callback, options), after: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.after(this.getName(), moduleToPatch, functionName, callback, options), unpatchAll: () => ZeresPluginLibrary.Patcher.unpatchAll(this.getName()) });
     const WebpackModules = ZeresPluginLibrary.WebpackModules;
     this.unpatches.push(
-      Patcher.after(
+      this.Patcher.after(
         WebpackModules.find(({ default: defaul }) => defaul && defaul.displayName === 'NativeImageContextMenu'),
         'default',
         (_, [props], ret) => {
@@ -4294,7 +4294,7 @@ module.exports = class MessageLoggerV2 {
       )
     );
     this.unpatches.push(
-      Patcher.after(
+      this.Patcher.after(
         WebpackModules.find(({ default: defaul }) => defaul && defaul.displayName === 'MessageContextMenu'),
         'default',
         (_, [props], ret) => {
@@ -4522,7 +4522,7 @@ module.exports = class MessageLoggerV2 {
     };
 
     this.unpatches.push(
-      Patcher.after(
+      this.Patcher.after(
         WebpackModules.find((e) => e && (e.default.displayName === 'ChannelListTextChannelContextMenu' && e.default.toString().search(/\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w\),\w=\(0,\w\.default\)\(\w\.id\)/) !== -1 || e.__powercordOriginal_default.displayName === 'ChannelListTextChannelContextMenu' && e.__powercordOriginal_default.toString().search(/\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w\),\w=\(0,\w\.default\)\(\w\.id\)/) !== -1)),
         'default',
         (_, [props], ret) => {
@@ -4550,7 +4550,7 @@ module.exports = class MessageLoggerV2 {
     );
 
     this.unpatches.push(
-      Patcher.after(
+      this.Patcher.after(
         WebpackModules.find(({ default: defaul }) => defaul && defaul.displayName === 'GuildContextMenu'),
         'default',
         (_, [props], ret) => {
@@ -4584,7 +4584,7 @@ module.exports = class MessageLoggerV2 {
     );
 
     this.unpatches.push(
-      Patcher.after(
+      this.Patcher.after(
         WebpackModules.find(({ default: defaul }) => defaul && defaul.displayName === 'GuildChannelUserContextMenu'),
         'default',
         (_, [props], ret) => {
@@ -4617,7 +4617,7 @@ module.exports = class MessageLoggerV2 {
     );
 
     this.unpatches.push(
-      Patcher.after(
+      this.Patcher.after(
         WebpackModules.find(({ default: defaul }) => defaul && defaul.displayName === 'DMUserContextMenu'),
         'default',
         (_, [props], ret) => {
@@ -4659,7 +4659,7 @@ module.exports = class MessageLoggerV2 {
     );
 
     this.unpatches.push(
-      Patcher.after(
+      this.Patcher.after(
         WebpackModules.find(({ default: defaul }) => defaul && defaul.displayName === 'GroupDMContextMenu'),
         'default',
         (_, [props], ret) => {

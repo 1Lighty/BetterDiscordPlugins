@@ -41,24 +41,74 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.2',
+      version: '1.1.3',
       description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
     },
     changelog: [
       {
-        title: 'added',
-        type: 'added',
-        items: ['Fixed not being able to send multiple files with identical names (woops).\nNever noticed this bug due to another plugin randomizing all uploaded filenames, my bad!']
+        title: 'RIP BBD on Canary',
+        type: 'fixed',
+        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
       }
     ]
   };
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { Utilities, WebpackModules, DiscordModules, ReactComponents, Logger, Patcher, PluginUtilities } = Api;
+    const { Utilities, WebpackModules, DiscordModules, ReactComponents, Logger, PluginUtilities } = Api;
     const { ChannelStore, DiscordConstants, Dispatcher, Permissions } = DiscordModules;
+
+    const rendererFunctionClass = (() => {
+      try {
+        const topContext = require('electron').webFrame.top.context;
+        if (topContext === window) return null;
+        return topContext.Function
+      } catch {
+        return null;
+      }
+    })();
+    const originalFunctionClass = Function;
+    function createSmartPatcher(patcher) {
+      const createPatcher = patcher => {
+        return (moduleToPatch, functionName, callback, options = {}) => {
+          try {
+            var origDef = moduleToPatch[functionName];
+          } catch (_) {
+            return Logger.error(`Failed to patch ${functionName}`);
+          }
+          if (rendererFunctionClass && origDef && !(origDef instanceof originalFunctionClass) && origDef instanceof rendererFunctionClass) window.Function = rendererFunctionClass;
+          const unpatches = [];
+          try {
+            unpatches.push(patcher(moduleToPatch, functionName, callback, options) || DiscordConstants.NOOP);
+          } catch (err) {
+            throw err;
+          } finally {
+            if (rendererFunctionClass) window.Function = originalFunctionClass;
+          }
+          try {
+            if (origDef && origDef.__isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
+              /* do NOT patch a patch by ZLIb, that'd be bad and cause double items in context menus */
+              if ((Utilities.getNestedProp(ZeresPluginLibrary, 'Patcher.patches') || []).findIndex(e => e.module === moduleToPatch) !== -1 && moduleToPatch.BDFDBpatch[functionName].originalMethod.__originalFunction) return;
+              unpatches.push(patcher(moduleToPatch.BDFDBpatch[functionName], 'originalMethod', callback, options));
+            }
+          } catch (err) {
+            Logger.stacktrace('Failed to patch BDFDB patches', err);
+          }
+          return function unpatch() {
+            unpatches.forEach(e => e());
+          };
+        };
+      };
+      return Object.assign({}, patcher, {
+        before: createPatcher(patcher.before),
+        instead: createPatcher(patcher.instead),
+        after: createPatcher(patcher.after)
+      });
+    };
+
+    const Patcher = createSmartPatcher(Api.Patcher);
 
     const _ = WebpackModules.getByProps('bindAll', 'debounce');
     const Upload = (WebpackModules.getByProps('Upload') || {}).Upload;

@@ -37,16 +37,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.5.2',
+      version: '1.5.3',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
+        title: 'RIP BBD on Canary',
         type: 'fixed',
-        items: ['Fixed chat rescale (beta feature) causing embed images to go beyond their borders.', 'Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.']
+        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
       }
     ],
     defaultConfig: [
@@ -214,8 +214,10 @@ module.exports = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, Patcher, PluginUtilities, PluginUpdater, Structs } = Api;
+    const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, PluginUtilities, PluginUpdater, Structs } = Api;
     const { React, ReactDOM, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, MessageStore, APIModule, NavigationUtils, SelectedChannelStore } = DiscordModules;
+
+    const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const ChannelStore = WebpackModules.getByProps('getChannel', 'getDMFromUserId');
 
@@ -2078,7 +2080,7 @@ module.exports = (() => {
       n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
       e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '1.2.27') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.32') && (XenoLibOutdated = !0);
+    n(e, '1.2.27') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.35') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }

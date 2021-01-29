@@ -1,4 +1,7 @@
 # [UnreadBadgesRedux](https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux "UnreadBadgesRedux") Changelog
+### 1.0.12
+- Implemented fixes that allow patches to work properly on canary using Powercord.
+
 ### 1.0.11
 - Fixed not working on channels.
 

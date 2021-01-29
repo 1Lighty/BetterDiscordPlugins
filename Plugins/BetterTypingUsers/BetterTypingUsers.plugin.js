@@ -41,16 +41,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.2',
+      version: '1.0.3',
       description: 'Replaces "Several people are typing" with who is actually typing, plus "x others" if it can\'t fit. Number of shown people typing can be changed.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterTypingUsers/BetterTypingUsers.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
+        title: 'RIP BBD on Canary',
         type: 'fixed',
-        items: ['Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.']
+        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
       }
     ],
     defaultConfig: [
@@ -83,8 +83,58 @@ module.exports = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, Patcher, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
+    const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
     const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, TextElement, FlexChild, PopoutOpener, Textbox, RelationshipStore, UserSettingsStore } = DiscordModules;
+
+    const rendererFunctionClass = (() => {
+      try {
+        const topContext = require('electron').webFrame.top.context;
+        if (topContext === window) return null;
+        return topContext.Function
+      } catch {
+        return null;
+      }
+    })();
+    const originalFunctionClass = Function;
+    function createSmartPatcher(patcher) {
+      const createPatcher = patcher => {
+        return (moduleToPatch, functionName, callback, options = {}) => {
+          try {
+            var origDef = moduleToPatch[functionName];
+          } catch (_) {
+            return Logger.error(`Failed to patch ${functionName}`);
+          }
+          if (rendererFunctionClass && origDef && !(origDef instanceof originalFunctionClass) && origDef instanceof rendererFunctionClass) window.Function = rendererFunctionClass;
+          const unpatches = [];
+          try {
+            unpatches.push(patcher(moduleToPatch, functionName, callback, options) || DiscordConstants.NOOP);
+          } catch (err) {
+            throw err;
+          } finally {
+            if (rendererFunctionClass) window.Function = originalFunctionClass;
+          }
+          try {
+            if (origDef && origDef.__isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
+              /* do NOT patch a patch by ZLIb, that'd be bad and cause double items in context menus */
+              if ((Utilities.getNestedProp(ZeresPluginLibrary, 'Patcher.patches') || []).findIndex(e => e.module === moduleToPatch) !== -1 && moduleToPatch.BDFDBpatch[functionName].originalMethod.__originalFunction) return;
+              unpatches.push(patcher(moduleToPatch.BDFDBpatch[functionName], 'originalMethod', callback, options));
+            }
+          } catch (err) {
+            Logger.stacktrace('Failed to patch BDFDB patches', err);
+          }
+          return function unpatch() {
+            unpatches.forEach(e => e());
+          };
+        };
+      };
+      return Object.assign({}, patcher, {
+        before: createPatcher(patcher.before),
+        instead: createPatcher(patcher.instead),
+        after: createPatcher(patcher.after)
+      });
+    };
+
+    const Patcher = createSmartPatcher(Api.Patcher);
 
     const NameUtils = WebpackModules.getByProps('getName');
 

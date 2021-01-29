@@ -1,4 +1,7 @@
 # [MessageLoggerV2](https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2 "MessageLoggerV2") Changelog
+### 1.7.65 && 1.7.66
+- Implemented fixes that allow patches to work properly on canary using Powercord.
+
 ### 1.7.64
 - Fixed settings not working
 - Fixed some periodic lag spikes

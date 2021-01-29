@@ -1,5 +1,8 @@
 # [MultiUploads](https://1lighty.github.io/BetterDiscordStuff/?plugin=MultiUploads "MultiUploads") Changelog
 
+### 1.1.3
+- Implemented fixes that allow patches to work properly on canary using Powercord.
+
 ### 1.1.2
 - Fixed not being able to send multiple files with identical names (woops).
 Never noticed this bug due to another plugin randomizing all uploaded filenames, my bad!

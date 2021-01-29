@@ -1,6 +1,9 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
 
-### 1.5.
+### 1.5.3
+- Implemented fixes that allow patches to work properly on canary using Powercord.
+
+### 1.5.2
 - Fixed chat rescale (beta feature) causing embed images to go beyond their borders.
 - Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.
 

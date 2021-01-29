@@ -39,16 +39,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.2',
+      version: '1.0.3',
       description: 'In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
     },
     changelog: [
       {
-        title: 'Fixed',
+        title: 'RIP BBD on Canary',
         type: 'fixed',
-        items: ['Fixed error fetching responsible plugins sometimes.', 'Fixed issue with Zere not consistently coding BdApi.getPlugin between BBD and BBD Beta.']
+        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
       }
     ],
     defaultConfig: [
@@ -64,8 +64,10 @@ module.exports = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api], BasePlugin) => {
-    const { Logger, Utilities, WebpackModules, DiscordModules, Patcher, PluginUtilities, ReactTools, PluginUpdater } = Api;
+    const { Logger, Utilities, WebpackModules, DiscordModules, PluginUtilities, ReactTools, PluginUpdater } = Api;
     const { React, Dispatcher, FlexChild: Flex, GuildStore } = DiscordModules;
+
+    const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const DelayedCall = (WebpackModules.getByProps('DelayedCall') || {}).DelayedCall;
     const ElectronDiscordModule = WebpackModules.getByProps('cleanupDisplaySleep') || { cleanupDisplaySleep: DiscordModules.DiscordConstants.NOOP };
@@ -460,7 +462,7 @@ module.exports = (() => {
       b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined'),
       c = BdApi.Plugins.get('ZeresPluginLibrary'),
       d = BdApi.Plugins.get('XenoLib');
-    b(c, '1.2.27') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.32') && (XenoLibOutdated = !0);
+    b(c, '1.2.27') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.35') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }
