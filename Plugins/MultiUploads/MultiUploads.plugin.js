@@ -41,7 +41,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.3',
+      version: '1.1.4',
       description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
@@ -50,7 +50,7 @@ module.exports = (() => {
       {
         title: 'RIP BBD on Canary',
         type: 'fixed',
-        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
+        items: ['More canary fixes.']
       }
     ]
   };
@@ -214,7 +214,7 @@ module.exports = (() => {
             else _this._handleError(e.body && e.body.code)
           }, _ => _this._handleError());
           const { xhr } = req;
-          if (xhr.upload) xhr.upload.onprogress = _this._handleXHRProgress;
+          if (xhr.upload) xhr.upload.onprogress = (...props) => _this._handleXHRProgress(...props);
           xhr.addEventListener('progress', _this._handleXHRProgress, false);
           _this._handleStart(_ => req.abort());
         })

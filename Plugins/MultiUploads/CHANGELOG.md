@@ -1,5 +1,8 @@
 # [MultiUploads](https://1lighty.github.io/BetterDiscordStuff/?plugin=MultiUploads "MultiUploads") Changelog
 
+### 1.1.4
+- More canary fixes.
+
 ### 1.1.3
 - Implemented fixes that allow patches to work properly on canary using Powercord.
 
