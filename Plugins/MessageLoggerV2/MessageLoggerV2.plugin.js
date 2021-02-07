@@ -1586,7 +1586,8 @@ module.exports = class MessageLoggerV2 {
     // saveData/setPluginData is synchronous, can get slow with bigger files
     if (!this.handleDataSaving.errorPageClass) this.handleDataSaving.errorPageClass = '.' + XenoLib.getClass('errorPage');
     /* refuse saving on error page */
-    if (!this.messageRecord || !Object.keys(this.messageRecord).length || document.querySelector(this.handleDataSaving.errorPageClass)) return; /* did we crash? */
+    if (!this.messageRecord || document.querySelector(this.handleDataSaving.errorPageClass)) return; /* did we crash? */
+    if (!Object.keys(this.messageRecord).length) return BdApi.deleteData(this.getName() + 'Data', 'data');
     const callback = err => {
       if (err) {
         XenoLib.Notifications.error('There has been an error saving the data file');
