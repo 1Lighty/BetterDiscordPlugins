@@ -1,5 +1,8 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
 
+### 1.5.4
+- Fixed minor issue of not being able to click out of zoom when using scroll to zoom or click to zoom on powercord.
+
 ### 1.5.3
 - Implemented fixes that allow patches to work properly on canary using Powercord.
 

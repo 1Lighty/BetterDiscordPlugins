@@ -37,16 +37,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.5.3',
+      version: '1.5.4',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'RIP BBD on Canary',
+        title: 'Fixed',
         type: 'fixed',
-        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
+        items: ['Fixed minor issue of not being able to click out of zoom when using scroll to zoom or click to zoom on powercord (issue should be fixed by PC, but it took too long so here we are).']
       }
     ],
     defaultConfig: [
@@ -557,7 +557,8 @@ module.exports = (() => {
                       style: {
                         opacity: ea.opacity
                       },
-                      className: 'BIV-zoom-backdrop'
+                      className: 'BIV-zoom-backdrop',
+                      onClick: this.handleMouseDown
                     }),
                     this.renderLens(ea, {
                       imgContainerLeft: this._controller.springs.panelX,
