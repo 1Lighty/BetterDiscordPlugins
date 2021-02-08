@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.5.4',
+      version: '1.5.5',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -558,7 +558,7 @@ module.exports = (() => {
                         opacity: ea.opacity
                       },
                       className: 'BIV-zoom-backdrop',
-                      onClick: this.handleMouseDown
+                      onMouseDown: this.handleMouseDown
                     }),
                     this.renderLens(ea, {
                       imgContainerLeft: this._controller.springs.panelX,
