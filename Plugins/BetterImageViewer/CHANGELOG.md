@@ -1,5 +1,11 @@
 # [BetterImageViewer](https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer "BetterImageViewer") Changelog
 
+### 1.5.6
+- Fixed not being able to search, open image and then navigate thru images that match that search.
+
+### 1.5.5
+- Fixed minor issue of not being able to click out of zoom when using scroll to zoom or click to zoom on powercord (issue should be fixed by PC, but it took too long so here we are).
+
 ### 1.5.4
 - Fixed minor issue of not being able to click out of zoom when using scroll to zoom or click to zoom on powercord.
 

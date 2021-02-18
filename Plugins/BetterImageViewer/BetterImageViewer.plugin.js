@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.5.5',
+      version: '1.5.6',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -46,7 +46,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed minor issue of not being able to click out of zoom when using scroll to zoom or click to zoom on powercord (issue should be fixed by PC, but it took too long so here we are).']
+        items: ['Fixed not being able to search, open image and then navigate thru images that match that search.']
       }
     ],
     defaultConfig: [
@@ -1643,8 +1643,8 @@ module.exports = (() => {
           if (_this.onZoom.__BIV_patched !== patchKey) {
             _this.onZoom = (e, n) => {
               let isSearch = e.target;
-              while (isSearch && typeof isSearch.className === 'string' && isSearch.className.indexOf('searchResultMessage') === -1) isSearch = isSearch.parentElement;
-              isSearch = !!isSearch;
+              while (isSearch && typeof isSearch.className === 'string' && isSearch.className.indexOf('searchResult') === -1) isSearch = isSearch.parentElement;
+              isSearch = isSearch && typeof isSearch.className === 'string' && isSearch.className.indexOf('searchResult') !== -1;
               e.preventDefault();
               if (e.currentTarget instanceof HTMLElement) e.currentTarget.blur();
               e = null;
@@ -1947,7 +1947,7 @@ module.exports = (() => {
         const SEARCH_SIDEBAR = 0.3601756956193265;
         const MEMBERS_SIDEBAR = 0.49048316246120055;
         Patcher.instead(LazyImage.prototype, 'handleSidebarChange', (_this, [forced]) => {
-          if (!this.settings.chat.resize) return;
+          if (!this.settings.chat.resize || !SectionStore) return;
           const { state } = _this;
           if (!currentChannel()) {
             state.__BIV_sidebarMultiplier = null;
@@ -1967,14 +1967,14 @@ module.exports = (() => {
             return;
           }
           _this.handleSidebarChange = _this.handleSidebarChange.bind(_this);
-          SectionStore.addChangeListener(_this.handleSidebarChange);
+          if (SectionStore) SectionStore.addChangeListener(_this.handleSidebarChange);
         });
         Patcher.after(LazyImage.prototype, 'componentWillUnmount', _this => {
           if (!_this.handleSidebarChange) return;
-          SectionStore.removeChangeListener(_this.handleSidebarChange);
+          if (SectionStore) SectionStore.removeChangeListener(_this.handleSidebarChange);
         });
         Patcher.before(LazyImage.prototype, 'getRatio', _this => {
-          if (!this.settings.chat.resize || _this.props.__BIV_embed) return;
+          if ((!this.settings.chat.resize || !SectionStore) || _this.props.__BIV_embed) return;
           if (!_this.handleSidebarChange || typeof _this.props.__BIV_index !== 'undefined' /*  || _this.props.__BIV_isVideo */ || (_this.props.className && _this.props.className.indexOf('embedThumbnail') !== -1)) return;
           if (typeof _this.state.__BIV_sidebarType === 'undefined') _this.handleSidebarChange(true);
           if (_this.state.__BIV_sidebarMultiplier === null) return;
