@@ -24,6 +24,7 @@
 // special edited message https://i.clouds.tf/guli/mric.png
 // modal for checking which servers/channels/users are blacklisted/whitelisted
 // option to show all hidden
+// see? https://i.imgur.com/BjE2o14.png
 module.exports = class MessageLoggerV2 {
   getName() {
     return 'MessageLoggerV2';
