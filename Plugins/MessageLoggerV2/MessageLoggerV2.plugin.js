@@ -24,13 +24,12 @@
 // special edited message https://i.clouds.tf/guli/mric.png
 // modal for checking which servers/channels/users are blacklisted/whitelisted
 // option to show all hidden
-// see? https://i.imgur.com/BjE2o14.png
 module.exports = class MessageLoggerV2 {
   getName() {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.67';
+    return '1.7.68';
   }
   getAuthor() {
     return 'Lighty';
@@ -170,9 +169,9 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'RIP BBD on Canary',
+        title: 'RIP BBD on Canary and PTB',
         type: 'fixed',
-        items: ['Implemented fixes that allow patches to work properly on canary using Powercord. AKA plugin works now.']
+        items: ['Fixed not working on canary.']
       }
     ];
   }
@@ -293,7 +292,7 @@ module.exports = class MessageLoggerV2 {
       this.automaticallyUpdate();
     }
     if (this.settings.versionInfo !== this.getVersion() && this.settings.displayUpdateNotes) {
-      // XenoLib.showChangelog(`${this.getName()} has been updated!`, this.getVersion(), this.getChanges());
+      XenoLib.showChangelog(`${this.getName()} has been updated!`, this.getVersion(), this.getChanges());
       this.settings.versionInfo = this.getVersion();
       this.saveSettings();
       settingsChanged = false;
@@ -3024,7 +3023,13 @@ module.exports = class MessageLoggerV2 {
         ret.props.__MLV2_deleteTime = record.delete_data.time;
       })
     );
-    const Message = ZeresPluginLibrary.WebpackModules.getByIndex(ZeresPluginLibrary.WebpackModules.getIndex(m => m.default && (m.default.displayName === 'Message' || (m.default.__originalFunction && m.default.__originalFunction.displayName === 'Message'))));
+    const Message = ZLibrary.WebpackModules.getModule(e => {
+      if (!e) return false;
+      const def = (e.__powercordOriginal_default || e.default);
+      if (!def) return false;
+      const str = def.toString();
+      return str.indexOf('childrenRepliedMessage') !== -1 && str.indexOf('childrenSystemMessage') !== -1;
+    });
     if (Message) {
       this.unpatches.push(
         this.Patcher.after(Message, 'default', (_, [props], ret) => {
