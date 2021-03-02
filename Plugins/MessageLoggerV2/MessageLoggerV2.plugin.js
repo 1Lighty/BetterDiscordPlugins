@@ -172,6 +172,11 @@ module.exports = class MessageLoggerV2 {
         title: 'RIP BBD on Canary and PTB',
         type: 'fixed',
         items: ['Fixed not working on canary.']
+      },
+      {
+        title: 'Meow',
+        type: 'added',
+        items: ['Avkhy was here.']
       }
     ];
   }
