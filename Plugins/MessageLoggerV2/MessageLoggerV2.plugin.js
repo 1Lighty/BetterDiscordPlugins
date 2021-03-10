@@ -24,6 +24,7 @@
 // special edited message https://i.clouds.tf/guli/mric.png
 // modal for checking which servers/channels/users are blacklisted/whitelisted
 // option to show all hidden
+if (!globalThis.jQuery) globalThis.jQuery = class JQuery { }; // zere bad lol
 module.exports = class MessageLoggerV2 {
   getName() {
     return 'MessageLoggerV2';
@@ -811,7 +812,7 @@ module.exports = class MessageLoggerV2 {
     this.unpatches.push(
       this.Patcher.instead(ZeresPluginLibrary.WebpackModules.getByDisplayName('LazyImage').prototype, 'getSrc', (thisObj, args, original) => {
         let indx;
-        if (((indx = thisObj.props.src.indexOf('?ML2=true')), indx !== -1)) return thisObj.props.src.substr(0, indx);
+        if (thisObj?.props?.src && ((indx = thisObj.props.src.indexOf('?ML2=true')), indx !== -1)) return thisObj.props.src.substr(0, indx);
         return original(...args);
       })
     );
