@@ -37,7 +37,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.5.7',
+      version: '1.5.8',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -1411,7 +1411,7 @@ module.exports = (() => {
         if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         if (PluginBrokenFatal) return this._startFailure('Plugin is in a broken state.');
         if (NoImageZoom) this._startFailure('Image zoom is broken.');
-        if (powercord?.pluginManager?.get('image-tools')?.ready) XenoLib.Notifications.warning(`[${this.getName()}] **Image Tools** may conflict and cause issues, it is unsupported.`);
+        if (window.powercord?.pluginManager?.get('image-tools')?.ready) XenoLib.Notifications.warning(`[${this.getName()}] **Image Tools** may conflict and cause issues, it is unsupported.`);
         if (this.settings.zoom.enabled && !NoImageZoom && BdApi.Plugins.get('ImageZoom') && BdApi.Plugins.isEnabled('ImageZoom')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageZoom** while having the zoom function in **${this.name}** enabled is unsupported! Please disable one or the other.`, { timeout: 15000 });
         if (BdApi.Plugins.get('Better Image Popups') && BdApi.Plugins.isEnabled('Better Image Popups')) XenoLib.Notifications.warning(`[**${this.name}**] Using **Better Image Popups** with **${this.name}** is completely unsupported and will cause issues. **${this.name}** fully supersedes it in terms of features as well, please either disable **Better Image Popups** or delete it to avoid issues.`, { timeout: 0 });
         if (this.settings.zoom.enabled && BdApi.Plugins.get('ImageGallery') && BdApi.Plugins.isEnabled('ImageGallery')) XenoLib.Notifications.warning(`[**${this.name}**] Using **ImageGallery** with **${this.name}** is completely unsupported and will cause issues, mainly, zoom breaks. **${this.name}** fully supersedes it in terms of features as well, please either disable **ImageGallery** or delete it to avoid issues.`, { timeout: 0 });
