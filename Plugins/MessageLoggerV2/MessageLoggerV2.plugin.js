@@ -24,13 +24,13 @@
 // special edited message https://i.clouds.tf/guli/mric.png
 // modal for checking which servers/channels/users are blacklisted/whitelisted
 // option to show all hidden
-if (!globalThis.jQuery) globalThis.jQuery = class JQuery { }; // zere bad lol
+
 module.exports = class MessageLoggerV2 {
   getName() {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.68';
+    return '1.7.69';
   }
   getAuthor() {
     return 'Lighty';
