@@ -170,21 +170,29 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'RIP BBD on Canary and PTB',
+        title: '#justblamezeretf',
         type: 'fixed',
-        items: ['Fixed not working on canary.']
+        items: ['Fixed what wasn\'t even broken to begin with until Zere decided to exist for once and break standards for no reason.', 'Fixed auto update being broke.']
       },
       {
         title: 'Meow',
         type: 'added',
-        items: ['Avkhy was here.']
+        items: ['Meow']
       }
     ];
   }
   initialize() {
     if (this.__started) return XenoLib.Notifications.warning(`[**${this.getName()}**] Tried to start twice..`, { timeout: 0 });
     this.__started = true;
-    XenoLib.changeName(__filename, 'MessageLoggerV2'); /* To everyone who renames plugins: FUCK YOU! */
+    /*
+     * why are we letting Zere, the braindead American let control BD when he can't even
+     * fucking read clearly documented and well known standards, such as __filename being
+     * the files full fucking path and not just the filename itself, IS IT REALLY SO HARD
+     * TO FUCKING READ?! https://nodejs.org/api/modules.html#modules_filename
+     */
+    const _zerecantcode_path = require('path');
+    const theActualFileNameZere = _zerecantcode_path.join(__dirname, _zerecantcode_path.basename(__filename));
+    XenoLib.changeName(theActualFileNameZere, 'MessageLoggerV2'); /* To everyone who renames plugins: FUCK YOU! */
     try {
       ZeresPluginLibrary.WebpackModules.getByProps('openModal', 'hasModalOpen').closeModal(`${this.getName()}_DEP_MODAL`);
     } catch (e) { }
@@ -974,7 +982,15 @@ module.exports = class MessageLoggerV2 {
           }
           if (!ZeresPluginLibrary.PluginUpdater.defaultComparator(this.getVersion(), ZeresPluginLibrary.PluginUpdater.defaultVersioner(body))) return;
           const fs = require('fs');
-          fs.writeFileSync(__filename, body);
+          /*
+           * why are we letting Zere, the braindead American let control BD when he can't even
+           * fucking read clearly documented and well known standards, such as __filename being
+           * the files full fucking path and not just the filename itself, IS IT REALLY SO HARD
+           * TO FUCKING READ?! https://nodejs.org/api/modules.html#modules_filename
+           */
+          const _zerecantcode_path = require('path');
+          const theActualFileNameZere = _zerecantcode_path.join(__dirname, _zerecantcode_path.basename(__filename));
+          fs.writeFileSync(theActualFileNameZere, body);
           XenoLib.Notifications.success(`[${this.getName()}] Successfully updated!`, { timeout: 0 });
           if (BdApi.isSettingEnabled('fork-ps-5') && !this.__isPowerCord) return;
           BdApi.Plugins.reload(this.getName());

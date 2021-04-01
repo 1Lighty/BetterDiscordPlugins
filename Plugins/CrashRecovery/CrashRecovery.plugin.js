@@ -87,7 +87,15 @@ module.exports = (() => {
     return class CrashRecovery extends BasePlugin(Plugin) {
       constructor() {
         super();
-        XenoLib.changeName(__filename, 'CrashRecovery');
+        /*
+         * why are we letting Zere, the braindead American let control BD when he can't even
+         * fucking read clearly documented and well known standards, such as __filename being
+         * the files full fucking path and not just the filename itself, IS IT REALLY SO HARD
+         * TO FUCKING READ?! https://nodejs.org/api/modules.html#modules_filename
+         */
+        const _zerecantcode_path = require('path');
+        const theActualFileNameZere = _zerecantcode_path.join(__dirname, _zerecantcode_path.basename(__filename));
+        XenoLib.changeName(theActualFileNameZere, 'CrashRecovery');
         this._startFailure = message => {
           PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
           XenoLib.Notifications.error(`[**${this.name}**] ${message} Please update it, press CTRL + R, or ${GuildStore.getGuild(XenoLib.supportServerId) ? 'go to <#639665366380838924>' : '[join my support server](https://discord.gg/NYvWdN5)'} for further assistance.`, { timeout: 0 });

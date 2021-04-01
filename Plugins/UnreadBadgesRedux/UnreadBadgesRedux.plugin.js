@@ -235,7 +235,15 @@ module.exports = (() => {
     return class UnreadBadgesRedux extends BasePlugin(Plugin) {
       constructor() {
         super();
-        XenoLib.changeName(__filename, 'UnreadBadgesRedux');
+        /*
+         * why are we letting Zere, the braindead American let control BD when he can't even
+         * fucking read clearly documented and well known standards, such as __filename being
+         * the files full fucking path and not just the filename itself, IS IT REALLY SO HARD
+         * TO FUCKING READ?! https://nodejs.org/api/modules.html#modules_filename
+         */
+        const _zerecantcode_path = require('path');
+        const theActualFileNameZere = _zerecantcode_path.join(__dirname, _zerecantcode_path.basename(__filename));
+        XenoLib.changeName(theActualFileNameZere, 'UnreadBadgesRedux');
         const oOnStart = this.onStart.bind(this);
         this.onStart = () => {
           try {

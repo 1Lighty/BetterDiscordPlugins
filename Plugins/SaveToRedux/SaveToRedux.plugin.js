@@ -288,6 +288,8 @@ module.exports = (() => {
       }
     }
 
+    const { Buffer } = require('buffer');
+
     /*
      * I DO NOT OWN THESE TWO
      */
@@ -362,7 +364,15 @@ module.exports = (() => {
       constructor() {
         super();
         XenoLib.DiscordUtils.bindAll(this, ['formatFilename']);
-        XenoLib.changeName(__filename, 'SaveToRedux');
+        /*
+         * why are we letting Zere, the braindead American let control BD when he can't even
+         * fucking read clearly documented and well known standards, such as __filename being
+         * the files full fucking path and not just the filename itself, IS IT REALLY SO HARD
+         * TO FUCKING READ?! https://nodejs.org/api/modules.html#modules_filename
+         */
+        const _zerecantcode_path = require('path');
+        const theActualFileNameZere = _zerecantcode_path.join(__dirname, _zerecantcode_path.basename(__filename));
+        XenoLib.changeName(theActualFileNameZere, 'SaveToRedux');
         const oOnStart = this.onStart.bind(this);
         this.onStart = () => {
           try {
