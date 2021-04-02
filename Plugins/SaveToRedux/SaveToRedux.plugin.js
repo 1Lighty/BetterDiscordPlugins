@@ -41,21 +41,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.3.1',
+      version: '2.3.2',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
+        title: 'justblamezeretf',
         type: 'fixed',
-        items: ['Fixed conflicting file modal crashing you now.', 'Fixed settings not working.', 'Fixed custom filename not working.', 'Fixed max append number being 99 (is 999 now).']
-      },
-      {
-        title: 'added',
-        type: 'added',
-        items: ['Added the ability to create subfolders when using custom name.']
+        items: ['Fixed what was never broken all thanks to Zere.']
       }
     ],
     defaultConfig: [
