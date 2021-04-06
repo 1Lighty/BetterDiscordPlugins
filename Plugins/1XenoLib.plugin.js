@@ -1,4 +1,10 @@
-//META{"name":"XenoLib","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js/","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
+/**
+ * @name XenoLib
+ * @version 1.3.36
+ * @invite NYvWdN5
+ * @donate https://paypal.me/lighty13
+ * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
+ */
 /*@cc_on
 @if (@_jscript)
 
@@ -28,7 +34,7 @@
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
 module.exports = (() => {
-  const canUseUntitledNotifAPI = !!(global.Untitled && Untitled.n11s && Untitled.n11s.n11sApi)
+  const canUseAstraNotifAPI = !!(global.Astra && Astra.n11s && Astra.n11s.n11sApi)
   /* Setup */
   const config = {
     main: 'index.js',
@@ -42,7 +48,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.35',
+      version: '1.3.36',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -55,7 +61,7 @@ module.exports = (() => {
       }
     ],
     defaultConfig: [
-      canUseUntitledNotifAPI ? {} : {
+      canUseAstraNotifAPI ? {} : {
         type: 'category',
         id: 'notifications',
         name: 'Notification settings',
@@ -765,25 +771,8 @@ module.exports = (() => {
 
     const ColorPickerComponent = (_ => {
       try {
-        const GuildSettingsRoles = WebpackModules.getByDisplayName('FluxContainer(GuildSettingsRoles)');
-        const RoleSettingsContainer = GuildSettingsRoles.prototype.render.call({
-          memoizedGetStateFromStores: _ => { }
-        }).type.prototype.renderRoleSettings.call({
-          props: {
-            guild: {
-              id: '',
-              isOwner: _ => false
-            }
-          },
-          getSelectedRole: _ => ({ id: '' }),
-          renderHeader: _ => null
-        });
-        const RoleSettings = Utilities.findInReactTree(RoleSettingsContainer, e => e && e.type && e.type.displayName === "GuildRoleSettings").type.prototype.renderColorPicker.call({
-          props: {
-            role: {}
-          }
-        });
-        return RoleSettings.props.children.type;
+        const GFSM = WebpackModules.getByDisplayName('GuildFolderSettingsModal');
+        return Utilities.findInReactTree(GFSM.prototype.render.call({ props: {}, state: {} }), e => e && e.props && e.props.colors);
       } catch (err) {
         Logger.stacktrace('Failed to get lazy colorpicker, unsurprisingly', err);
         return _ => null;
@@ -982,19 +971,20 @@ module.exports = (() => {
     };
 
     const FancyParser = (() => {
-      const ParsersModule = WebpackModules.getByProps('astParserFor', 'parse');
+      const Markdown = WebpackModules.getByProps('astParserFor', 'parse');
       try {
-        const DeepClone = WebpackModules.find(m => m.default && m.default.toString().indexOf('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(') !== -1 && !m.useVirtualizedAnchor).default;
-        const ReactParserRules = (WebpackModules.find(m => m.default && m.default.toString().search(/function\(\w\){return \w\({},\w,{link:\(0,\w\.default\)\(\w\)}\)}$/) !== -1) || WebpackModules.find(m => m.default && m.default.toString().search(/function\(\){return \w}$/) !== -1)).default; /* thanks Zere for not fixing the bug ._. */
-        const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES').RULES, ReactParserRules()]);
+        const { default: DeepClone } = WebpackModules.find(m => m.default && m.default.toString().indexOf('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(') !== -1 && !m.useVirtualizedAnchor);
+        // SOOO much more extra code with zeres lib compared to Astra, maybe I just can't figure out how to use it effectively
+        const ReactParserRules = WebpackModules.find(m => typeof m === 'function' && (m = m.toString()) && (m.search(/^function\(\w\){return \w\({},\w,{link:\(0,\w.default\)\(\w\),emoji:\(\w=\w,\w=\w\.emojiTooltipPosition,\w=void 0===\w?\w/) !== -1 || m.search(/function\(\w\){return \w\({},\w,{link:\(0,\w\.default\)\(\w\)}\)}$/) !== -1 || m.search(/function\(\){return \w}$/) !== -1))
+        const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES').RULES, ReactParserRules({})]);
         const { defaultRules } = WebpackModules.getByProps('defaultParse');
         FANCY_PANTS_PARSER_RULES.image = defaultRules.image;
         FANCY_PANTS_PARSER_RULES.link = defaultRules.link;
-        return ParsersModule.reactParserFor(FANCY_PANTS_PARSER_RULES);
+        return Markdown.reactParserFor(FANCY_PANTS_PARSER_RULES);
       } catch (e) {
         Logger.stacktrace('Failed to create special parser', e);
         try {
-          return ParsersModule.parse;
+          return Markdown.parse;
         } catch (e) {
           Logger.stacktrace('Failed to get even basic parser', e);
           return e => e;
@@ -1175,7 +1165,7 @@ module.exports = (() => {
     /* NOTIFICATIONS START */
     let UPDATEKEY = {};
     try {
-      if (canUseUntitledNotifAPI) {
+      if (canUseAstraNotifAPI) {
         const defaultOptions = {
           loading: false,
           progress: -1,
@@ -1214,7 +1204,7 @@ module.exports = (() => {
            */
           show(content, options = {}) {
             const { timeout, loading, progress, color, allowDuplicates, onLeave, channelId, onClick, onContext } = Object.assign(Utilities.deepclone(defaultOptions), options);
-            return Untitled.n11s.show(content instanceof HTMLElement ? ReactTools.createWrappedElement(content) : content, {
+            return Astra.n11s.show(content instanceof HTMLElement ? ReactTools.createWrappedElement(content) : content, {
               timeout,
               loading,
               progress,
@@ -1227,7 +1217,7 @@ module.exports = (() => {
             });
           },
           remove(id) {
-            Untitled.n11s.remove(id);
+            Astra.n11s.remove(id);
           },
           /**
            * @param {Number} id Notification ID
@@ -1243,10 +1233,10 @@ module.exports = (() => {
             for (const key in ['loading', 'progress', 'color', 'onClick', 'onContext']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
             if (options.onLeave) obj.onClose = options.onLeave;
             if (options.channelId) obj.markdownOptions = { channelId: options.channelId };
-            Untitled.n11s.update(id, obj);
+            Astra.n11s.update(id, obj);
           },
           exists(id) {
-            return Untitled.n11s.exists(id);
+            return Astra.n11s.exists(id);
           }
         };
         XenoLib.Notifications = utils;
@@ -1965,7 +1955,7 @@ module.exports = (() => {
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
       b = BdApi.Plugins.get('ZeresPluginLibrary');
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.28') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.29') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
