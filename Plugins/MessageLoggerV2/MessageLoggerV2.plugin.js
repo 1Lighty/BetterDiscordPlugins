@@ -1,4 +1,11 @@
-//META{"name":"MessageLoggerV2","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
+/**
+ * @name MessageLoggerV2
+ * @version 1.7.70
+ * @invite NYvWdN5
+ * @donate https://paypal.me/lighty13
+ * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
+ * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js
+ */
 /*@cc_on
 @if (@_jscript)
   // Offer to self-install for clueless users that try to run this directly.
