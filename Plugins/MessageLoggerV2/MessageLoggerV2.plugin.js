@@ -30,7 +30,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.69';
+    return '1.7.70';
   }
   getAuthor() {
     return 'Lighty';
@@ -172,12 +172,21 @@ module.exports = class MessageLoggerV2 {
       {
         title: '#justblamezeretf',
         type: 'fixed',
-        items: ['Fixed what wasn\'t even broken to begin with until Zere decided to exist for once and break standards for no reason.', 'Fixed auto update being broke.']
+        items: ['Fixed certain things causing a hard crash exclusively on BetterDiscord only. Should be more stable now.']
       },
       {
         title: 'Meow',
         type: 'added',
-        items: ['Meow']
+        items: ['Ping Avkhymovych and say hi.']
+      },
+      {
+        type: 'description',
+        content: 'Also, here\'s a cute fox :D'
+      },
+      {
+        type: 'image',
+        src: 'https://cdn.discordapp.com/attachments/728736878043463740/830090330414121060/4THWEkBgdtk.png',
+        height: 301
       }
     ];
   }
@@ -820,7 +829,7 @@ module.exports = class MessageLoggerV2 {
     this.unpatches.push(
       this.Patcher.instead(ZeresPluginLibrary.WebpackModules.getByDisplayName('LazyImage').prototype, 'getSrc', (thisObj, args, original) => {
         let indx;
-        if (thisObj?.props?.src && ((indx = thisObj.props.src.indexOf('?ML2=true')), indx !== -1)) return thisObj.props.src.substr(0, indx);
+        if (thisObj && thisObj.props && thisObj.props.src && ((indx = thisObj.props.src.indexOf('?ML2=true')), indx !== -1)) return thisObj.props.src.substr(0, indx);
         return original(...args);
       })
     );
@@ -2301,14 +2310,18 @@ module.exports = class MessageLoggerV2 {
   }
   cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts = 0) {
     this.nodeModules.request({ url: url, encoding: null }, (err, res, buffer) => {
-      if (err || res.statusCode != 200) {
-        if (res.statusCode == 404 || res.statusCode == 403) return;
-        attempts++;
-        if (attempts > 3) return ZeresPluginLibrary.Logger.warn(this.getName(), `Failed to get image ${attachmentId} for caching, error code ${res.statusCode}`);
-        return setTimeout(() => this.cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts), 1000);
+      try {
+        if (err || res.statusCode != 200) {
+          if (res.statusCode == 404 || res.statusCode == 403) return;
+          attempts++;
+          if (attempts > 3) return ZeresPluginLibrary.Logger.warn(this.getName(), `Failed to get image ${attachmentId} for caching, error code ${res.statusCode}`);
+          return setTimeout(() => this.cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts), 1000);
+        }
+        const fileExtension = url.match(/\.[0-9a-z]+$/i)[0];
+        this.nodeModules.fs.writeFileSync(this.settings.imageCacheDir + `/${attachmentId}${fileExtension}`, buffer, { encoding: null });
+      } catch (err) {
+        console.error('Failed to save image cache', err.message);
       }
-      const fileExtension = url.match(/\.[0-9a-z]+$/i)[0];
-      this.nodeModules.fs.writeFileSync(this.settings.imageCacheDir + `/${attachmentId}${fileExtension}`, buffer, { encoding: null });
     });
   }
   cacheMessageImages(message) {
@@ -2427,7 +2440,7 @@ module.exports = class MessageLoggerV2 {
             }
           }
           if (found) continue;
-          this.nodeModules.fs.unlink(`${this.settings.imageCacheDir}/${img}`, e => e && ZeresPluginLibrary.Logger.err(this.getName(), 'Error deleting unreferenced image, what the shit', e));
+          this.nodeModules.fs.unlink(`${this.settings.imageCacheDir}/${img}`, e => e && ZeresPluginLibrary.Logger.err(this.getName(), 'Error deleting unreferenced image, what the shit', e.message));
         }
       }
       // 10 minutes
@@ -3690,10 +3703,14 @@ module.exports = class MessageLoggerV2 {
                 }
                 if (record) {
                   this.nodeModules.request.head(attachment.url, (err, res) => {
-                    if (err || res.statusCode != 404) return;
-                    record.message.attachments[idx].url = 'ERROR';
-                    img.src = 'http://localhost:7474/' + attachment.id + attachment.filename.match(/\.[0-9a-z]+$/)[0];
-                    img.triedCache = true;
+                    try {
+                      if (err || res.statusCode != 404) return;
+                      record.message.attachments[idx].url = 'ERROR';
+                      img.src = 'http://localhost:7474/' + attachment.id + attachment.filename.match(/\.[0-9a-z]+$/)[0];
+                      img.triedCache = true;
+                    } catch (err) {
+                      console.error('Failed loading cached image', err.message);
+                    }
                   });
                 }
               };
@@ -4187,29 +4204,33 @@ module.exports = class MessageLoggerV2 {
                   defaultPath: record.message.attachments[attachmentIdx].filename
                 })
                 .then(({ filePath: dir }) => {
-                  if (!dir) return;
-                  const attemptToUseCached = () => {
-                    const srcFile = `${this.settings.imageCacheDir}/${attachmentId}${record.message.attachments[attachmentIdx].filename.match(/\.[0-9a-z]+$/)[0]}`;
-                    if (!this.nodeModules.fs.existsSync(srcFile)) return this.showToast('Image does not exist locally!', { type: 'error', timeout: 5000 });
-                    this.nodeModules.fs.copyFileSync(srcFile, dir);
-                    this.showToast('Saved!', { type: 'success' });
-                  };
-                  if (isCached) {
-                    attemptToUseCached();
-                  } else {
-                    const req = this.nodeModules.request(record.message.attachments[attachmentIdx].url);
-                    req.on('response', res => {
-                      if (res.statusCode == 200) {
-                        req
-                          .pipe(this.nodeModules.fs.createWriteStream(dir))
-                          .on('finish', () => this.showToast('Saved!', { type: 'success' }))
-                          .on('error', () => this.showToast('Failed to save! No permissions.', { type: 'error', timeout: 5000 }));
-                      } else if (res.statusCode == 404) {
-                        attemptToUseCached();
-                      } else {
-                        attemptToUseCached();
-                      }
-                    });
+                  try {
+                    if (!dir) return;
+                    const attemptToUseCached = () => {
+                      const srcFile = `${this.settings.imageCacheDir}/${attachmentId}${record.message.attachments[attachmentIdx].filename.match(/\.[0-9a-z]+$/)[0]}`;
+                      if (!this.nodeModules.fs.existsSync(srcFile)) return this.showToast('Image does not exist locally!', { type: 'error', timeout: 5000 });
+                      this.nodeModules.fs.copyFileSync(srcFile, dir);
+                      this.showToast('Saved!', { type: 'success' });
+                    };
+                    if (isCached) {
+                      attemptToUseCached();
+                    } else {
+                      const req = this.nodeModules.request(record.message.attachments[attachmentIdx].url);
+                      req.on('response', res => {
+                        if (res.statusCode == 200) {
+                          req
+                            .pipe(this.nodeModules.fs.createWriteStream(dir))
+                            .on('finish', () => this.showToast('Saved!', { type: 'success' }))
+                            .on('error', () => this.showToast('Failed to save! No permissions.', { type: 'error', timeout: 5000 }));
+                        } else if (res.statusCode == 404) {
+                          attemptToUseCached();
+                        } else {
+                          attemptToUseCached();
+                        }
+                      });
+                    }
+                  } catch (err) {
+                    console.error('Failed saving', err.message);
                   }
                 });
             },
@@ -4232,20 +4253,24 @@ module.exports = class MessageLoggerV2 {
                 const process = require('process');
                 // ImageToClipboard by Zerebos
                 this.nodeModules.request({ url: record.message.attachments[attachmentIdx].url, encoding: null }, (error, response, buffer) => {
-                  if (error || response.statusCode != 200) {
-                    this.showToast('Failed to copy. Image may not exist. Attempting to use local image cache.', { type: 'error' });
-                    attemptToUseCached();
-                    return;
+                  try {
+                    if (error || response.statusCode != 200) {
+                      this.showToast('Failed to copy. Image may not exist. Attempting to use local image cache.', { type: 'error' });
+                      attemptToUseCached();
+                      return;
+                    }
+                    if (process.platform === 'win32' || process.platform === 'darwin') {
+                      clipboard.write({ image: nativeImage.createFromBuffer(buffer) });
+                    } else {
+                      const file = path.join(process.env.HOME, 'ml2temp.png');
+                      this.nodeModules.fs.writeFileSync(file, buffer, { encoding: null });
+                      clipboard.write({ image: file });
+                      this.nodeModules.fs.unlinkSync(file);
+                    }
+                    this.showToast('Copied!', { type: 'success' });
+                  } catch (err) {
+                    console.error('Failed to cached', err.message);
                   }
-                  if (process.platform === 'win32' || process.platform === 'darwin') {
-                    clipboard.write({ image: nativeImage.createFromBuffer(buffer) });
-                  } else {
-                    const file = path.join(process.env.HOME, 'ml2temp.png');
-                    this.nodeModules.fs.writeFileSync(file, buffer, { encoding: null });
-                    clipboard.write({ image: file });
-                    this.nodeModules.fs.unlinkSync(file);
-                  }
-                  this.showToast('Copied!', { type: 'success' });
                 });
               }
             },
