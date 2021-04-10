@@ -1,4 +1,11 @@
-//META{"name":"MultiUploads","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/MultiUploads/MultiUploads.plugin.js","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=MultiUploads","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
+/**
+ * @name MultiUploads
+ * @version 1.1.5
+ * @invite NYvWdN5
+ * @donate https://paypal.me/lighty13
+ * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MultiUploads
+ * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/MultiUploads/MultiUploads.plugin.js
+ */
 /*@cc_on
 @if (@_jscript)
 
@@ -23,7 +30,7 @@
 
 @else@*/
 /*
- * Copyright © 2019-2020, _Lighty_
+ * Copyright © 2019-2021, _Lighty_
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
@@ -41,16 +48,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.4',
+      version: '1.1.5',
       description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
     },
     changelog: [
       {
-        title: 'RIP BBD on Canary',
+        title: 'fixed',
         type: 'fixed',
-        items: ['More canary fixes.']
+        items: ['Fixed multi file uploads not being spoilered.', 'Fixed comment not being attached to the message if you uploaded multiple files.']
       }
     ]
   };
@@ -64,54 +71,52 @@ module.exports = (() => {
       try {
         const topContext = require('electron').webFrame.top.context;
         if (topContext === window) return null;
-        return topContext.Function
+        return topContext.Function;
       } catch {
         return null;
       }
     })();
     const originalFunctionClass = Function;
     function createSmartPatcher(patcher) {
-      const createPatcher = patcher => {
-        return (moduleToPatch, functionName, callback, options = {}) => {
-          try {
-            var origDef = moduleToPatch[functionName];
-          } catch (_) {
-            return Logger.error(`Failed to patch ${functionName}`);
+      const createPatcher = patcher => (moduleToPatch, functionName, callback, options = {}) => {
+        try {
+          var origDef = moduleToPatch[functionName];
+        } catch (_) {
+          return Logger.error(`Failed to patch ${functionName}`);
+        }
+        if (rendererFunctionClass && origDef && !(origDef instanceof originalFunctionClass) && origDef instanceof rendererFunctionClass) window.Function = rendererFunctionClass;
+        const unpatches = [];
+        try {
+          unpatches.push(patcher(moduleToPatch, functionName, callback, options) || DiscordConstants.NOOP);
+        } catch (err) {
+          throw err;
+        } finally {
+          if (rendererFunctionClass) window.Function = originalFunctionClass;
+        }
+        try {
+          if (origDef && origDef.__isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
+            /* do NOT patch a patch by ZLIb, that'd be bad and cause double items in context menus */
+            if ((Utilities.getNestedProp(ZeresPluginLibrary, 'Patcher.patches') || []).findIndex(e => e.module === moduleToPatch) !== -1 && moduleToPatch.BDFDBpatch[functionName].originalMethod.__originalFunction) return;
+            unpatches.push(patcher(moduleToPatch.BDFDBpatch[functionName], 'originalMethod', callback, options));
           }
-          if (rendererFunctionClass && origDef && !(origDef instanceof originalFunctionClass) && origDef instanceof rendererFunctionClass) window.Function = rendererFunctionClass;
-          const unpatches = [];
-          try {
-            unpatches.push(patcher(moduleToPatch, functionName, callback, options) || DiscordConstants.NOOP);
-          } catch (err) {
-            throw err;
-          } finally {
-            if (rendererFunctionClass) window.Function = originalFunctionClass;
-          }
-          try {
-            if (origDef && origDef.__isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
-              /* do NOT patch a patch by ZLIb, that'd be bad and cause double items in context menus */
-              if ((Utilities.getNestedProp(ZeresPluginLibrary, 'Patcher.patches') || []).findIndex(e => e.module === moduleToPatch) !== -1 && moduleToPatch.BDFDBpatch[functionName].originalMethod.__originalFunction) return;
-              unpatches.push(patcher(moduleToPatch.BDFDBpatch[functionName], 'originalMethod', callback, options));
-            }
-          } catch (err) {
-            Logger.stacktrace('Failed to patch BDFDB patches', err);
-          }
-          return function unpatch() {
-            unpatches.forEach(e => e());
-          };
+        } catch (err) {
+          Logger.stacktrace('Failed to patch BDFDB patches', err);
+        }
+        return function unpatch() {
+          unpatches.forEach(e => e());
         };
       };
-      return Object.assign({}, patcher, {
-        before: createPatcher(patcher.before),
+      return {
+        ...patcher, before: createPatcher(patcher.before),
         instead: createPatcher(patcher.instead),
         after: createPatcher(patcher.after)
-      });
-    };
+      };
+    }
 
     const Patcher = createSmartPatcher(Api.Patcher);
 
     const _ = WebpackModules.getByProps('bindAll', 'debounce');
-    const Upload = (WebpackModules.getByProps('Upload') || {}).Upload;
+    const { Upload } = WebpackModules.getByProps('Upload') || {};
     const MessageDraftUtils = WebpackModules.getByProps('saveDraft');
     const FileUtils = WebpackModules.getByProps('anyFileTooLarge');
     const GenericUploaderBase = WebpackModules.find(e => e.prototype && e.prototype.upload && e.prototype.cancel && !e.__proto__.prototype.cancel);
@@ -167,11 +172,11 @@ module.exports = (() => {
         const superagent = WebpackModules.getByProps('getXHR');
         // Reverse engineered, override it entirely with our own implementation
         Patcher.instead(MessageFileUploader.prototype, 'upload', (_this, [file, message = {}]) => {
-          const noSpoilerMessage = Object.assign({}, message);
+          const noSpoilerMessage = { ...message };
           // hasSpoiler has no use here, only used to check if images should be spoilered
           delete noSpoilerMessage.hasSpoiler;
           // make a fale foče if it's multi upload, and set the name to represent how many files we're uploading
-          const fakeFile = Array.isArray(file) ? Object.assign({}, file[0], { name: `Uploading ${file.length} files...` }) : file;
+          const fakeFile = Array.isArray(file) ? ({ ...file[0], name: `Uploading ${file.length} files...` }) : file;
           // call super.upload(fakeFile, noSpoilerImage);
           // since no access to super, this is the next best thing
           GenericUploaderBase.prototype.upload.call(_this, fakeFile, noSpoilerMessage);
@@ -182,7 +187,7 @@ module.exports = (() => {
           if (Array.isArray(file)) {
             const numMap = {};
             file.forEach((e, idx) => {
-              let name = e.name;
+              let { name } = e;
               // ensure no other file has the same name, otherwise we'll be in a world of pain
               if (file.find((e_, idx_) => e_.name === name && idx_ < idx)) {
                 if (!numMap[name]) numMap[name] = 0;
@@ -198,10 +203,9 @@ module.exports = (() => {
                 }
               }
               // attach, with its own unique file field
-              req.attach('file' + idx, e, (message.hasSpoiler ? 'SPOILER_' : '') + name);
+              req.attach(`file${idx}`, e, (message.hasSpoiler ? 'SPOILER_' : '') + name);
             });
-          }
-          else req.attach('file', file, (message.hasSpoiler ? 'SPOILER_' : '') + file.name);
+          } else req.attach('file', file, (message.hasSpoiler ? 'SPOILER_' : '') + file.name);
           // added on replies update, dunno why? throws error if it's not here
           req.field('payload_json', JSON.stringify(noSpoilerMessage));
           // attach all other fields, sometimes value is a non valid type though
@@ -210,14 +214,14 @@ module.exports = (() => {
             req.field(key, value);
           });
           req.then(e => {
-            if (e.ok) _this._handleComplete()
-            else _this._handleError(e.body && e.body.code)
+            if (e.ok) _this._handleComplete();
+            else _this._handleError(e.body && e.body.code);
           }, _ => _this._handleError());
           const { xhr } = req;
           if (xhr.upload) xhr.upload.onprogress = (...props) => _this._handleXHRProgress(...props);
           xhr.addEventListener('progress', _this._handleXHRProgress, false);
           _this._handleStart(_ => req.abort());
-        })
+        });
       }
 
       async patchUploadModal(promiseState) {
@@ -249,7 +253,7 @@ module.exports = (() => {
           // fetch group of files we can send in 1 message
           let files = this.getNextMessageGroup(channel.id);
           // upload them after a set timeout
-          const startUpload = e => setTimeout(_ => (UploadUtils.upload(channel.id, files, parsed, hasSpoiler), e && e()), 125);
+          const startUpload = e => setTimeout(_ => (UploadUtils.upload(channel.id, files, _this.props.draftType, parsed, hasSpoiler), e && e()), 125);
           if (canSendAll) {
             // if we can send all of them, store the array locally because it'll be cleared at the end of this function
             const uploads = [...this.uploads];
@@ -271,17 +275,19 @@ module.exports = (() => {
             _this.setState({
               transitioning: true
             });
-            setTimeout((function () {
-              // clear multiple times
-              for (let i = 0; i < files.length; i++) UploadModalUtils.popFirstFile();
-            }
-            ), 100);
-            _this._transitionTimeout = setTimeout((() => {
-              return _this.setState({
+            setTimeout(
+              (() => {
+                // clear multiple times
+                for (let i = 0; i < files.length; i++) UploadModalUtils.popFirstFile();
+              }
+              ), 100
+            );
+            _this._transitionTimeout = setTimeout(
+              (() => _this.setState({
                 transitioning: false
               })
-            }
-            ), 200);
+              ), 200
+            );
           } else {
             // clear all instead of one
             UploadModalUtils.clearAll();
@@ -325,14 +331,14 @@ module.exports = (() => {
                 return null;
               }
             }
-          }
+          };
         });
         const promptToUpload = WebpackModules.getByString('.Messages.UPLOAD_AREA_TOO_LARGE_TITLE');
         Patcher.after(Upload.component.prototype, 'render', (_this, _, ret) => {
           const channelTextEditorContainer = Utilities.findInReactTree(ret, e => Utilities.getNestedProp(e, 'type.type.render.displayName') === 'ChannelTextAreaContainer');
           if (!channelTextEditorContainer) return;
           channelTextEditorContainer.props.promptToUpload = promptToUpload;
-        })
+        });
         Upload.forceUpdateAll();
       }
 
@@ -349,7 +355,7 @@ module.exports = (() => {
             start();
           });
           start();
-        })
+        });
       }
 
       getNextMessageGroup(channelId, uploads = this.uploads) {
@@ -363,7 +369,7 @@ module.exports = (() => {
           const { file } = isUpload ? uploads[i] : { file: uploads[i] };
           if (sizeAccum + file.size > maxSize) break;
           retAccum.push(file);
-          sizeAccum += file.size
+          sizeAccum += file.size;
           if (retAccum.length >= 10) break;
         }
         return retAccum;
@@ -405,7 +411,7 @@ module.exports = (() => {
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
       b = BdApi.Plugins.get('ZeresPluginLibrary');
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.27') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.29') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
@@ -439,14 +445,14 @@ module.exports = (() => {
           d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
           e = BdApi.findModuleByDisplayName('Text'),
           f = BdApi.findModuleByDisplayName('ConfirmModal'),
-          g = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
+          g = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), 'Due to a slight mishap however, you\'ll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.', b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
         if (!a || !f || !e) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (f ? '' : ' ConfirmationModalComponent') + (e ? '' : 'TextElement')}`), g();
         class h extends BdApi.React.PureComponent {
           constructor(a) {
             super(a), (this.state = { hasError: !1 });
           }
           componentDidCatch(a) {
-            console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a);
+            console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), typeof this.props.onError === 'function' && this.props.onError(a);
           }
           render() {
             return this.state.hasError ? null : this.props.children;
@@ -468,33 +474,31 @@ module.exports = (() => {
                 },
                 BdApi.React.createElement(
                   f,
-                  Object.assign(
-                    {
-                      header: c,
-                      children: BdApi.React.createElement(e, { size: e.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] }),
-                      red: !1,
-                      confirmText: 'Download Now',
-                      cancelText: 'Cancel',
-                      onCancel: b.onClose,
-                      onConfirm: () => {
-                        if (i) return;
-                        i = !0;
-                        const b = require('request'),
-                          c = require('fs'),
-                          d = require('path');
-                        b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, e, f) => {
-                          try {
-                            if (b || 200 !== e.statusCode) return a.closeModal(k), g();
-                            c.writeFile(d.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => { });
-                          } catch (b) {
-                            console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(k), g();
-                          }
-                        });
-                      }
+                  {
+                    header: c,
+                    children: BdApi.React.createElement(e, { size: e.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] }),
+                    red: !1,
+                    confirmText: 'Download Now',
+                    cancelText: 'Cancel',
+                    onCancel: b.onClose,
+                    onConfirm: () => {
+                      if (i) return;
+                      i = !0;
+                      const b = require('request'),
+                        c = require('fs'),
+                        d = require('path');
+                      b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, e, f) => {
+                        try {
+                          if (b || e.statusCode !== 200) return a.closeModal(k), g();
+                          c.writeFile(d.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => { });
+                        } catch (b) {
+                          console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(k), g();
+                        }
+                      });
                     },
-                    b,
-                    { onClose: () => { } }
-                  )
+                    ...b,
+                    onClose: () => { }
+                  }
                 )
               );
             } catch (b) {
