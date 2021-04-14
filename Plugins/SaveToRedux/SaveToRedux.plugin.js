@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.3.3
+ * @version 2.3.4
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -48,7 +48,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.3.3',
+      version: '2.3.4',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -57,12 +57,7 @@ module.exports = (() => {
       {
         title: 'justblamezeretf',
         type: 'fixed',
-        items: ['Fixed not being able to save videos when clicking in certain places.', 'Fixed not being able to save stickers on Powercord.', 'Fixed not being able to save text files.', 'Fixed not being able to install plugins sent directly.']
-      },
-      {
-        title: 'sorry!',
-        type: 'progress',
-        items: ['Did not fix saving lottie stickers to GIF.']
+        items: ['Fixed not being able to save videos when clicking in certain places.', 'Fixed not being able to save stickers on Powercord.', 'Fixed not being able to save text files.', 'Fixed not being able to install plugins sent directly.', 'Fixed not being able to save linked videos on powercord.']
       }
     ],
     defaultConfig: [
@@ -715,9 +710,9 @@ module.exports = (() => {
             let proxiedsauce;
             let sauce;
             while (C != null) {
-              if (C instanceof HTMLImageElement && C.src != null) proxiedsauce = C.src;
-              if (C instanceof HTMLVideoElement && C.src != null) proxiedsauce = C.src;
-              if (C instanceof HTMLAnchorElement && C.href != null) sauce = C.href;
+              if (C.tagName === 'IMG' && C.src != null) proxiedsauce = C.src;
+              if (C.tagName === 'VIDEO' && C.src != null) proxiedsauce = C.src;
+              if (C.tagName === 'A' && C.href != null) sauce = C.href;
               C = C.parentNode;
             }
             if (!proxiedsauce && !sauce) return;
