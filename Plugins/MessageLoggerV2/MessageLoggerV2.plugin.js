@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.7.70
+ * @version 1.7.71
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -37,7 +37,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.70';
+    return '1.7.71';
   }
   getAuthor() {
     return 'Lighty';
@@ -179,21 +179,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: '#justblamezeretf',
         type: 'fixed',
-        items: ['Fixed certain things causing a hard crash exclusively on BetterDiscord only. Should be more stable now.']
-      },
-      {
-        title: 'Meow',
-        type: 'added',
-        items: ['Ping Avkhymovych and say hi.']
-      },
-      {
-        type: 'description',
-        content: 'Also, here\'s a cute fox :D'
-      },
-      {
-        type: 'image',
-        src: 'https://cdn.discordapp.com/attachments/728736878043463740/830090330414121060/4THWEkBgdtk.png',
-        height: 301
+        items: ['Fixed some misc styling issues.']
       }
     ];
   }
@@ -572,7 +558,7 @@ module.exports = class MessageLoggerV2 {
       tabBarItem: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBarItem,
       tabBarContainer: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBarContainer,
       tabBar: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBar,
-      edited: ZeresPluginLibrary.WebpackModules.getByProps('edited').edited,
+      edited: XenoLib.joinClassNames(XenoLib.getClass('separator timestamp'), XenoLib.getClass('separator timestampInline')),
       markup: ZeresPluginLibrary.WebpackModules.getByProps('markup')['markup'],
       message: {
         cozy: {
@@ -616,7 +602,7 @@ module.exports = class MessageLoggerV2 {
       questionMarkSingle: XenoLib.getSingleClass('questionMark')
     };
 
-    const TabBarStuffs = ZeresPluginLibrary.WebpackModules.getByProps('tabBarItem');
+    const TabBarStuffs = ZeresPluginLibrary.WebpackModules.getByProps('tabBarItem', 'tabBarContainer');
 
     this.createHeader.classes = {
       itemTabBarItem: TabBarStuffs.tabBarItem + ' ' + ZeresPluginLibrary.WebpackModules.find(m => m.item && m.selected && m.topPill).item,
@@ -3219,7 +3205,7 @@ module.exports = class MessageLoggerV2 {
         /* 2 */ XenoLib.getClass('username header'),
         /* 3 */ XenoLib.joinClassNames(XenoLib.getClass('clickable avatar'), XenoLib.getClass('avatar clickable')),
         /* 4 */ XenoLib.joinClassNames(XenoLib.getClass('timestampTooltip username'), XenoLib.getClass('avatar clickable')),
-        /* 5 */ XenoLib.getClass('separator timestamp'),
+        /* 5 */ XenoLib.joinClassNames(XenoLib.getClass('separator timestamp'), XenoLib.getClass('separator timestampInline')),
         /* 6 */ XenoLib.joinClassNames(this.multiClasses.markup, XenoLib.getClass('buttonContainer markupRtl')),
         /* 7 */ XenoLib.getClass('embedWrapper container'),
         /* 8 */ XenoLib.joinClassNames(XenoLib.getClass('zalgo latin24CompactTimeStamp'), XenoLib.getClass('separator timestamp'), XenoLib.getClass('alt timestampVisibleOnHover'), XenoLib.getClass('timestampVisibleOnHover alt')),
