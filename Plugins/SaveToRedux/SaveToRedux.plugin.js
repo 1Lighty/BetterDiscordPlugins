@@ -879,7 +879,7 @@ module.exports = (() => {
             ret = name;
             break;
           case 1: // date
-            ret = `${date.toLocaleDateString().split('/').join('-')} ${date.getHours()}-${date.getMinutes()}-${date.getSeconds()}`;
+            ret = `${('0' + (date.getMonth() + 1)).slice(-2)}-${('0' + date.getDate()).slice(-2)}-${date.getFullYear()} ${('0' + date.getHours()).slice(-2)}-${('0' + date.getMinutes()).slice(-2)}-${('0' + date.getSeconds()).slice(-2)}`;
             break;
           case 2: // random
             ret = rand;
@@ -894,12 +894,12 @@ module.exports = (() => {
               file: name,
               date: date.toLocaleDateString().split('/').join('-'),
               time: `${date.getMinutes()}-${date.getSeconds()}-${date.getMilliseconds()}`,
-              day: date.getDate(), // note to self: getDate gives you the day of month
-              month: date.getMonth() + 1, // getMonth gives 0-11
+              day: ('0' + date.getDate()).slice(-2), // note to self: getDate gives you the day of month
+              month: ('0' + (date.getMonth() + 1)).slice(-2), // getMonth gives 0-11
               year: date.getFullYear(),
-              hours: date.getHours(),
-              minutes: date.getMinutes(),
-              seconds: date.getSeconds(),
+              hours: ('0' + date.getHours()).slice(-2),
+              minutes: ('0' + date.getMinutes()).slice(-2),
+              seconds: ('0' + date.getSeconds()).slice(-2),
               name: this.getLocationName()
             });
             if (onlyDir) {
