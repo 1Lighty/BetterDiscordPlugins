@@ -2076,108 +2076,126 @@ module.exports = (() => {
       }
       start() { }
       load() {
+        try {
         // asking people to do simple tasks is stupid, relying on stupid modals that are *supposed* to help them is unreliable
         // forcing the download on enable is good enough
-        const fs = require('fs');
-        const path = require('path');
-        const pluginsDir = (BdApi.Plugins && BdApi.Plugins.folder) || (window.ContentManager && window.ContentManager.pluginsFolder);
-        const zeresLibDir = path.join(pluginsDir, '0PluginLibrary.plugin.js');
+          const fs = require('fs');
+          const path = require('path');
+          const pluginsDir = (BdApi.Plugins && BdApi.Plugins.folder) || (window.ContentManager && window.ContentManager.pluginsFolder);
+          const zeresLibDir = path.join(pluginsDir, '0PluginLibrary.plugin.js');
 
-        if (window.__XL_requireRenamePls) {
-          delete window.__XL_requireRenamePls;
-          const oldSelfPath = path.join(pluginsDir, path.basename(__filename));
-          const selfContent = fs.readFileSync(oldSelfPath);
-          // avoid windows blocking the file
-          fs.unlinkSync(oldSelfPath);
-          // avoid BDs watcher being shit as per usual
-          setTimeout(() => {
-            fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
-            window.__XL_waitingForWatcherTimeout = setTimeout(() => {
-              // what the fuck?
-              BdApi.Plugins.reload(this.getName());
-            }, 3000);
-          }, 1000);
-          return;
-        }
-
-        if (window.__XL_assumingZLibLoaded) return;
-
-        for (const file of fs.readdirSync(pluginsDir)) {
-          if (file.indexOf('.plugin.js') !== file.length - 10) continue;
-          try {
-            switch (_extractMeta(fs.readFileSync(path.join(pluginsDir, file), 'utf8')).name) {
-              case 'XenoLib': {
-                if (file !== '1XenoLib.plugin.js') if (file === path.basename(__filename)) window.__XL_requireRenamePls = true;
-                else fs.unlinkSync(path.join(pluginsDir, file));
-
-                continue;
-              }
-              case 'ZeresPluginLibrary': {
-                fs.unlinkSync(path.join(pluginsDir, file));
-                continue;
-              }
-              default: continue;
-            }
-          } catch (e) {}
-        }
-
-        const https = require('https');
-
-        const onFail = () => BdApi.showConfirmationModal('Well shit', 'Failed to download Zeres Plugin Library, join this server for further assistance:https://discord.gg/NYvWdN5');
-
-        const req = https.request('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', { headers: { origin: 'discord.com' } }, res => {
-          let body = '';
-          // eslint-disable-next-line no-void
-          res.on('data', chunk => ((body += chunk), void 0));
-          res.on('end', () => {
-            if (res.statusCode !== 200) return onFail();
-            fs.writeFileSync(zeresLibDir, body);
-            // eslint-disable-next-line no-undef
-            window.__XL_waitingForWatcherTimeout = setTimeout(() => {
-              if (!window.pluginModule || !window.pluginModule.loadPlugin) {
-                window.__XL_assumingZLibLoaded = true;
-                const didRename = window.__XL_requireRenamePls;
-                window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+          if (window.__XL_requireRenamePls) {
+            try {
+              delete window.__XL_requireRenamePls;
+              const oldSelfPath = path.join(pluginsDir, path.basename(__filename));
+              const selfContent = fs.readFileSync(oldSelfPath);
+              // avoid windows blocking the file
+              fs.unlinkSync(oldSelfPath);
+              // avoid BDs watcher being shit as per usual
+              setTimeout(() => {
+                try {
+                  fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
                   window.__XL_waitingForWatcherTimeout = setTimeout(() => {
-                    location.reload();
+                    // what the fuck?
+                    BdApi.Plugins.reload(this.getName());
                   }, 3000);
-                  BdApi.Plugins.reload(this.getName());
-                }, window.__XL_requireRenamePls ? 3000 : 0);
-                if (window.__XL_requireRenamePls) {
-                  delete window.__XL_requireRenamePls;
-                  const oldSelfPath = path.join(pluginsDir, path.basename(__filename));
-                  const selfContent = fs.readFileSync(oldSelfPath);
-                  // avoid windows blocking the file
-                  fs.unlinkSync(oldSelfPath);
-                  fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
+                } catch (e) {}
+              }, 1000);
+            } catch (e) {}
+            return;
+          }
+
+          if (window.__XL_assumingZLibLoaded) return;
+
+          for (const file of fs.readdirSync(pluginsDir)) {
+            if (file.indexOf('.plugin.js') !== file.length - 10) continue;
+            try {
+              switch (_extractMeta(fs.readFileSync(path.join(pluginsDir, file), 'utf8')).name) {
+                case 'XenoLib': {
+                  if (file !== '1XenoLib.plugin.js') if (file === path.basename(__filename)) window.__XL_requireRenamePls = true;
+                  else fs.unlinkSync(path.join(pluginsDir, file));
+
+                  continue;
                 }
-                return;
+                case 'ZeresPluginLibrary': {
+                  fs.unlinkSync(path.join(pluginsDir, file));
+                  continue;
+                }
+                default: continue;
               }
-              window.__XL_assumingZLibLoaded = true;
-              window.pluginModule.loadPlugin('0PluginLibrary');
-              window.__XL_waitingForWatcherTimeout = setTimeout(() => {
-                const didRename = window.__XL_requireRenamePls;
+            } catch (e) {}
+          }
+
+          const https = require('https');
+
+          const onFail = () => BdApi.showConfirmationModal('Well shit', 'Failed to download Zeres Plugin Library, join this server for further assistance:https://discord.gg/NYvWdN5');
+
+          const req = https.request('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', { headers: { origin: 'discord.com' } }, res => {
+            let body = '';
+            // eslint-disable-next-line no-void
+            res.on('data', chunk => ((body += chunk), void 0));
+            res.on('end', () => {
+              try {
+                if (res.statusCode !== 200) return onFail();
+                fs.writeFileSync(zeresLibDir, body);
+                // eslint-disable-next-line no-undef
                 window.__XL_waitingForWatcherTimeout = setTimeout(() => {
-                  window.__XL_waitingForWatcherTimeout = setTimeout(onFail, 3000);
-                  BdApi.Plugins.reload(this.getName());
-                  if (!BdApi.Plugins.get('XenoLib')) window.pluginModule.loadPlugin('1XenoLib');
-                }, window.__XL_requireRenamePls ? 3000 : 0);
-                if (window.__XL_requireRenamePls) {
-                  delete window.__XL_requireRenamePls;
-                  const oldSelfPath = path.join(pluginsDir, path.basename(__filename));
-                  const selfContent = fs.readFileSync(oldSelfPath);
-                  // avoid windows blocking the file
-                  fs.unlinkSync(oldSelfPath);
-                  fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
-                }
-              }, 3000);
-            }, 3000);
+                  try {
+                    if (!window.pluginModule || !window.pluginModule.loadPlugin) {
+                      window.__XL_assumingZLibLoaded = true;
+                      const didRename = window.__XL_requireRenamePls;
+                      window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+                        try {
+                          window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+                            try {
+                              location.reload();
+                            } catch (e) {}
+                          }, 3000);
+                          BdApi.Plugins.reload(this.getName());
+                        } catch (e) {}
+                      }, window.__XL_requireRenamePls ? 3000 : 0);
+                      if (window.__XL_requireRenamePls) {
+                        delete window.__XL_requireRenamePls;
+                        const oldSelfPath = path.join(pluginsDir, path.basename(__filename));
+                        const selfContent = fs.readFileSync(oldSelfPath);
+                        // avoid windows blocking the file
+                        fs.unlinkSync(oldSelfPath);
+                        fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
+                      }
+                      return;
+                    }
+                    window.__XL_assumingZLibLoaded = true;
+                    window.pluginModule.loadPlugin('0PluginLibrary');
+                    window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+                      try {
+                        const didRename = window.__XL_requireRenamePls;
+                        window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+                          try {
+                            window.__XL_waitingForWatcherTimeout = setTimeout(onFail, 3000);
+                            BdApi.Plugins.reload(this.getName());
+                            if (!BdApi.Plugins.get('XenoLib')) window.pluginModule.loadPlugin('1XenoLib');
+                          } catch (e) {}
+                        }, window.__XL_requireRenamePls ? 3000 : 0);
+                        if (window.__XL_requireRenamePls) {
+                          delete window.__XL_requireRenamePls;
+                          const oldSelfPath = path.join(pluginsDir, path.basename(__filename));
+                          const selfContent = fs.readFileSync(oldSelfPath);
+                          // avoid windows blocking the file
+                          fs.unlinkSync(oldSelfPath);
+                          fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
+                        }
+                      } catch (e) {}
+                    }, 3000);
+                  } catch (e) {}
+                }, 3000);
+              } catch (e) {}
+            });
           });
-        });
-        req.on('error', _ => {
-          onFail();
-        });
-        req.end();
+          req.on('error', _ => {
+            onFail();
+          });
+          req.end();
+        } catch (e) {}
       }
       stop() { }
       get name() {
