@@ -1,6 +1,6 @@
 /**
  * @name XenoLib
- * @version 1.3.36
+ * @version 1.3.37
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -20,7 +20,7 @@
    } else if (!fs.FolderExists(pathPlugins)) {
       shell.Popup('I can\'t find the BetterDiscord plugins folder.\nAre you sure it\'s even installed?', 0, 'Can\'t install myself', 0x10);
    } else if (shell.Popup('Should I copy myself to BetterDiscord\'s plugins folder for you?', 0, 'Do you need some help?', 0x34) === 6) {
-      fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
+      fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, '1XenoLib.plugin.js'), true);
       // Show the user where to put plugins in the future
       shell.Exec('explorer ' + pathPlugins);
       shell.Popup('I\'m installed!', 0, 'Successfully installed', 0x40);
@@ -33,8 +33,62 @@
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
+
+// eslint-disable-next-line no-undef
+if (window.__XL_waitingForWatcherTimeout && !window.__XL_assumingZLibLoaded) clearTimeout(window.__XL_waitingForWatcherTimeout);
+
+
+
+function _extractMeta(code/* : string */)/* : BDPluginManifest */ {
+  const [firstLine] = code.split('\n');
+  if (firstLine.indexOf('//META') !== -1) return _parseOldMeta(code);
+  if (firstLine.indexOf('/**') !== -1) return _parseNewMeta(code);
+  throw new ErrorNoStack('No or invalid plugin META header');
+}
+
+function _parseOldMeta(code/* : string */)/* : BDPluginManifest */ {
+  const [meta] = code.split('\n');
+  const rawMeta = meta.substring(meta.indexOf('//META') + 6, meta.indexOf('*//'));
+  try {
+    const parsed = JSON.parse(rawMeta);
+    if (!parsed.name) throw 'ENONAME';
+    parsed.format = 'json';
+    return parsed;
+  } catch (err) {
+    if (err === 'ENONAME') throw new /* ErrorNoStack */Error('Plugin META header missing name property');
+    throw new /* ErrorNoStack */Error('Plugin META header could not be parsed');
+  }
+}
+
+function _parseNewMeta(code/* : string */)/* : BDPluginManifest */ {
+  const ret = {};
+  let key = '';
+  let value = '';
+  try {
+    const jsdoc = code.substr(code.indexOf('/**') + 3, code.indexOf('*/') - code.indexOf('/**') - 3);
+    for (let i = 0, lines = jsdoc.split(/[^\S\r\n]*?(?:\r\n|\n)[^\S\r\n]*?\*[^\S\r\n]?/); i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.length) continue;
+      if (line[0] !== '@' || line[1] === ' ') {
+        value += ` ${line.replace('\\n', '\n').replace(/^\\@/, '@')}`;
+        continue;
+      }
+      if (key && value) ret[key] = value.trim();
+      const spaceSeperator = line.indexOf(' ');
+      key = line.substr(1, spaceSeperator - 1);
+      value = line.substr(spaceSeperator + 1);
+    }
+    ret[key] = value.trim();
+    ret.format = 'jsdoc';
+  } catch (err) {
+    throw new /* ErrorNoStack */Error('Plugin META header could not be parsed', err);
+  }
+  if (!ret.name) throw new /* ErrorNoStack */Error('Plugin META header missing name property');
+  return ret;
+}
+
 module.exports = (() => {
-  const canUseAstraNotifAPI = !!(global.Astra && Astra.n11s && Astra.n11s.n11sApi)
+  const canUseAstraNotifAPI = !!(global.Astra && Astra.n11s && Astra.n11s.n11sApi);
   /* Setup */
   const config = {
     main: 'index.js',
@@ -48,16 +102,21 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.36',
+      version: '1.3.37',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
     },
     changelog: [
       {
-        title: 'RIP BBD on Canary',
+        title: 'For dummies update',
         type: 'fixed',
-        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
+        items: ['Hard enforced newest zeres lib.', 'Hard enforced no duplicate zeres lib', 'Hard enforced newest of my plugins.']
+      },
+      {
+        title: 'Actual fixes',
+        type: 'fixed',
+        items: ['Fixed notifications not showing when there was a ping in them.']
       }
     ],
     defaultConfig: [
@@ -121,6 +180,8 @@ module.exports = (() => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
     const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Titles, Changelog: ChangelogModal } = DiscordModules;
 
+    if (window.__XL_waitingForWatcherTimeout) clearTimeout(window.__XL_waitingForWatcherTimeout);
+
     PluginUpdater.checkForUpdate(config.info.name, config.info.version, config.info.github_raw);
 
     let CancelledAsync = false;
@@ -128,9 +189,8 @@ module.exports = (() => {
 
     for (let s = 0; s < config.defaultConfig.length; s++) {
       const current = config.defaultConfig[s];
-      if (current.type != 'category') {
-        DefaultLibrarySettings[current.id] = current.value;
-      } else {
+      if (current.type != 'category') DefaultLibrarySettings[current.id] = current.value;
+      else {
         DefaultLibrarySettings[current.id] = {};
         for (let s = 0; s < current.settings.length; s++) {
           const subCurrent = current.settings[s];
@@ -139,11 +199,10 @@ module.exports = (() => {
       }
     }
 
-    if (global.XenoLib) {
-      try {
-        global.XenoLib.shutdown();
-      } catch (e) { }
-    }
+    if (global.XenoLib) try {
+      global.XenoLib.shutdown();
+    } catch (e) { }
+
     const XenoLib = {};
     XenoLib.shutdown = () => {
       try {
@@ -210,48 +269,44 @@ module.exports = (() => {
       try {
         const topContext = require('electron').webFrame.top.context;
         if (topContext === window) return null;
-        return topContext.Function
+        return topContext.Function;
       } catch {
         return null;
       }
     })();
     const originalFunctionClass = Function;
     XenoLib.createSmartPatcher = patcher => {
-      const createPatcher = patcher => {
-        return (moduleToPatch, functionName, callback, options = {}) => {
-          try {
-            var origDef = moduleToPatch[functionName];
-          } catch (_) {
-            return Logger.error(`Failed to patch ${functionName}`);
+      const createPatcher = patcher => (moduleToPatch, functionName, callback, options = {}) => {
+        try {
+          var origDef = moduleToPatch[functionName];
+        } catch (_) {
+          return Logger.error(`Failed to patch ${functionName}`);
+        }
+        if (rendererFunctionClass && origDef && !(origDef instanceof originalFunctionClass) && origDef instanceof rendererFunctionClass) window.Function = rendererFunctionClass;
+        const unpatches = [];
+        try {
+          unpatches.push(patcher(moduleToPatch, functionName, callback, options) || DiscordConstants.NOOP);
+        } catch (err) {
+          throw err;
+        } finally {
+          if (rendererFunctionClass) window.Function = originalFunctionClass;
+        }
+        try {
+          if (origDef && origDef.__isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
+            /* do NOT patch a patch by ZLIb, that'd be bad and cause double items in context menus */
+            if ((Utilities.getNestedProp(ZeresPluginLibrary, 'Patcher.patches') || []).findIndex(e => e.module === moduleToPatch) !== -1 && moduleToPatch.BDFDBpatch[functionName].originalMethod.__originalFunction) return;
+            unpatches.push(patcher(moduleToPatch.BDFDBpatch[functionName], 'originalMethod', callback, options));
           }
-          if (rendererFunctionClass && origDef && !(origDef instanceof originalFunctionClass) && origDef instanceof rendererFunctionClass) window.Function = rendererFunctionClass;
-          const unpatches = [];
-          try {
-            unpatches.push(patcher(moduleToPatch, functionName, callback, options) || DiscordConstants.NOOP);
-          } catch (err) {
-            throw err;
-          } finally {
-            if (rendererFunctionClass) window.Function = originalFunctionClass;
-          }
-          try {
-            if (origDef && origDef.__isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
-              /* do NOT patch a patch by ZLIb, that'd be bad and cause double items in context menus */
-              if ((Utilities.getNestedProp(ZeresPluginLibrary, 'Patcher.patches') || []).findIndex(e => e.module === moduleToPatch) !== -1 && moduleToPatch.BDFDBpatch[functionName].originalMethod.__originalFunction) return;
-              unpatches.push(patcher(moduleToPatch.BDFDBpatch[functionName], 'originalMethod', callback, options));
-            }
-          } catch (err) {
-            Logger.stacktrace('Failed to patch BDFDB patches', err);
-          }
-          return function unpatch() {
-            unpatches.forEach(e => e());
-          };
+        } catch (err) {
+          Logger.stacktrace('Failed to patch BDFDB patches', err);
+        }
+        return function unpatch() {
+          unpatches.forEach(e => e());
         };
       };
-      return Object.assign({}, patcher, {
-        before: createPatcher(patcher.before),
+      return { ...patcher, before: createPatcher(patcher.before),
         instead: createPatcher(patcher.instead),
-        after: createPatcher(patcher.after)
-      });
+        after: createPatcher(patcher.after) };
     };
 
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
@@ -475,9 +530,8 @@ module.exports = (() => {
       }
     }
     XenoLib.createSharedContext = (element, menuCreation) => {
-      if (element.__XenoLib_ContextMenus) {
-        element.__XenoLib_ContextMenus.push(menuCreation);
-      } else {
+      if (element.__XenoLib_ContextMenus) element.__XenoLib_ContextMenus.push(menuCreation);
+      else {
         element.__XenoLib_ContextMenus = [menuCreation];
         const oOnContextMenu = element.props.onContextMenu;
         element.props.onContextMenu = e => (typeof oOnContextMenu === 'function' && oOnContextMenu(e), ContextMenuActions.openContextMenu(e, _ => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'CTX Menu' }, React.createElement(ContextMenuWrapper, { menu: element.__XenoLib_ContextMenus.map(m => m()), ..._ }))));
@@ -554,14 +608,14 @@ module.exports = (() => {
           const supportServerLink = findLink('Support Server');
           footerProps.children = [];
           if (websiteLink) {
-            const href = websiteLink.props.href;
+            const { href } = websiteLink.props;
             delete websiteLink.props.href;
             delete websiteLink.props.target;
             websiteLink.props.onClick = () => window.open(href);
             footerProps.children.push(websiteLink);
           }
           if (sourceLink) {
-            const href = sourceLink.props.href;
+            const { href } = sourceLink.props;
             delete sourceLink.props.href;
             delete sourceLink.props.target;
             sourceLink.props.onClick = () => window.open(href);
@@ -569,7 +623,7 @@ module.exports = (() => {
           }
           footerProps.children.push(websiteLink || sourceLink ? ' | ' : null, React.createElement('a', { className: 'bda-link bda-link-website', onClick: e => ContextMenuActions.openContextMenu(e, e => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Donate button CTX menu' }, React.createElement(ContextMenuWrapper, { menu: XenoLib.createContextMenuGroup([XenoLib.createContextMenuItem('Paypal', () => window.open('https://paypal.me/lighty13'), 'paypal'), XenoLib.createContextMenuItem('Ko-fi', () => window.open('https://ko-fi.com/lighty_'), 'kofi'), XenoLib.createContextMenuItem('Patreon', () => window.open('https://www.patreon.com/lightyp'), 'patreon')]), ...e }))) }, 'Donate'));
           footerProps.children.push(' | ', supportServerLink || React.createElement('a', { className: 'bda-link bda-link-website', onClick: () => (LayerManager.popLayer(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Support Server'));
-          footerProps.children.push(' | ', React.createElement('a', { className: 'bda-link bda-link-website', onClick: () => (_this.props.addon.plugin.showChangelog ? _this.props.addon.plugin.showChangelog() : Modals.showChangelogModal(_this.props.addon.plugin.getName() + ' Changelog', _this.props.addon.plugin.getVersion(), _this.props.addon.plugin.getChanges())) }, 'Changelog'));
+          footerProps.children.push(' | ', React.createElement('a', { className: 'bda-link bda-link-website', onClick: () => (_this.props.addon.plugin.showChangelog ? _this.props.addon.plugin.showChangelog() : Modals.showChangelogModal(`${_this.props.addon.plugin.getName() } Changelog`, _this.props.addon.plugin.getVersion(), _this.props.addon.plugin.getChanges())) }, 'Changelog'));
           footerProps = null;
         };
         async function patchRewriteCard() {
@@ -679,7 +733,7 @@ module.exports = (() => {
     });
 
     try {
-      const DelayedCall = WebpackModules.getByProps('DelayedCall').DelayedCall;
+      const { DelayedCall } = WebpackModules.getByProps('DelayedCall');
       const FsModule = require('fs');
       /**
        * @interface
@@ -777,7 +831,7 @@ module.exports = (() => {
         Logger.stacktrace('Failed to get lazy colorpicker, unsurprisingly', err);
         return _ => null;
       }
-    })()
+    })();
 
     class ColorPickerModal extends React.PureComponent {
       constructor(props) {
@@ -826,13 +880,10 @@ module.exports = (() => {
         XenoLib._.bindAll(this, ['handleChange', 'handleColorPicker', 'handleReset']);
       }
       handleChange(value) {
-        if (!value.length) {
-          this.state.error = 'You must input a hex string';
-        } else if (!ColorConverter.isValidHex(value)) {
-          this.state.error = 'Invalid hex string';
-        } else {
-          this.state.error = null;
-        }
+        if (!value.length) this.state.error = 'You must input a hex string';
+        else if (!ColorConverter.isValidHex(value)) this.state.error = 'Invalid hex string';
+        else this.state.error = null;
+
         this.setState({ value });
         this.props.onChange(!value.length || !ColorConverter.isValidHex(value) ? this.props.defaultColor : value);
       }
@@ -926,7 +977,7 @@ module.exports = (() => {
     XenoLib.Settings.ColorPicker = class ColorPickerSettingField extends Settings.SettingField {
       constructor(name, note, value, onChange, options = {}) {
         super(name, note, onChange, ColorPicker, {
-          disabled: options.disabled ? true : false,
+          disabled: !!options.disabled,
           onChange: reactElement => color => {
             this.onChange(color);
           },
@@ -975,8 +1026,8 @@ module.exports = (() => {
       try {
         const { default: DeepClone } = WebpackModules.find(m => m.default && m.default.toString().indexOf('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(') !== -1 && !m.useVirtualizedAnchor);
         // SOOO much more extra code with zeres lib compared to Astra, maybe I just can't figure out how to use it effectively
-        const ReactParserRules = WebpackModules.find(m => typeof m === 'function' && (m = m.toString()) && (m.search(/^function\(\w\){return \w\({},\w,{link:\(0,\w.default\)\(\w\),emoji:\(\w=\w,\w=\w\.emojiTooltipPosition,\w=void 0===\w?\w/) !== -1 || m.search(/function\(\w\){return \w\({},\w,{link:\(0,\w\.default\)\(\w\)}\)}$/) !== -1 || m.search(/function\(\){return \w}$/) !== -1))
-        const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES').RULES, ReactParserRules({})]);
+        const ReactParserRules = WebpackModules.find(m => typeof m === 'function' && (m = m.toString()) && (m.search(/^function\(\w\){return \w\({},\w,{link:\(0,\w.default\)\(\w\),emoji:\(\w=\w,\w=\w\.emojiTooltipPosition,\w=void 0===\w?\w/) !== -1 || m.search(/function\(\w\){return \w\({},\w,{link:\(0,\w\.default\)\(\w\)}\)}$/) !== -1 || m.search(/function\(\){return \w}$/) !== -1));
+        const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES').RULES, ReactParserRules({}), { mention: WebpackModules.getByProps('react', 'handleUserContextMenu') }]);
         const { defaultRules } = WebpackModules.getByProps('defaultParse');
         FANCY_PANTS_PARSER_RULES.image = defaultRules.image;
         FANCY_PANTS_PARSER_RULES.link = defaultRules.link;
@@ -1036,33 +1087,29 @@ module.exports = (() => {
           default:
             const logType = ChangelogClasses[item.type] || ChangelogClasses.added;
             items.push(React.createElement('h1', { className: XenoLib.joinClassNames(logType.value, { [ChangelogClasses.marginTop.value]: item.marginTop || isFistType }) }, item.title));
-            items.push(
-              React.createElement(
-                'ul',
-                { className: 'XL-chl-p' },
-                item.items.map(e =>
+            items.push(React.createElement(
+              'ul',
+              { className: 'XL-chl-p' },
+              item.items.map(e =>
+                React.createElement(
+                  'li',
+                  {},
                   React.createElement(
-                    'li',
+                    'p',
                     {},
-                    React.createElement(
-                      'p',
-                      {},
-                      Array.isArray(e)
-                        ? e.map(e =>
-                          Array.isArray(e)
-                            ? React.createElement(
-                              'ul',
-                              {},
-                              e.map(e => React.createElement('li', {}, FancyParser(e)))
-                            )
-                            : FancyParser(e)
-                        )
-                        : FancyParser(e)
-                    )
+                    Array.isArray(e)
+                      ? e.map(e =>
+                        (Array.isArray(e)
+                          ? React.createElement(
+                            'ul',
+                            {},
+                            e.map(e => React.createElement('li', {}, FancyParser(e)))
+                          )
+                          : FancyParser(e)))
+                      : FancyParser(e)
                   )
-                )
-              )
-            );
+                ))
+            ));
             isFistType = false;
         }
       }
@@ -1094,30 +1141,28 @@ module.exports = (() => {
      * SOFTWARE.
      */
     XenoLib.zustand = createState => {
-      var state;
-      var listeners = new Set();
+      let state;
+      const listeners = new Set();
       const setState = partial => {
-        var partialState = typeof partial === 'function' ? partial(state) : partial;
+        const partialState = typeof partial === 'function' ? partial(state) : partial;
         if (partialState !== state) {
-          state = Object.assign({}, state, partialState);
-          listeners.forEach(function (listener) {
-            return listener();
-          });
+          state = { ...state, ...partialState };
+          listeners.forEach(listener => listener());
         }
       };
       const getState = () => state;
       const getSubscriber = (listener, selector, equalityFn) => {
         if (selector === void 0) selector = getState;
         if (equalityFn === void 0) equalityFn = Object.is;
-        return { currentSlice: selector(state), equalityFn: equalityFn, errored: false, listener: listener, selector: selector, unsubscribe: function unsubscribe() { } };
+        return { currentSlice: selector(state), equalityFn, errored: false, listener, selector, unsubscribe: function unsubscribe() { } };
       };
-      var subscribe = function subscribe(subscriber) {
+      const subscribe = function subscribe(subscriber) {
         function listener() {
           // Selector or equality function could throw but we don't want to stop
           // the listener from being called.
           // https://github.com/react-spring/zustand/pull/37
           try {
-            var newStateSlice = subscriber.selector(state);
+            const newStateSlice = subscriber.selector(state);
             if (!subscriber.equalityFn(subscriber.currentSlice, newStateSlice)) subscriber.listener((subscriber.currentSlice = newStateSlice));
           } catch (error) {
             subscriber.errored = true;
@@ -1133,15 +1178,15 @@ module.exports = (() => {
       const useStore = (selector, equalityFn) => {
         if (selector === void 0) selector = getState;
         if (equalityFn === void 0) equalityFn = Object.is;
-        var forceUpdate = React.useReducer(c => c + 1, 0)[1];
-        var subscriberRef = React.useRef();
+        const forceUpdate = React.useReducer(c => c + 1, 0)[1];
+        const subscriberRef = React.useRef();
         if (!subscriberRef.current) {
           subscriberRef.current = getSubscriber(forceUpdate, selector, equalityFn);
           subscriberRef.current.unsubscribe = subscribe(subscriberRef.current);
         }
-        var subscriber = subscriberRef.current;
-        var newStateSlice;
-        var hasNewStateSlice = false; // The selector or equalityFn need to be called during the render phase if
+        const subscriber = subscriberRef.current;
+        let newStateSlice;
+        let hasNewStateSlice = false; // The selector or equalityFn need to be called during the render phase if
         // they change. We also want legitimate errors to be visible so we re-run
         // them if they errored in the subscriber.
         if (subscriber.selector !== selector || subscriber.equalityFn !== equalityFn || subscriber.errored) {
@@ -1149,7 +1194,7 @@ module.exports = (() => {
           newStateSlice = selector(state);
           hasNewStateSlice = !equalityFn(subscriber.currentSlice, newStateSlice);
         } // Syncing changes in useEffect.
-        React.useLayoutEffect(function () {
+        React.useLayoutEffect(() => {
           if (hasNewStateSlice) subscriber.currentSlice = newStateSlice;
           subscriber.selector = selector;
           subscriber.equalityFn = equalityFn;
@@ -1158,7 +1203,7 @@ module.exports = (() => {
         React.useLayoutEffect(() => subscriber.unsubscribe, []);
         return hasNewStateSlice ? newStateSlice : subscriber.currentSlice;
       };
-      const api = { setState: setState, getState: getState, subscribe: apiSubscribe, destroy: destroy };
+      const api = { setState, getState, subscribe: apiSubscribe, destroy };
       state = createState(setState, getState, api);
       return [useStore, api];
     };
@@ -1176,16 +1221,16 @@ module.exports = (() => {
         };
         const utils = {
           success(content, options = {}) {
-            return this.show(content, Object.assign({ color: '#43b581' }, options));
+            return this.show(content, { color: '#43b581', ...options });
           },
           info(content, options = {}) {
-            return this.show(content, Object.assign({ color: '#4a90e2' }, options));
+            return this.show(content, { color: '#4a90e2', ...options });
           },
           warning(content, options = {}) {
-            return this.show(content, Object.assign({ color: '#ffa600' }, options));
+            return this.show(content, { color: '#ffa600', ...options });
           },
           danger(content, options = {}) {
-            return this.show(content, Object.assign({ color: '#f04747' }, options));
+            return this.show(content, { color: '#f04747', ...options });
           },
           error(content, options = {}) {
             return this.danger(content, options);
@@ -1247,26 +1292,23 @@ module.exports = (() => {
           const isCNT2HTML = content2 instanceof HTMLElement;
           if (isCNT1HTML !== isCNT2HTML) return false;
           else if (isCNT1HTML) return content1.isEqualNode(content2);
-          if (content1 !== content2) {
-            if (Array.isArray(content1)) {
-              if (content1.length !== content2.length) return false;
-              for (const [index, item] of content1.entries()) {
-                if (!DeepEqualityCheck(item, content2[index])) return false;
-              }
-            } else if (typeof content1 === 'object') {
-              if (content1.type) {
-                if (typeof content1.type !== typeof content2.type) return false;
-                if (content1.type !== content2.type) return false;
-              }
-              if (typeof content1.props !== typeof content2.props) return false;
-              if (content1.props) {
-                if (Object.keys(content1.props).length !== Object.keys(content2.props).length) return false;
-                for (const prop in content1.props) {
-                  if (!DeepEqualityCheck(content1.props[prop], content2.props[prop])) return false;
-                }
-              }
-            } else return false;
-          }
+          if (content1 !== content2) if (Array.isArray(content1)) {
+            if (content1.length !== content2.length) return false;
+            for (const [index, item] of content1.entries()) if (!DeepEqualityCheck(item, content2[index])) return false;
+
+          } else if (typeof content1 === 'object') {
+            if (content1.type) {
+              if (typeof content1.type !== typeof content2.type) return false;
+              if (content1.type !== content2.type) return false;
+            }
+            if (typeof content1.props !== typeof content2.props) return false;
+            if (content1.props) {
+              if (Object.keys(content1.props).length !== Object.keys(content2.props).length) return false;
+              for (const prop in content1.props) if (!DeepEqualityCheck(content1.props[prop], content2.props[prop])) return false;
+
+            }
+          } else return false;
+
           return true;
         };
         const [useStore, api] = XenoLib.zustand(e => ({ data: [] }));
@@ -1280,16 +1322,16 @@ module.exports = (() => {
         };
         const utils = {
           success(content, options = {}) {
-            return this.show(content, Object.assign({ color: '#43b581' }, options));
+            return this.show(content, { color: '#43b581', ...options });
           },
           info(content, options = {}) {
-            return this.show(content, Object.assign({ color: '#4a90e2' }, options));
+            return this.show(content, { color: '#4a90e2', ...options });
           },
           warning(content, options = {}) {
-            return this.show(content, Object.assign({ color: '#ffa600' }, options));
+            return this.show(content, { color: '#ffa600', ...options });
           },
           danger(content, options = {}) {
-            return this.show(content, Object.assign({ color: '#f04747' }, options));
+            return this.show(content, { color: '#f04747', ...options });
           },
           error(content, options = {}) {
             return this.danger(content, options);
@@ -1319,9 +1361,8 @@ module.exports = (() => {
                 }
               }
               if (state.data.length >= 100) return state;
-              do {
-                id = Math.floor(4294967296 * Math.random());
-              } while (state.data.findIndex(n => n.id === id) !== -1);
+              do id = Math.floor(4294967296 * Math.random());
+              while (state.data.findIndex(n => n.id === id) !== -1);
               return { data: [].concat(state.data, [{ content, ...options, id }]) };
             });
             return id;
@@ -1449,7 +1490,7 @@ module.exports = (() => {
           parseContent(content, channelId) {
             if (typeof content === 'string') return FancyParser(content, true, { channelId });
             else if (content instanceof Element) return ReactTools.createWrappedElement(content);
-            else return content;
+            return content;
           }
           checkOffScreen() {
             if (this.state.leaving || !this._contentRef) return;
@@ -1505,15 +1546,12 @@ module.exports = (() => {
                       return;
                     }
                     await next({ opacity: 1, height: this._contentRef.offsetHeight, loadbrightness: 1 });
-                    if (this.props.timeout) {
-                      await next({ progress: 0 });
-                    } else {
-                      if (this.state.loading && this.state.progress !== -1) {
-                        await next({ progress: 0 });
-                      } else {
-                        await next({ progress: 100 });
-                      }
-                    }
+                    if (this.props.timeout) await next({ progress: 0 });
+                    else
+                    if (this.state.loading && this.state.progress !== -1) await next({ progress: 0 });
+                    else await next({ progress: 100 });
+
+
                     return;
                   }
                   const isSettingHeight = this._ref.offsetHeight !== this._contentRef.offsetHeight;
@@ -1526,9 +1564,8 @@ module.exports = (() => {
                   }
 
                   if (!this.props.timeout && !this.state.closeFast) {
-                    if (!this.state.loading) {
-                      await next({ progress: 100 });
-                    } else {
+                    if (!this.state.loading) await next({ progress: 100 });
+                    else {
                       await next({ loadbrightness: 1 });
                       if (this.state.progress === -1) await next({ progress: 100 });
                       else await next({ progress: this.state.progress });
@@ -1540,13 +1577,12 @@ module.exports = (() => {
                   await next({ progress: 100 });
                   if (this.state.hovered && !this.state.closeFast) return; /* race condition: notif is hovered, but it continues and closes! */
                   this.state.leaving = true;
-                  if (!this.state.closeFast) {
-                    api.setState(state => {
-                      const dt = state.data.find(m => m.id === this.props.id);
-                      if (dt) dt.leaving = true;
-                      return { data: state.data };
-                    });
-                  }
+                  if (!this.state.closeFast) api.setState(state => {
+                    const dt = state.data.find(m => m.id === this.props.id);
+                    if (dt) dt.leaving = true;
+                    return { data: state.data };
+                  });
+
                   this.props.onLeave();
                   await next({ opacity: 0, height: 0 });
                   api.setState(state => ({ data: state.data.filter(n => n.id !== this.props.id) }));
@@ -1562,106 +1598,101 @@ module.exports = (() => {
                   return config;
                 }
               },
-              e => {
-                return React.createElement(
-                  ReactSpring.animated.div,
+              e => React.createElement(
+                ReactSpring.animated.div,
+                {
+                  style: {
+                    height: e.height,
+                    opacity: e.opacity
+                  },
+                  className: 'xenoLib-notification',
+                  ref: e => e && (this._ref = e)
+                },
+                React.createElement(
+                  'div',
                   {
-                    style: {
-                      height: e.height,
-                      opacity: e.opacity
+                    className: 'xenoLib-notification-content-wrapper',
+                    ref: this._setContentRef,
+                    onMouseEnter: e => {
+                      if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
+                      this._animationCancel();
+                      if (this._startProgressing) this._timeout -= Date.now() - this._startProgressing;
+
+                      this.state.hovered = true;
+                      this.forceUpdate();
                     },
-                    className: 'xenoLib-notification',
-                    ref: e => e && (this._ref = e)
+                    onMouseLeave: e => {
+                      if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
+                      this._animationCancel();
+                      this.setState({ hovered: false });
+                    },
+                    style: {
+                      '--grad-one': this.state.color,
+                      '--grad-two': ColorConverter.lightenColor(this.state.color, 20),
+                      '--bar-color': ColorConverter.darkenColor(this.state.color, 30)
+                    },
+                    onClick: e => {
+                      if (!this.props.onClick) return;
+                      if (e.target && e.target.getAttribute('role') === 'button') return;
+                      this.props.onClick();
+                      this.closeNow();
+                    },
+                    onContextMenu: e => {
+                      if (!this.props.onContext) return;
+                      this.props.onContext();
+                      this.closeNow();
+                    }
                   },
                   React.createElement(
                     'div',
                     {
-                      className: 'xenoLib-notification-content-wrapper',
-                      ref: this._setContentRef,
-                      onMouseEnter: e => {
-                        if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
-                        this._animationCancel();
-                        if (this._startProgressing) {
-                          this._timeout -= Date.now() - this._startProgressing;
-                        }
-                        this.state.hovered = true;
-                        this.forceUpdate();
-                      },
-                      onMouseLeave: e => {
-                        if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
-                        this._animationCancel();
-                        this.setState({ hovered: false });
-                      },
+                      className: 'xenoLib-notification-content',
                       style: {
-                        '--grad-one': this.state.color,
-                        '--grad-two': ColorConverter.lightenColor(this.state.color, 20),
-                        '--bar-color': ColorConverter.darkenColor(this.state.color, 30)
+                        backdropFilter: LibrarySettings.notifications.backdrop ? 'blur(5px)' : undefined,
+                        background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), LibrarySettings.notifications.backdrop ? 0.3 : 1.0),
+                        border: LibrarySettings.notifications.backdrop ? 'none' : undefined
                       },
-                      onClick: e => {
-                        if (!this.props.onClick) return;
-                        if (e.target && e.target.getAttribute('role') === 'button') return;
-                        this.props.onClick();
-                        this.closeNow();
-                      },
-                      onContextMenu: e => {
-                        if (!this.props.onContext) return;
-                        this.props.onContext();
-                        this.closeNow();
+                      ref: e => {
+                        if (!LibrarySettings.notifications.backdrop || !e) return;
+                        e.style.setProperty('backdrop-filter', e.style.backdropFilter, 'important');
+                        e.style.setProperty('background', e.style.background, 'important');
+                        e.style.setProperty('border', e.style.border, 'important');
                       }
                     },
+                    React.createElement(ReactSpring.animated.div, {
+                      className: XenoLib.joinClassNames('xenoLib-notification-loadbar', { 'xenoLib-notification-loadbar-striped': !this.props.timeout && this.state.loading, 'xenoLib-notification-loadbar-user': !this.props.timeout && !this.state.loading }),
+                      style: { right: e.progress.to(e => `${100 - e }%`), filter: e.loadbrightness.to(e => `brightness(${e * 100}%)`) }
+                    }),
                     React.createElement(
-                      'div',
+                      XenoLib.ReactComponents.Button,
                       {
-                        className: 'xenoLib-notification-content',
-                        style: {
-                          backdropFilter: LibrarySettings.notifications.backdrop ? 'blur(5px)' : undefined,
-                          background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), LibrarySettings.notifications.backdrop ? 0.3 : 1.0),
-                          border: LibrarySettings.notifications.backdrop ? 'none' : undefined
+                        look: XenoLib.ReactComponents.Button.Looks.BLANK,
+                        size: XenoLib.ReactComponents.Button.Sizes.NONE,
+                        onClick: e => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          this.closeNow();
                         },
-                        ref: e => {
-                          if (!LibrarySettings.notifications.backdrop || !e) return;
-                          e.style.setProperty('backdrop-filter', e.style.backdropFilter, 'important');
-                          e.style.setProperty('background', e.style.background, 'important');
-                          e.style.setProperty('border', e.style.border, 'important');
-                        }
+                        onContextMenu: e => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const state = api.getState();
+                          state.data.forEach(notif => utils.remove(notif.id));
+                        },
+                        className: 'xenoLib-notification-close'
                       },
-                      React.createElement(ReactSpring.animated.div, {
-                        className: XenoLib.joinClassNames('xenoLib-notification-loadbar', { 'xenoLib-notification-loadbar-striped': !this.props.timeout && this.state.loading, 'xenoLib-notification-loadbar-user': !this.props.timeout && !this.state.loading }),
-                        style: { right: e.progress.to(e => 100 - e + '%'), filter: e.loadbrightness.to(e => `brightness(${e * 100}%)`) }
-                      }),
-                      React.createElement(
-                        XenoLib.ReactComponents.Button,
-                        {
-                          look: XenoLib.ReactComponents.Button.Looks.BLANK,
-                          size: XenoLib.ReactComponents.Button.Sizes.NONE,
-                          onClick: e => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.closeNow();
-                          },
-                          onContextMenu: e => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const state = api.getState();
-                            state.data.forEach(notif => utils.remove(notif.id));
-                          },
-                          className: 'xenoLib-notification-close'
-                        },
-                        CloseButton
-                      ),
-                      this.state.counter > 1 && BadgesModule.NumberBadge({ count: this.state.counter, className: 'xenLib-notification-counter', color: '#2196f3' }),
-                      this.state.contentParsed
-                    )
+                      CloseButton
+                    ),
+                    this.state.counter > 1 && BadgesModule.NumberBadge({ count: this.state.counter, className: 'xenLib-notification-counter', color: '#2196f3' }),
+                    this.state.contentParsed
                   )
-                );
-              }
+                )
+              )
             );
           }
         }
         function NotificationsWrapper(e) {
-          const notifications = useStore(e => {
-            return e.data;
-          });
+          const notifications = useStore(e => e.data);
           return notifications.map(item => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: `Notification ${item.id}`, onError: () => api.setState(state => ({ data: state.data.filter(n => n.id !== item.id) })), key: item.id.toString() }, React.createElement(Notification, { ...item, leaving: false }))).reverse();
         }
         NotificationsWrapper.displayName = 'XenoLibNotifications';
@@ -1733,24 +1764,22 @@ module.exports = (() => {
             {
               className: PositionSelectorWrapperClassname
             },
-            notifLocations.map((e, i) => {
-              return React.createElement(
-                'label',
-                {
-                  className: XenoLib.joinClassNames(notifLocationClasses[i], { [PositionSelectorSelectedClassname]: this.state.position === e })
+            notifLocations.map((e, i) => React.createElement(
+              'label',
+              {
+                className: XenoLib.joinClassNames(notifLocationClasses[i], { [PositionSelectorSelectedClassname]: this.state.position === e })
+              },
+              React.createElement('input', {
+                type: 'radio',
+                name: 'xenolib-notif-position-selector',
+                value: e,
+                onChange: () => {
+                  this.props.onChange(e);
+                  this.setState({ position: e });
                 },
-                React.createElement('input', {
-                  type: 'radio',
-                  name: 'xenolib-notif-position-selector',
-                  value: e,
-                  onChange: () => {
-                    this.props.onChange(e);
-                    this.setState({ position: e });
-                  },
-                  className: PositionSelectorHiddenInputClassname
-                })
-              );
-            })
+                className: PositionSelectorHiddenInputClassname
+              })
+            ))
           ),
           React.createElement(
             FormText,
@@ -1819,7 +1848,7 @@ module.exports = (() => {
           disabled: this.disabled,
           hideBorder: false,
           value: this.value,
-          onChange: (e) => {
+          onChange: e => {
             reactElement.props.value = e;
             reactElement.forceUpdate();
             this.onChange(e);
@@ -1831,28 +1860,22 @@ module.exports = (() => {
     XenoLib.buildSetting = function buildSetting(data) {
       const { name, note, type, value, onChange, id } = data;
       let setting = null;
-      if (type == "color") setting = new XenoLib.Settings.ColorPicker(name, note, value, onChange, { disabled: data.disabled, defaultColor: value });
-      else if (type == "dropdown") setting = new Settings.Dropdown(name, note, value, data.options, onChange);
-      else if (type == "file") setting = new Settings.FilePicker(name, note, onChange);
-      else if (type == "keybind") setting = new Settings.Keybind(name, note, value, onChange);
-      else if (type == "radio") setting = new RadioGroup(name, note, value, data.options, onChange, { disabled: data.disabled });
-      else if (type == "slider") setting = new Settings.Slider(name, note, data.min, data.max, value, onChange, data);
-      else if (type == "switch") setting = new Switch(name, note, value, onChange, { disabled: data.disabled });
-      else if (type == "textbox") setting = new Settings.Textbox(name, note, value, onChange, { placeholder: data.placeholder || "" });
+      if (type == 'color') setting = new XenoLib.Settings.ColorPicker(name, note, value, onChange, { disabled: data.disabled, defaultColor: value });
+      else if (type == 'dropdown') setting = new Settings.Dropdown(name, note, value, data.options, onChange);
+      else if (type == 'file') setting = new Settings.FilePicker(name, note, onChange);
+      else if (type == 'keybind') setting = new Settings.Keybind(name, note, value, onChange);
+      else if (type == 'radio') setting = new RadioGroup(name, note, value, data.options, onChange, { disabled: data.disabled });
+      else if (type == 'slider') setting = new Settings.Slider(name, note, data.min, data.max, value, onChange, data);
+      else if (type == 'switch') setting = new Switch(name, note, value, onChange, { disabled: data.disabled });
+      else if (type == 'textbox') setting = new Settings.Textbox(name, note, value, onChange, { placeholder: data.placeholder || '' });
       if (id) setting.id = id;
       return setting;
-    }
+    };
 
     return class CXenoLib extends Plugin {
       constructor() {
         super();
         this.settings = LibrarySettings;
-        /*
-         * why are we letting Zere, the braindead American let control BD when he can't even
-         * fucking read clearly documented and well known standards, such as __filename being
-         * the files full fucking path and not just the filename itself, IS IT REALLY SO HARD
-         * TO FUCKING READ?! https://nodejs.org/api/modules.html#modules_filename
-         */
         const _zerecantcode_path = require('path');
         const theActualFileNameZere = _zerecantcode_path.join(__dirname, _zerecantcode_path.basename(__filename));
         XenoLib.changeName(theActualFileNameZere, '1XenoLib'); /* prevent user from changing libs filename */
@@ -1862,25 +1885,96 @@ module.exports = (() => {
       }
       load() {
         super.load();
-        if (window.Lightcord) return XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
-        if (!BdApi.Plugins) return; /* well shit what now */
-        if (!BdApi.isSettingEnabled || !BdApi.disableSetting) return;
-        const prev = BdApi.isSettingEnabled('fork-ps-2');
-        if (prev) BdApi.disableSetting('fork-ps-2');
-        const list = BdApi.Plugins.getAll().filter(k => k._XL_PLUGIN);
-        for (let p = 0; p < list.length; p++) {
-          try {
+        try {
+          if (window.Lightcord) return XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
+          if (!BdApi.Plugins) return; /* well shit what now */
+          if (!BdApi.isSettingEnabled) return;
+          const list = BdApi.Plugins.getAll().filter(k => k._XL_PLUGIN || (k.instance && k.instance._XL_PLUGIN)).map(k => k.instance || k);
+          for (let p = 0; p < list.length; p++) try {
             BdApi.Plugins.reload(list[p].getName());
           } catch (e) {
             try {
               Logger.stacktrace(`Failed to reload plugin ${list[p].getName()}`, e);
             } catch (e) {
-              Logger.error(`Failed telling you about failing to reload a plugin`, list[p], e);
+              Logger.error('Failed telling you about failing to reload a plugin', list[p], e);
             }
           }
+          if (window.Lightcord) location.reload();
+
+          const pluginsDir = (BdApi.Plugins && BdApi.Plugins.folder) || (window.ContentManager && window.ContentManager.pluginsFolder);
+          const PLUGINS_LIST = ['BetterImageViewer', 'BetterTypingUsers', 'BetterUnavailableGuilds', 'CrashRecovery', 'InAppNotifications', 'MessageLoggerV2', 'MultiUploads', 'SaveToRedux', 'UnreadBadgesRedux'];
+          const fs = require('fs');
+          const path = require('path');
+
+          const pluginsToCheck = [];
+
+          let alreadyFoundZLib = false;
+
+          for (const file of fs.readdirSync(pluginsDir)) {
+            if (file.indexOf('.plugin.js') !== file.length - 10) continue;
+
+            try {
+              const { name } = _extractMeta(fs.readFileSync(path.join(pluginsDir, file), 'utf8'));
+              if (PLUGINS_LIST.indexOf(name) === -1) {
+                switch (name) {
+                  case 'XenoLib': {
+                    if (file !== path.basename(__filename)) fs.unlinkSync(path.join(pluginsDir, file));
+                    break;
+                  }
+                  case 'ZeresPluginLibrary': {
+                    if (alreadyFoundZLib) fs.unlinkSync(path.join(pluginsDir, file));
+                    else alreadyFoundZLib = true;
+                  }
+                }
+                continue;
+              }
+              if (~pluginsToCheck.findIndex(e => e.name === name)) {
+                fs.unlinkSync(path.join(pluginsDir, file));
+                continue;
+              }
+              pluginsToCheck.push({ name, file });
+            } catch (e) {}
+          }
+          setTimeout(() => {
+            const https = require('https');
+            for (const { name, file } of pluginsToCheck) {
+              // eslint-disable-next-line no-undef
+              let plugin = BdApi.Plugins.get(name);
+              if (plugin && plugin.instance) plugin = plugin.instance;
+              // eslint-disable-next-line no-loop-func
+              const req = https.request(`https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/${name}/${name}.plugin.js`, { headers: { origin: 'discord.com' } }, res => {
+                let body = '';
+                // eslint-disable-next-line no-void
+                res.on('data', chunk => ((body += chunk), void 0));
+                res.on('end', () => {
+                  if (res.statusCode !== 200) return XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 });
+                  if (plugin && (name === 'MessageLoggerV2' || Utilities.getNestedProp(plugin, '_config.info.version')) && !PluginUpdater.defaultComparator(name === 'MessageLoggerV2' ? plugin.getVersion() : plugin._config.info.version, PluginUpdater.defaultVersioner(body))) return;
+                  const newFile = `${name}.plugin.js`;
+                  fs.unlinkSync(path.join(pluginsDir, file));
+                  // avoid BDs watcher being shit as per usual
+                  setTimeout(() => {
+                    fs.writeFileSync(path.join(pluginsDir, newFile), body);
+                    if (window.pluginModule && window.pluginModule.loadPlugin) {
+                      BdApi.Plugins.reload(name);
+                      if (newFile !== file) window.pluginModule.loadPlugin(name);
+                      // eslint-disable-next-line curly
+                    } else if (BdApi.version ? !BdApi.isSettingEnabled('settings', 'addons', 'autoReload') : !BdApi.isSettingEnabled('fork-ps-5')) {
+                    // eslint-disable-next-line no-negated-condition
+                      if (newFile !== file)
+                      // eslint-disable-next-line no-undef
+                        BdApi.showConfirmationModal('Hmm', 'You must reload in order to finish plugin installation', { onConfirm: () => location.reload() });
+                      else BdApi.Plugins.reload(name);
+                    }
+                  }, 1000);
+                });
+              });
+              req.on('error', _ => XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 }));
+              req.end();
+            }
+          }, 3000);
+        } catch (err) {
+          Logger.log('Failed to execute load', err);
         }
-        if (prev) BdApi.enableSetting('fork-ps-2');
-        if (window.Lightcord) location.reload();
       }
       buildSetting(data) {
         if (data.type === 'position') {
@@ -1910,18 +2004,15 @@ module.exports = (() => {
               DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
               Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
             }
-          } else if (setting === 'backdrop' || setting === 'backdropColor') {
-            Dispatcher.wait(() => Dispatcher.dispatch({ type: 'XL_NOTIFS_SETTINGS_UPDATE', key: UPDATEKEY }), (UPDATEKEY = {}));
-          }
-        } else if (category === 'addons') {
-          if (setting === 'extra') {
-            if (value && !patchAddonCardAnyway.patched) patchAddonCardAnyway(true);
-            XenoLib.Notifications.warning('Reopen plugins section for immediate effect');
-          }
+          } else if (setting === 'backdrop' || setting === 'backdropColor') Dispatcher.wait(() => Dispatcher.dispatch({ type: 'XL_NOTIFS_SETTINGS_UPDATE', key: UPDATEKEY }), (UPDATEKEY = {}));
+
+        } else if (category === 'addons') if (setting === 'extra') {
+          if (value && !patchAddonCardAnyway.patched) patchAddonCardAnyway(true);
+          XenoLib.Notifications.warning('Reopen plugins section for immediate effect');
         }
+
       }
       showChangelog(footer) {
-        return;
         XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog);
       }
       get name() {
@@ -1960,11 +2051,10 @@ module.exports = (() => {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
 
-  return !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
+  return !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated || window.__XL_requireRenamePls
     ? class {
       constructor() {
         this._config = config;
-        this.start = this.load = this.handleMissingLib;
       }
       getName() {
         return this.name.replace(/\s+/g, '');
@@ -1976,83 +2066,114 @@ module.exports = (() => {
         return this.version;
       }
       getDescription() {
-        return this.description + ' You are missing ZeresPluginLibrary for this plugin, please enable the plugin and click Download Now.';
+        return `${this.description } You are missing ZeresPluginLibrary for this plugin, please enable the plugin to download it.`;
       }
       start() { }
-      stop() { }
-      handleMissingLib() {
-        const a = BdApi.findModuleByProps('openModal', 'hasModalOpen');
-        if (a && a.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
-        const b = !global.ZeresPluginLibrary,
-          c = ZeresPluginLibraryOutdated ? 'Outdated Library' : 'Missing Library',
-          d = `The Library ZeresPluginLibrary required for ${this.name} is ${ZeresPluginLibraryOutdated ? 'outdated' : 'missing'}.`,
-          e = BdApi.findModuleByDisplayName('Text'),
-          f = BdApi.findModuleByDisplayName('ConfirmModal'),
-          g = () => BdApi.alert(c, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, d), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, b || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null));
-        if (!a || !f || !e) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (f ? '' : ' ConfirmationModalComponent') + (e ? '' : 'TextElement')}`), g();
-        class h extends BdApi.React.PureComponent {
-          constructor(a) {
-            super(a), (this.state = { hasError: !1 });
-          }
-          componentDidCatch(a) {
-            console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({ hasError: !0 }), 'function' == typeof this.props.onError && this.props.onError(a);
-          }
-          render() {
-            return this.state.hasError ? null : this.props.children;
-          }
+      load() {
+        // asking people to do simple tasks is stupid, relying on stupid modals that are *supposed* to help them is unreliable
+        // forcing the download on enable is good enough
+        const fs = require('fs');
+        const path = require('path');
+        const pluginsDir = (BdApi.Plugins && BdApi.Plugins.folder) || (window.ContentManager && window.ContentManager.pluginsFolder);
+        const zeresLibDir = path.join(pluginsDir, '0PluginLibrary.plugin.js');
+
+        if (window.__XL_requireRenamePls) {
+          delete window.__XL_requireRenamePls;
+          const oldSelfPath = path.join(pluginsDir, path.basename(__filename));
+          const selfContent = fs.readFileSync(oldSelfPath);
+          // avoid windows blocking the file
+          fs.unlinkSync(oldSelfPath);
+          // avoid BDs watcher being shit as per usual
+          setTimeout(() => {
+            fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
+            window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+              // what the fuck?
+              BdApi.Plugins.reload(this.getName());
+            }, 3000);
+          }, 1000);
+          return;
         }
-        let i = !1,
-          j = !1;
-        const k = a.openModal(
-          b => {
-            if (j) return null;
-            try {
-              return BdApi.React.createElement(
-                h,
-                {
-                  label: 'missing dependency modal',
-                  onError: () => {
-                    a.closeModal(k), g();
-                  }
-                },
-                BdApi.React.createElement(
-                  f,
-                  Object.assign(
-                    {
-                      header: c,
-                      children: BdApi.React.createElement(e, { size: e.Sizes.SIZE_16, children: [`${d} Please click Download Now to download it.`] }),
-                      red: !1,
-                      confirmText: 'Download Now',
-                      cancelText: 'Cancel',
-                      onCancel: b.onClose,
-                      onConfirm: () => {
-                        if (i) return;
-                        i = !0;
-                        const b = require('request'),
-                          c = require('fs'),
-                          d = require('path');
-                        b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, e, f) => {
-                          try {
-                            if (b || 200 !== e.statusCode) return a.closeModal(k), g();
-                            c.writeFile(d.join(BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder, '0PluginLibrary.plugin.js'), f, () => { });
-                          } catch (b) {
-                            console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(k), g();
-                          }
-                        });
-                      }
-                    },
-                    b,
-                    { onClose: () => { } }
-                  )
-                )
-              );
-            } catch (b) {
-              return console.error('There has been an error constructing the modal', b), (j = !0), a.closeModal(k), g(), null;
+
+        if (window.__XL_assumingZLibLoaded) return;
+
+        for (const file of fs.readdirSync(pluginsDir)) {
+          if (file.indexOf('.plugin.js') !== file.length - 10) continue;
+          try {
+            switch (_extractMeta(fs.readFileSync(path.join(pluginsDir, file), 'utf8')).name) {
+              case 'XenoLib': {
+                if (file !== '1XenoLib.plugin.js') if (file === path.basename(__filename)) window.__XL_requireRenamePls = true;
+                else fs.unlinkSync(path.join(pluginsDir, file));
+
+                continue;
+              }
+              case 'ZeresPluginLibrary': {
+                fs.unlinkSync(path.join(pluginsDir, file));
+                continue;
+              }
+              default: continue;
             }
-          },
-          { modalKey: `${this.name}_DEP_MODAL` }
-        );
+          } catch (e) {}
+        }
+
+        const https = require('https');
+
+        const onFail = () => BdApi.showConfirmationModal('Well shit', 'Failed to download Zeres Plugin Library, join this server for further assistance:https://discord.gg/NYvWdN5');
+
+        const req = https.request('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', { headers: { origin: 'discord.com' } }, res => {
+          let body = '';
+          // eslint-disable-next-line no-void
+          res.on('data', chunk => ((body += chunk), void 0));
+          res.on('end', () => {
+            if (res.statusCode !== 200) return onFail();
+            fs.writeFileSync(zeresLibDir, body);
+            // eslint-disable-next-line no-undef
+            window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+              if (!window.pluginModule || !window.pluginModule.loadPlugin) {
+                window.__XL_assumingZLibLoaded = true;
+                const didRename = window.__XL_requireRenamePls;
+                window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+                  window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+                    location.reload();
+                  }, 3000);
+                  BdApi.Plugins.reload(this.getName());
+                }, window.__XL_requireRenamePls ? 3000 : 0);
+                if (window.__XL_requireRenamePls) {
+                  delete window.__XL_requireRenamePls;
+                  const oldSelfPath = path.join(pluginsDir, path.basename(__filename));
+                  const selfContent = fs.readFileSync(oldSelfPath);
+                  // avoid windows blocking the file
+                  fs.unlinkSync(oldSelfPath);
+                  fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
+                }
+                return;
+              }
+              window.__XL_assumingZLibLoaded = true;
+              window.pluginModule.loadPlugin('0PluginLibrary');
+              window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+                const didRename = window.__XL_requireRenamePls;
+                window.__XL_waitingForWatcherTimeout = setTimeout(() => {
+                  window.__XL_waitingForWatcherTimeout = setTimeout(onFail, 3000);
+                  BdApi.Plugins.reload(this.getName());
+                  if (!BdApi.Plugins.get('XenoLib')) window.pluginModule.loadPlugin('1XenoLib');
+                }, window.__XL_requireRenamePls ? 3000 : 0);
+                if (window.__XL_requireRenamePls) {
+                  delete window.__XL_requireRenamePls;
+                  const oldSelfPath = path.join(pluginsDir, path.basename(__filename));
+                  const selfContent = fs.readFileSync(oldSelfPath);
+                  // avoid windows blocking the file
+                  fs.unlinkSync(oldSelfPath);
+                  fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
+                }
+              }, 3000);
+            }, 3000);
+          });
+        });
+        req.on('error', _ => {
+          onFail();
+        });
+        req.end();
       }
+      stop() { }
       get name() {
         return config.info.name;
       }
