@@ -1936,41 +1936,47 @@ module.exports = (() => {
             } catch (e) {}
           }
           setTimeout(() => {
-            const https = require('https');
-            for (const { name, file } of pluginsToCheck) {
+            try {
+              const https = require('https');
+              for (const { name, file } of pluginsToCheck) {
               // eslint-disable-next-line no-undef
-              let plugin = BdApi.Plugins.get(name);
-              if (plugin && plugin.instance) plugin = plugin.instance;
-              // eslint-disable-next-line no-loop-func
-              const req = https.request(`https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/${name}/${name}.plugin.js`, { headers: { origin: 'discord.com' } }, res => {
-                let body = '';
-                // eslint-disable-next-line no-void
-                res.on('data', chunk => ((body += chunk), void 0));
-                res.on('end', () => {
-                  if (res.statusCode !== 200) return XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 });
-                  if (plugin && (name === 'MessageLoggerV2' || Utilities.getNestedProp(plugin, '_config.info.version')) && !PluginUpdater.defaultComparator(name === 'MessageLoggerV2' ? plugin.getVersion() : plugin._config.info.version, PluginUpdater.defaultVersioner(body))) return;
-                  const newFile = `${name}.plugin.js`;
-                  fs.unlinkSync(path.join(pluginsDir, file));
-                  // avoid BDs watcher being shit as per usual
-                  setTimeout(() => {
-                    fs.writeFileSync(path.join(pluginsDir, newFile), body);
-                    if (window.pluginModule && window.pluginModule.loadPlugin) {
-                      BdApi.Plugins.reload(name);
-                      if (newFile !== file) window.pluginModule.loadPlugin(name);
-                      // eslint-disable-next-line curly
-                    } else if (BdApi.version ? !BdApi.isSettingEnabled('settings', 'addons', 'autoReload') : !BdApi.isSettingEnabled('fork-ps-5')) {
-                    // eslint-disable-next-line no-negated-condition
-                      if (newFile !== file)
-                      // eslint-disable-next-line no-undef
-                        BdApi.showConfirmationModal('Hmm', 'You must reload in order to finish plugin installation', { onConfirm: () => location.reload() });
-                      else BdApi.Plugins.reload(name);
-                    }
-                  }, 1000);
+                let plugin = BdApi.Plugins.get(name);
+                if (plugin && plugin.instance) plugin = plugin.instance;
+                // eslint-disable-next-line no-loop-func
+                const req = https.request(`https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/${name}/${name}.plugin.js`, { headers: { origin: 'discord.com' } }, res => {
+                  let body = '';
+                  // eslint-disable-next-line no-void
+                  res.on('data', chunk => ((body += chunk), void 0));
+                  res.on('end', () => {
+                    try {
+                      if (res.statusCode !== 200) return XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 });
+                      if (plugin && (name === 'MessageLoggerV2' || Utilities.getNestedProp(plugin, '_config.info.version')) && !PluginUpdater.defaultComparator(name === 'MessageLoggerV2' ? plugin.getVersion() : plugin._config.info.version, PluginUpdater.defaultVersioner(body))) return;
+                      const newFile = `${name}.plugin.js`;
+                      fs.unlinkSync(path.join(pluginsDir, file));
+                      // avoid BDs watcher being shit as per usual
+                      setTimeout(() => {
+                        try {
+                          fs.writeFileSync(path.join(pluginsDir, newFile), body);
+                          if (window.pluginModule && window.pluginModule.loadPlugin) {
+                            BdApi.Plugins.reload(name);
+                            if (newFile !== file) window.pluginModule.loadPlugin(name);
+                          // eslint-disable-next-line curly
+                          } else if (BdApi.version ? !BdApi.isSettingEnabled('settings', 'addons', 'autoReload') : !BdApi.isSettingEnabled('fork-ps-5')) {
+                            // eslint-disable-next-line no-negated-condition
+                            if (newFile !== file)
+                            // eslint-disable-next-line no-undef
+                              BdApi.showConfirmationModal('Hmm', 'You must reload in order to finish plugin installation', { onConfirm: () => location.reload() });
+                            else BdApi.Plugins.reload(name);
+                          }
+                        } catch (e) {}
+                      }, 1000);
+                    } catch (e) {}
+                  });
                 });
-              });
-              req.on('error', _ => XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 }));
-              req.end();
-            }
+                req.on('error', _ => XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 }));
+                req.end();
+              }
+            } catch (e) {}
           }, 3000);
         } catch (err) {
           Logger.log('Failed to execute load', err);
