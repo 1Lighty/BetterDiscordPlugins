@@ -1911,7 +1911,7 @@ module.exports = (() => {
           let alreadyFoundZLib = false;
 
           for (const file of fs.readdirSync(pluginsDir)) {
-            if (file.indexOf('.plugin.js') !== file.length - 10) continue;
+            if (file.indexOf('.js') !== file.length - 3) continue;
 
             try {
               const { name } = _extractMeta(fs.readFileSync(path.join(pluginsDir, file), 'utf8'));
@@ -2108,7 +2108,7 @@ module.exports = (() => {
           if (window.__XL_assumingZLibLoaded) return;
 
           for (const file of fs.readdirSync(pluginsDir)) {
-            if (file.indexOf('.plugin.js') !== file.length - 10) continue;
+            if (file.indexOf('.js') !== file.length - 3) continue;
             try {
               switch (_extractMeta(fs.readFileSync(path.join(pluginsDir, file), 'utf8')).name) {
                 case 'XenoLib': {
