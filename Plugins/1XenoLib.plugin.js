@@ -1,9 +1,13 @@
 /**
  * @name XenoLib
- * @version 1.3.37
+ * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
+ * @author 1Lighty
+ * @authorId 239513071272329217
+ * @version 1.3.38
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
+ * @updateUrl https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js
  */
 /*@cc_on
 @if (@_jscript)
@@ -102,21 +106,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.37',
+      version: '1.3.38',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
     },
     changelog: [
       {
-        title: 'For dummies update',
+        title: 'Minor fixes',
         type: 'fixed',
-        items: ['Hard enforced newest zeres lib.', 'Hard enforced no duplicate zeres lib', 'Hard enforced newest of my plugins.']
-      },
-      {
-        title: 'Actual fixes',
-        type: 'fixed',
-        items: ['Fixed notifications not showing when there was a ping in them.']
+        items: ['Fixed notifications not properly updating if they were updated before showing.', 'Fixed updating not working at all on Astra, lmao.']
       }
     ],
     defaultConfig: [
@@ -1275,7 +1274,7 @@ module.exports = (() => {
            */
           update(id, options) {
             const obj = {};
-            for (const key in ['loading', 'progress', 'color', 'onClick', 'onContext']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
+            for (const key in ['content', 'timeout', 'loading', 'progress', 'color', 'onClick', 'onContext']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
             if (options.onLeave) obj.onClose = options.onLeave;
             if (options.channelId) obj.markdownOptions = { channelId: options.channelId };
             Astra.n11s.update(id, obj);
@@ -1466,7 +1465,7 @@ module.exports = (() => {
                 this.setState({ counter: this.state.counter + 1, resetBar: !!this.props.timeout, closeFast: false });
                 break;
               case 'XL_NOTIFS_UPDATE':
-                if (!this.state.initialAnimDone) {
+                /* if (!this.state.initialAnimDone) {
                   this.state.content = content || curContent;
                   this.state.channelId = channelId || curChannelId;
                   this.state.contentParsed = this.parseContent(content || curContent, channelId || curChannelId);
@@ -1474,8 +1473,8 @@ module.exports = (() => {
                   if (typeof progress !== 'undefined') this.state.progress = progress;
                   this.state.color = color || curColor;
                   return;
-                }
-                this._animationCancel();
+                }*/
+                if (this.state.initialAnimDone) this._animationCancel();
                 this.setState({
                   content: content || curContent,
                   channelId: channelId || curChannelId,
