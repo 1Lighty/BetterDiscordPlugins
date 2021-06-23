@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.0.15
+ * @version 1.1.0
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.15',
+      version: '1.1.0',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -830,7 +830,7 @@ module.exports = (() => {
           this._timeUnparser = null;
         }
 
-        if (Array.isArray(this.settings.keywords)) this.settings.keywords = [];
+        if (!Array.isArray(this.settings.keywords)) this.settings.keywords = [];
 
         this.n10nMap = {};
 
