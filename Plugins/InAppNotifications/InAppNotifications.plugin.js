@@ -386,7 +386,10 @@ module.exports = (() => {
       handleSave(keyword = this.state.value, caseSensitive = this.state.caseSensitive, id = TimestampUtils.fromTimestamp(Date.now())) {
         let found = true;
         const item = this.state.items.find(e => e.id === id) || (found = false, {});
-        if (found) return this.handleRemoveItem(id);
+        if (!keyword) {
+          if (found) this.handleRemoveItem(id);
+          return;
+        }
         item.keyword = keyword;
         item.caseSensitive = caseSensitive;
         item.id = id;
@@ -539,7 +542,10 @@ module.exports = (() => {
       handleSave(someId = this.state.value, id = TimestampUtils.fromTimestamp(Date.now())) {
         let found = true;
         const item = this.state.items.find(e => e.id === id) || (found = false, {});
-        if (found) return this.handleRemoveItem(id);
+        if (!someId) {
+          if (found) this.handleRemoveItem(id);
+          return;
+        }
         item.someId = someId;
         item.id = id;
         if (!found) this.state.items.unshift(item);
