@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.0.12
+ * @version 1.0.13
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.12',
+      version: '1.0.13',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -198,22 +198,10 @@ module.exports = (() => {
     ],
     changelog: [
       {
-        title: 'brah',
-        type: 'fixed',
+        title: 'added',
+        type: 'added',
         items: [
-          'Fixed replies not having markdown.',
-          'Attachments and embeds now show in the notification to various extents.',
-          'Notifications now update to display to whatever is the current message, if it was edited.',
-          'Notifications close when you switch to the channel they came from.',
-          'You can now turn off getting notifications from DMs, group DMs and servers (all on by default).',
-          'Show a notification when you are pinged (on by default).',
-          'Show a notification for replies whether you got pinged or not (off by default).',
-          'Show a notification for when someone accepts your friend request (on by default).',
-          'Show a notification if someone sends you a friend request (on by default).',
-          'Respects per server avatars now.',
-          'Trigger notifications by keywords, with per keyword case sensitivity.',
-          'Ignore users, channels or users from showing notifications by ID.'/* ,
-          'ps, fuck qwert' */
+          'Now you can set other bar color for keywords notifications (on by default).'
         ]
       }
     ]
