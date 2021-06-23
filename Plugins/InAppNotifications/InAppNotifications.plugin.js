@@ -150,6 +150,21 @@ module.exports = (() => {
         stickToMarkers: true
       },
       {
+        name: 'Bar color for keyword notifications',
+        id: 'keywordColor',
+        type: 'color',
+        value: '#43b581',
+        options: {
+          defaultColor: '#43b581'
+        }
+      },
+      {
+        name: 'Use other bar color for keyword notifications',
+        id: 'useKeywordColor',
+        type: 'switch',
+        value: true
+      },
+      {
         name: 'Keyword notifications',
         note: 'Show a notification if it matches a keyword',
         id: 'keywords',
@@ -920,12 +935,16 @@ module.exports = (() => {
         if (this.settings.userIds.length) if (!~this.settings.userIds.indexOf(iAuthor.id)) return false;
         if (this.settings.channelIds.length) if (!~this.settings.channelIds.indexOf(iChannel.id)) return false;
         if (iChannel.guild_id && this.settings.serverIds.length) if (!~this.settings.serverIds.indexOf(iChannel.guild_id)) return false;
-        if (this.settings.keywords.length) for (const { keyword, caseSensitive } of this.settings.keywords) if ((new RegExp(this.escapeRegExp(keyword), caseSensitive ? 'g' : 'gi')).test(message.content)) return true;
+        if (this.shouldNotifyKeyword(message.content)) return true;
         if (iChannel.type === DiscordConstants.ChannelTypes.DM && !this.settings.dms) return false;
         if (iChannel.type === DiscordConstants.ChannelTypes.GROUP_DM && !this.settings.groupDMs) return false;
         if ((iChannel.type === DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT || iChannel.type === DiscordConstants.ChannelTypes.GUILD_TEXT) && !this.settings.servers) return false;
         if (MuteStore.allowAllMessages(iChannel)) return true;// channel has notif settings set to all messages
         return isMentionedUtils.isRawMessageMentioned(message, cUID, MuteStore.isSuppressEveryoneEnabled(iChannel.guild_id), MuteStore.isSuppressRolesEnabled(iChannel.guild_id));
+      }
+
+      shouldNotifyKeyword(content) {
+        if (this.settings.keywords.length) for (const { keyword, caseSensitive } of this.settings.keywords) if ((new RegExp(this.escapeRegExp(keyword), caseSensitive ? 'g' : 'gi')).test(content)) return true;
       }
 
       getChannelName(iChannel, iAuthor) {
@@ -1001,7 +1020,7 @@ module.exports = (() => {
         if (!title) return; /* wah */
         const iMember = GuildMemberStore.getMember(iChannel.guild_id, iAuthor.id);
         const iMessage = DiscordModules.MessageStore.getMessage(channelId, message.id) || MessageActionCreators.createMessageRecord(message);
-        const color = this.settings.roleColor && iMember && iMember.colorString;
+        const color = this.settings.useKeywordColor && this.shouldNotifyKeyword(message.content) && this.settings.keywordColor || this.settings.roleColor && iMember && iMember.colorString;
         const timeout = this.calculateTimeout(title, content);
         const options = {
           timeout,
