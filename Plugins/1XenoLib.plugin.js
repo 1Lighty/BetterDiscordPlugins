@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.38
+ * @version 1.3.39
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.38',
+      version: '1.3.39',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -115,7 +115,7 @@ module.exports = (() => {
       {
         title: 'Minor fixes',
         type: 'fixed',
-        items: ['Fixed notifications not properly updating if they were updated before showing.', 'Fixed updating not working at all on Astra, lmao.']
+        items: ['Fixed color picker not working.', '*Actually* fixed notification updating not working at all on Astra.']
       }
     ],
     defaultConfig: [
@@ -825,7 +825,7 @@ module.exports = (() => {
     const ColorPickerComponent = (_ => {
       try {
         const GFSM = WebpackModules.getByDisplayName('GuildFolderSettingsModal');
-        return Utilities.findInReactTree(GFSM.prototype.render.call({ props: {}, state: {} }), e => e && e.props && e.props.colors);
+        return Utilities.findInReactTree(GFSM.prototype.render.call({ props: {}, state: {} }), e => e && e.props && e.props.colors).type;
       } catch (err) {
         Logger.stacktrace('Failed to get lazy colorpicker, unsurprisingly', err);
         return _ => null;
@@ -1274,7 +1274,7 @@ module.exports = (() => {
            */
           update(id, options) {
             const obj = {};
-            for (const key in ['content', 'timeout', 'loading', 'progress', 'color', 'onClick', 'onContext']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
+            for (const key of ['content', 'timeout', 'loading', 'progress', 'color', 'onClick', 'onContext']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
             if (options.onLeave) obj.onClose = options.onLeave;
             if (options.channelId) obj.markdownOptions = { channelId: options.channelId };
             Astra.n11s.update(id, obj);
