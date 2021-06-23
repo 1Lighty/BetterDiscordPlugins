@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.0.13
+ * @version 1.0.14
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.13',
+      version: '1.0.14',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -384,6 +384,7 @@ module.exports = (() => {
         this.handleSave();
       }
       handleSave(keyword = this.state.value, caseSensitive = this.state.caseSensitive, id = TimestampUtils.fromTimestamp(Date.now())) {
+        keyword = keyword.trim();
         let found = true;
         const item = this.state.items.find(e => e.id === id) || (found = false, {});
         if (!keyword) {
@@ -540,6 +541,7 @@ module.exports = (() => {
         this.handleSave();
       }
       handleSave(someId = this.state.value, id = TimestampUtils.fromTimestamp(Date.now())) {
+        someId = someId.trim();
         let found = true;
         const item = this.state.items.find(e => e.id === id) || (found = false, {});
         if (!someId) {
