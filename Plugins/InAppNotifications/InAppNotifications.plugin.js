@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.0.14
+ * @version 1.0.15
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.14',
+      version: '1.0.15',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -234,6 +234,7 @@ module.exports = (() => {
           'Added option to spoiler all media (off by default).',
           'Now respects your spoiler settings, so if you turned off spoilers, it should not display any spoilers now.',
           'Fixed notifications appearing whenever they felt like it apparently.',
+          'Also fixed a bug when you updated from the wannabe plugin by an unnamed developer to mine.',
           '<:wack:600391312197550090>'
         ]
       }
@@ -828,6 +829,8 @@ module.exports = (() => {
           Logger.stacktrace('Failed to create custom unparser', err);
           this._timeUnparser = null;
         }
+
+        if (Array.isArray(this.settings.keywords)) this.settings.keywords = [];
 
         this.n10nMap = {};
 
