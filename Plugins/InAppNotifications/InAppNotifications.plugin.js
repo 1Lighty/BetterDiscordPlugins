@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.0.12
+ * @version 1.0.13
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.12',
+      version: '1.0.13',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -98,10 +98,29 @@ module.exports = (() => {
         value: false
       },
       {
+        name: 'Pin reply notifications',
+        note: 'Needs option above to work, ensures you can see it',
+        id: 'pinReplies',
+        type: 'switch',
+        value: true
+      },
+      {
         name: 'Show notifications even when not focused',
         id: 'showNoFocus',
         type: 'switch',
         value: true
+      },
+      {
+        name: 'Spoiler media from NSFW marked channels',
+        id: 'spoilerNSFW',
+        type: 'switch',
+        value: false
+      },
+      {
+        name: 'Spoiler all media',
+        id: 'spoilerAll',
+        type: 'switch',
+        value: false
       },
       {
         name: 'Friend request accept notification',
@@ -150,6 +169,28 @@ module.exports = (() => {
         stickToMarkers: true
       },
       {
+        name: 'Bar color for keyword notifications',
+        id: 'keywordColor',
+        type: 'color',
+        value: '#43b581',
+        options: {
+          defaultColor: '#43b581'
+        }
+      },
+      {
+        name: 'Use other bar color for keyword notifications',
+        id: 'useKeywordColor',
+        type: 'switch',
+        value: true
+      },
+      {
+        name: 'Pin keyword notifications',
+        note: 'Keyword notifications will not auto close',
+        id: 'pinKeyword',
+        type: 'switch',
+        value: true
+      },
+      {
         name: 'Keyword notifications',
         note: 'Show a notification if it matches a keyword',
         id: 'keywords',
@@ -183,22 +224,17 @@ module.exports = (() => {
     ],
     changelog: [
       {
-        title: 'brah',
-        type: 'fixed',
+        title: 'added',
+        type: 'added',
         items: [
-          'Fixed replies not having markdown.',
-          'Attachments and embeds now show in the notification to various extents.',
-          'Notifications now update to display to whatever is the current message, if it was edited.',
-          'Notifications close when you switch to the channel they came from.',
-          'You can now turn off getting notifications from DMs, group DMs and servers (all on by default).',
-          'Show a notification when you are pinged (on by default).',
-          'Show a notification for replies whether you got pinged or not (off by default).',
-          'Show a notification for when someone accepts your friend request (on by default).',
-          'Show a notification if someone sends you a friend request (on by default).',
-          'Respects per server avatars now.',
-          'Trigger notifications by keywords, with per keyword case sensitivity.',
-          'Ignore users, channels or users from showing notifications by ID.'/* ,
-          'ps, fuck qwert' */
+          'Added option for keyword notifications to have a different color (on by default).',
+          'Added option to pin keyword notifications (on by default).',
+          'Added option to pin reply notifications (on by default).',
+          'Added option to spoiler media coming from NSFW marked channels (off by default).',
+          'Added option to spoiler all media (off by default).',
+          'Now respects your spoiler settings, so if you turned off spoilers, it should not display any spoilers now.',
+          'Fixed notifications appearing whenever they felt like it apparently.',
+          '<:wack:600391312197550090>'
         ]
       }
     ]
@@ -237,6 +273,10 @@ module.exports = (() => {
     const Button = WebpackModules.getByProps('Colors', 'Hovers', 'Looks', 'Sizes', 'Link');
     const AckUtils = WebpackModules.getByProps('ack', 'bulkAck');
     const UnreadStore = WebpackModules.getByProps('hasUnread', 'getMentionCount');
+    const { SpoilerDisplayContext } = WebpackModules.getByProps('SpoilerDisplayContext') || {};
+    const PermissionsStore = WebpackModules.getByProps('can', 'canManageUser');
+    const shouldRenderSpoilers = WebpackModules.getByString('SpoilerRenderSetting.ON_CLICK');
+
 
     function PlusAlt(props) {
       return React.createElement('svg', { width: 24, height: 24, viewBox: '0 0 18 18', ...props }, React.createElement('polygon', { fill: 'currentColor', points: '15 10 10 10 10 15 8 15 8 10 3 10 3 8 8 8 8 3 10 3 10 8 15 8' }));
@@ -613,6 +653,7 @@ module.exports = (() => {
           const props = Utilities.findInReactTree(ret, e => e && e.attachment && typeof e.attachment.content_type === 'string');
           props.renderImageComponent = this.renderImageComponent;
           props.renderVideoComponent = this.renderVideoComponent;
+          props.__IAN_spoilerAll = this.props.spoilerAll;
           const { attachment } = props;
           if ((IMAGE_RE.test(attachment.filename) && attachment.width > 0 && attachment.width > 0) || (VIDEO_RE.test(attachment.filename) && attachment.proxy_url)) {
             finalRet.push(item);
@@ -659,6 +700,7 @@ module.exports = (() => {
           const { width, height } = ImageUtils.fit(embed.maxMediaWidth, embed.maxMediaHeight, this.state.__IAN_maxWidth ? this.state.__IAN_maxWidth - 25 : 275, embed.maxMediaHeight);
           embed.maxMediaWidth = width;
           embed.maxMediaHeight = height;
+          embed.spoiler = this.props.spoilerAll;
           finalRet.push(item);
           break;
         }
@@ -703,6 +745,11 @@ module.exports = (() => {
     }
 
     const FriendsSectionSetter = WebpackModules.find(e => e.setSection && ~e.setSection.toString().indexOf('FRIENDS_SET_SECTION'));
+
+    const RetTypes = {
+      REPLY: 'reply',
+      KEYWORD: 'keyword'
+    };
 
     return class InAppNotifications extends Plugin {
       constructor() {
@@ -822,13 +869,19 @@ module.exports = (() => {
           .IAN-message > .${MarkupClassname.split(' ')[0]}, .IAN-message > .${MessageClasses.username.split(' ')[0]} {
             overflow: hidden
           }
-          .IAN-message > .embedWrapper-lXpS3L,
+          .IAN-message .container-1ov-mD > .embedWrapper-lXpS3L,
           .IAN-message .messageAttachment-1aDidq .wrapper-2TxpI8,
-          .IAN-message .messageAttachment-1aDidq .attachment-33OFj0  {
-            pointer-events: all
+          .IAN-message .messageAttachment-1aDidq .attachment-33OFj0,
+          .IAN-message .messageAttachment-1aDidq .container-1pMiXm,
+          .IAN-message .container-1ov-mD .spoilerContainer-331r0R:not([aria-expanded="true"]),
+          .IAN-message .${MarkupClassname.split(' ')[0]} .spoilerText-3p6IlD.hidden-HHr2R9  {
+            pointer-events: all;
+          }
+          .IAN-message .messageAttachment-1aDidq .codeView-1JPDeA {
+            max-height: 25vh;
           }
           .IAN-message .messageAttachment-1aDidq,
-          .IAN-message .embedWrapper-lXpS3L {
+          .IAN-message .embedWrapper-lXpS3L:not(.spoiler-1PPAUc):not(.embedMedia-1guQoW) {
             width: 100% !important;
           }
           .IAN-message .container-1ov-mD,
@@ -916,16 +969,16 @@ module.exports = (() => {
         if (iAuthor.id === cUID || RelationshipStore.isBlocked(iAuthor.id)) return false; // ignore if from self or if it's a blocked user
         if (!this.settings.dndIgnore && UserSettingsStore.status === DiscordConstants.StatusTypes.DND) return false; // ignore if in DND mode and settings allow
         if (this.settings.pings && ~message.mentions.map(e => (typeof e !== 'string' ? e.id : e)).indexOf(cUID)) return true; // if mentioned, always show notification
-        if (this.settings.replies && message.referenced_message && message.referenced_message.author && message.referenced_message.author.id === cUID) return true; // always show notifications for replies
-        if (this.settings.userIds.length) if (!~this.settings.userIds.indexOf(iAuthor.id)) return false;
-        if (this.settings.channelIds.length) if (!~this.settings.channelIds.indexOf(iChannel.id)) return false;
-        if (iChannel.guild_id && this.settings.serverIds.length) if (!~this.settings.serverIds.indexOf(iChannel.guild_id)) return false;
-        if (this.settings.keywords.length) for (const { keyword, caseSensitive } of this.settings.keywords) if ((new RegExp(this.escapeRegExp(keyword), caseSensitive ? 'g' : 'gi')).test(message.content)) return true;
+        if (this.settings.replies && message.referenced_message && message.referenced_message.author && message.referenced_message.author.id === cUID && ~message.referenced_message.mentions.map(e => (typeof e !== 'string' ? e.id : e)).indexOf(cUID)) return RetTypes.REPLY; // always show notifications for replies
+        if (this.settings.userIds.length) if (~this.settings.userIds.findIndex(e => e.someId === iAuthor.id)) return false;
+        if (this.settings.channelIds.length) if (~this.settings.channelIds.findIndex(e => e.someId === iChannel.id)) return false;
+        if (guildId && this.settings.serverIds.length) if (~this.settings.serverIds.findIndex(e => e.someId === guildId)) return false;
+        if (this.settings.keywords.length) for (const { keyword, caseSensitive } of this.settings.keywords) if ((new RegExp(this.escapeRegExp(keyword), caseSensitive ? 'g' : 'gi')).test(message.content)) return RetTypes.KEYWORD;
         if (iChannel.type === DiscordConstants.ChannelTypes.DM && !this.settings.dms) return false;
         if (iChannel.type === DiscordConstants.ChannelTypes.GROUP_DM && !this.settings.groupDMs) return false;
         if ((iChannel.type === DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT || iChannel.type === DiscordConstants.ChannelTypes.GUILD_TEXT) && !this.settings.servers) return false;
         if (MuteStore.allowAllMessages(iChannel)) return true;// channel has notif settings set to all messages
-        return isMentionedUtils.isRawMessageMentioned(message, cUID, MuteStore.isSuppressEveryoneEnabled(iChannel.guild_id), MuteStore.isSuppressRolesEnabled(iChannel.guild_id));
+        return isMentionedUtils.isRawMessageMentioned(message, cUID, MuteStore.isSuppressEveryoneEnabled(guildId), MuteStore.isSuppressRolesEnabled(iChannel.guild_id));
       }
 
       getChannelName(iChannel, iAuthor) {
@@ -996,13 +1049,14 @@ module.exports = (() => {
           iAuthor = new CUser(message.author);
           UserStore.getUsers()[message.author.id] = iAuthor;
         }
-        if (!this.shouldNotify(message, iChannel, iAuthor)) return;
+        const notifyStatus = this.shouldNotify(message, iChannel, iAuthor);
+        if (!notifyStatus) return;
         const { icon, title, content } = this.makeTextChatNotification(iChannel, message, iAuthor) || {};
         if (!title) return; /* wah */
         const iMember = GuildMemberStore.getMember(iChannel.guild_id, iAuthor.id);
         const iMessage = DiscordModules.MessageStore.getMessage(channelId, message.id) || MessageActionCreators.createMessageRecord(message);
-        const color = this.settings.roleColor && iMember && iMember.colorString;
-        const timeout = this.calculateTimeout(title, content);
+        const color = notifyStatus === RetTypes.KEYWORD && this.settings.useKeywordColor ? this.settings.keywordColor : this.settings.roleColor && iMember && iMember.colorString;
+        const timeout = ((notifyStatus === RetTypes.KEYWORD && this.settings.pinKeyword) || (notifyStatus === RetTypes.REPLY && this.settings.pinReplies)) ? 0 : this.calculateTimeout(title, content);
         const options = {
           timeout,
           onClick: () => {
@@ -1026,17 +1080,18 @@ module.exports = (() => {
           iMessage,
           iChannel,
           notifId,
-          options
+          options,
+          notifyStatus
         };
         //this.showNotification(notif, iChannel, iMessage, this.settings.roleColor && iMember && iMember.colorString);
       }
 
       MESSAGE_UPDATE({ message }) {
         if (!this.n10nMap[message.id]) return;
-        const { iAuthor, iMessage: oiMessage, iChannel, notifId, options } = this.n10nMap[message.id];
+        const { iAuthor, iMessage: oiMessage, iChannel, notifId, options, notifyStatus } = this.n10nMap[message.id];
         const iMessage = DiscordModules.MessageStore.getMessage(iChannel.id, message.id) || MessageActionCreators.updateMessageRecord(oiMessage, message);
         const { icon, title, content } = this.makeTextChatNotification(iChannel, iMessage, iAuthor) || {};
-        const timeout = this.calculateTimeout(title, content);
+        const timeout = ((notifyStatus === RetTypes.KEYWORD && this.settings.pinKeyword) || (notifyStatus === RetTypes.REPLY && this.settings.pinReplies)) ? 0 : this.calculateTimeout(title, content);
         if (!title) return; /* wah */
         XenoLib.Notifications.update(notifId, {
           ...options,
@@ -1048,7 +1103,8 @@ module.exports = (() => {
           iMessage,
           iChannel,
           notifId,
-          options
+          options,
+          notifyStatus
         };
       }
 
@@ -1131,6 +1187,7 @@ module.exports = (() => {
       }
 
       renderContent(icon, title, content, iChannel, iMessage) {
+        const renderSpoilers = iChannel ? shouldRenderSpoilers(UserSettingsStore.renderSpoilers, PermissionsStore.can(DiscordConstants.Permissions.MANAGE_MESSAGES, iChannel)) : true;
         return (
           React.createElement(
             'div',
@@ -1148,8 +1205,13 @@ module.exports = (() => {
               },
               title
             ),
-            React.createElement('div', { className: XenoLib.joinClassNames(MarkupClassname, MessageClasses.messageContent) }, ParserModule.parse(content, true, { channelId: iChannel && iChannel.id })),
-            iChannel && iMessage ? React.createElement(MessageAccessories, {
+            React.createElement(SpoilerDisplayContext.Provider, {
+              value: renderSpoilers
+            }, React.createElement('div', { className: XenoLib.joinClassNames(MarkupClassname, MessageClasses.messageContent) }, ParserModule.parse(content, true, { channelId: iChannel && iChannel.id }))),
+            // eslint-disable-next-line function-call-argument-newline
+            iChannel && iMessage ? React.createElement(SpoilerDisplayContext.Provider, {
+              value: (this.settings.spoilerAll || this.settings.spoilerNSFW && iChannel.nsfw) ? false : renderSpoilers
+            }, React.createElement(MessageAccessories, {
               channel: iChannel,
               message: iMessage,
               canDeleteAttachments: false,
@@ -1167,8 +1229,9 @@ module.exports = (() => {
               isPendingMember: false,
               onAttachmentContextMenu: () => { },
               renderEmbeds: true,
-              renderReactions: true
-            }) : null
+              renderReactions: true,
+              spoilerAll: this.settings.spoilerAll || (this.settings.spoilerNSFW && iChannel.nsfw)
+            })) : null
           )
         );
       }
@@ -1177,10 +1240,28 @@ module.exports = (() => {
 
       patchAll() {
         Utilities.suppressErrors(this.patchShouldNotify.bind(this), 'shouldNotify patch')();
+        Utilities.suppressErrors(this.patchAttachment.bind(this), 'Attachment patch')();
       }
 
       patchShouldNotify() {
         Patcher.after(WebpackModules.getByProps('shouldDisplayNotifications'), 'shouldDisplayNotifications', () => (WindowInfo.isFocused() ? false : undefined));
+      }
+
+      patchAttachment() {
+        const Attachment = WebpackModules.find(e => e.default && ~e.default.toString().indexOf('canRemoveAttachment'));
+        Patcher.before(Attachment, 'default', (_, args) => {
+          const [props] = args;
+          if (!props.__IAN_spoilerAll) return;
+          args[1] = props.attachment.spoiler;
+          props.attachment.spoiler = true;
+        });
+        Patcher.after(Attachment, 'default', (_, args) => {
+          const [props] = args;
+          if (!props.__IAN_spoilerAll) return;
+          // eslint-disable-next-line prefer-destructuring
+          props.attachment.spoiler = args[1];
+          delete args[1];
+        });
       }
 
       /* PATCHES */
