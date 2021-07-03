@@ -677,7 +677,7 @@ module.exports = (() => {
           const targetClassName = Utilities.getNestedProp(props, 'target.className') || '';
           if (StickerClasses && typeof targetClassName === 'string' && (targetClassName.indexOf(StickerClasses.lottieCanvas.split(' ')[0]) !== -1 || targetClassName.indexOf(StickerClasses.pngImage.split(' ')[0]) !== -1)) {
             const { memoizedProps } = Utilities.findInTree(ReactTools.getReactInstance(document.querySelector(cssPath(props.target))), e => e && e.type && e.type.displayName === 'StickerMessage', { walkable: ['return'] }) || {};
-            const { sticker } = memoizedProps || {};
+            const sticker  = memoizedProps.renderableSticker || {};
             if (!sticker) return;
             src = StickerUtils.getStickerAssetUrl(sticker);
             customName = sticker.name;
