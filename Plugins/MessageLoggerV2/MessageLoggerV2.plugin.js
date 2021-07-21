@@ -179,7 +179,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'no longer welcome',
         type: 'fixed',
-        items: ['Fixed Nyria#3863 blocking loggers via a theme.']
+        items: ['Fixed a theme blocking the logger.']
       }
     ];
   }
