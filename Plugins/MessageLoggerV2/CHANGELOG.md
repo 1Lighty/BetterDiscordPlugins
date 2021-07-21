@@ -1,4 +1,9 @@
 # [MessageLoggerV2](https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2 "MessageLoggerV2") Changelog
+### 1.7.73
+- Fixed toolbar icon disappearing and use react for it
+- Add a brand new toolbar icon to fit discord's look
+- Fix logs modal
+
 ### 1.7.68
 - Fixed on canary.
 
