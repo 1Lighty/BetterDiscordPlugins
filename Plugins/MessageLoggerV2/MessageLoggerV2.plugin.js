@@ -784,7 +784,7 @@ module.exports = class MessageLoggerV2 {
                   max-width: 800px !important;
                 }
 
-                .${this.style.menuRoot} .header-1TKi98 .wrapper-1sSZUt .tabBarContainer-37hZsr, #ML2-MENU-MESSAGES strong[class*="defaultColor-1_ajX0"],
+                .${this.style.menuRoot} .header-1TKi98 .wrapper-1sSZUt .tabBarContainer-37hZsr,
                 #${this.style.menuMessages} strong[class*="defaultColor-1_ajX0"] {
                   display: flex;
                   justify-content: center;
