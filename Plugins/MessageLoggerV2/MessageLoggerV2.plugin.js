@@ -179,7 +179,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'no longer welcome',
         type: 'fixed',
-        items: ['Nyria#3863 is attempting to force people to not use plugins they do not like. They do not have the power to control what plugins a person can or cannot use.', 'Do not support Nyria#3863 in any way (via donations or contributions, they are scum).', 'Nyria#3863 is trying to spread lies and misinformation, with absolutely no proof to backup their claims, the claims of which have been disproven many times before already.', 'Fixed Nyria#3863 being a piece of shit and blocking loggers via a theme.']
+        items: ['Fixed Nyria#3863 blocking loggers via a theme.']
       }
     ];
   }
