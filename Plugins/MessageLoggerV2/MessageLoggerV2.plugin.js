@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.7.72
+ * @version 1.7.73
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -37,7 +37,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.72';
+    return '1.7.73';
   }
   getAuthor() {
     return 'Lighty';
@@ -177,9 +177,22 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'no longer welcome',
+        title: 'Modal',
         type: 'fixed',
-        items: ['Fixed a theme blocking the logger.']
+        items: ['Fixed logs modal.']
+      },
+      {
+        title: 'Toolbar Icon',
+        type: 'fixed',
+        items: ['Toolbar now injects using react instead of DOM manipulation meaning it wont disappear while in calls.']
+      },
+      {
+        title: 'Toolbar Icon',
+        type: 'added',
+        items: [
+          "Brand new toolbar icon to fit discord's icons.",
+          "Thanks to [@slow](https://github.com/slow) on github for all the above changes."
+        ],
       }
     ];
   }
@@ -752,6 +765,35 @@ module.exports = class MessageLoggerV2 {
                 #${this.style.menuMessages} {
                   max-height: 0px;
                 }
+
+                #${this.style.menuMessages} .message-2qnXI6 .container-1ov-mD img {
+                  max-width: 200px !important;
+                }
+
+                .${this.style.menuRoot} .tabBarContainer-37hZsr {
+                  margin-right: 0 !important;
+                  padding-left: 0 !important;
+                }
+
+                .${this.style.menuRoot} .header-1TKi98 .wrapper-1sSZUt {
+                  width: 100%;
+                }
+
+                .${this.style.menuRoot} {
+                  min-width: 800px !important;
+                  max-width: 800px !important;
+                }
+
+                .${this.style.menuRoot} .header-1TKi98 .wrapper-1sSZUt .tabBarContainer-37hZsr, #ML2-MENU-MESSAGES strong[class*="defaultColor-1_ajX0"],
+                #${this.style.menuMessages} strong[class*="defaultColor-1_ajX0"] {
+                  display: flex;
+                  justify-content: center;
+                }
+
+                .${this.style.menuRoot} .questionMark-3qBhGj svg {
+                  margin-right: -2px;
+                  cursor: pointer;
+                }
             `
     );
     this.patchMessages();
@@ -858,24 +900,6 @@ module.exports = class MessageLoggerV2 {
     );
 
     this.menu.shownMessages = -1;
-    const iconShit = ZeresPluginLibrary.WebpackModules.getByProps('container', 'children', 'toolbar', 'iconWrapper');
-    // Icon by font awesome
-    // https://fontawesome.com/license
-    this.channelLogButton = this.parseHTML(`<div tabindex="0" class="${iconShit.iconWrapper} ${iconShit.clickable}" role="button">
-                                                        <svg aria-hidden="true" class="${iconShit.icon}" name="Open Logs" viewBox="0 0 576 512">
-                                                            <path fill="currentColor" d="M218.17 424.14c-2.95-5.92-8.09-6.52-10.17-6.52s-7.22.59-10.02 6.19l-7.67 15.34c-6.37 12.78-25.03 11.37-29.48-2.09L144 386.59l-10.61 31.88c-5.89 17.66-22.38 29.53-41 29.53H80c-8.84 0-16-7.16-16-16s7.16-16 16-16h12.39c4.83 0 9.11-3.08 10.64-7.66l18.19-54.64c3.3-9.81 12.44-16.41 22.78-16.41s19.48 6.59 22.77 16.41l13.88 41.64c19.75-16.19 54.06-9.7 66 14.16 1.89 3.78 5.49 5.95 9.36 6.26v-82.12l128-127.09V160H248c-13.2 0-24-10.8-24-24V0H24C10.7 0 0 10.7 0 24v464c0 13.3 10.7 24 24 24h336c13.3 0 24-10.7 24-24v-40l-128-.11c-16.12-.31-30.58-9.28-37.83-23.75zM384 121.9c0-6.3-2.5-12.4-7-16.9L279.1 7c-4.5-4.5-10.6-7-17-7H256v128h128v-6.1zm-96 225.06V416h68.99l161.68-162.78-67.88-67.88L288 346.96zm280.54-179.63l-31.87-31.87c-9.94-9.94-26.07-9.94-36.01 0l-27.25 27.25 67.88 67.88 27.25-27.25c9.95-9.94 9.95-26.07 0-36.01z"/>
-                                                        </svg>
-                                                    </div>`);
-    this.channelLogButton.addEventListener('click', () => {
-      this.openWindow();
-    });
-    this.channelLogButton.addEventListener('contextmenu', () => {
-      if (!this.selectedChannel) return;
-      this.menu.filter = `channel:${this.selectedChannel.id}`;
-      this.openWindow();
-    });
-    new ZeresPluginLibrary.EmulatedTooltip(this.channelLogButton, 'Open Logs', { side: 'bottom' });
-
     if (this.settings.showOpenLogsButton) this.addOpenLogsButton();
 
     this.unpatches.push(
@@ -956,8 +980,8 @@ module.exports = class MessageLoggerV2 {
     if (this._autoUpdateInterval) clearInterval(this._autoUpdateInterval);
     if (this.keydownListener) document.removeEventListener('keydown', this.keydownListener);
     if (this.keyupListener) document.removeEventListener('keyup', this.keyupListener);
+    if(this.toolbarPatch) this.toolbarPatch();
     // if (this.powerMonitor) this.powerMonitor.removeListener('resume', this.powerMonitorResumeListener);
-    if (this.channelLogButton) this.channelLogButton.remove();
     if (this._imageCacheServer) this._imageCacheServer.stop();
     if (typeof this._modalsApiUnsubcribe === 'function')
       try {
@@ -1019,15 +1043,6 @@ module.exports = class MessageLoggerV2 {
             this.editModifiers = {};
           }
           if (!this.selectedChannel) return ZeresPluginLibrary.Logger.warn(this.getName(), 'Chat was loaded but no text channel is selected');
-          if (isTitle && this.settings.showOpenLogsButton) {
-            let srch = change.querySelector('div[class*="search-"]');
-            if (!srch) return ZeresPluginLibrary.Logger.warn(this.getName(), 'Observer caught title loading, but no search bar was found! Open Logs button will not show!');
-            if (this.channelLogButton && srch.parentElement) {
-              srch.parentElement.insertBefore(this.channelLogButton, srch); // memory leak..?
-            }
-            srch = null;
-            if (!isChat) return;
-          }
           const showStuff = (map, name) => {
             if (map[this.selectedChannel.id] && map[this.selectedChannel.id]) {
               if (this.settings.useNotificationsInstead) {
@@ -1996,14 +2011,60 @@ module.exports = class MessageLoggerV2 {
   /* ==================================================-|| END HELPERS ||-================================================== */
   /* ==================================================-|| START MISC ||-================================================== */
   addOpenLogsButton() {
-    if (!this.selectedChannel) return;
-    const parent = document.querySelector('div[class*="chat-"] div[class*="toolbar-"]');
-    if (!parent) return;
-    parent.insertBefore(this.channelLogButton, parent.querySelector('div[class*="search-"]'));
+    const { icon, iconWrapper, clickable } = ZeresPluginLibrary.WebpackModules.getByProps('iconWrapper', 'clickable');
+    const { React } = ZLibrary.DiscordModules;
+    const Tooltip = ZeresPluginLibrary.WebpackModules.getByProps('TooltipContainer').TooltipContainer;
+    const HeaderBarContainer = ZLibrary.WebpackModules.find(m => m.default?.displayName == 'HeaderBarContainer');
+    const { getChannelId } = ZeresPluginLibrary.WebpackModules.getByProps('getLastSelectedChannelId');
+
+    const ToolbarIcon = React.memo(props => React.createElement("div", {
+          className: `${iconWrapper} ${clickable}`,
+          ...props
+        }, React.createElement(Tooltip, {
+          text: "Logger",
+          position: "bottom"
+        }, React.createElement("svg", {
+          viewBox: "0 0 24 24",
+          width: 24,
+          height: 24,
+          ...props,
+          className: icon
+        }, React.createElement("path", {
+          fill: "none",
+          d: "M0 0h24v24H0z"
+        }), React.createElement("path", {
+          fill: "currentColor",
+          d: "M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"
+        }))))
+    );
+
+    this.toolbarPatch = this.Patcher.after(HeaderBarContainer.default.prototype, 'render', (_, args, res) => {
+         let toolbar = res.props.toolbar;
+         if (toolbar) {
+            const children = toolbar.props.children;
+            const index = children && children.indexOf(children.find(i => i && i.props && i.props.className && i.props.className.includes('search')));
+
+            if (index > -1) {
+               children.splice(index, 0, React.createElement(ToolbarIcon, {
+                  "aria-label": "Message Logger",
+                  onClick: () => {
+                    this.menu.filter = '';
+                    this.openWindow();
+                  },
+                  onContextMenu: () => {
+                    this.menu.filter = `channel:${getChannelId()}`;
+                    this.openWindow();
+                  }
+               }));
+            }
+         }
+      })
   }
+
   removeOpenLogsButton() {
-    this.channelLogButton.remove();
+    if(this.toolbarPatch) this.toolbarPatch();
   }
+
   showLoggerHelpModal(initial = false) {
     this.createModal({
       confirmText: 'OK',
