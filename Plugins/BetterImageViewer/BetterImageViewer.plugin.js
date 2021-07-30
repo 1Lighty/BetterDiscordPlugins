@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.5.11
+ * @version 1.6.0
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.5.11',
+      version: '1.6.0',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -54,6 +54,11 @@ module.exports = (() => {
         title: 'Fixed',
         type: 'fixed',
         items: ['Fixed controls sometimes just disappearing.', 'Fixed searching then clicking an image not respecting your search options.', 'Fixed support for threads.']
+      },
+      {
+        title: 'added',
+        type: 'added',
+        items: ['Added the ability to change zoom multiplication factor, in case your mouse drivers hate you (my laptop does an insanely fast zoom..)', 'Added the option to disable the maximum zoom limit.']
       },
       {
         title: '',
@@ -227,6 +232,24 @@ module.exports = (() => {
             id: 'smoothing',
             type: 'switch',
             value: true
+          },
+          {
+            name: 'Zoom multiplier factor',
+            note: 'If it zooms too fast or too slow, you can adjust it',
+            id: 'zoomMultiplier',
+            type: 'slider',
+            value: 10,
+            min: 1,
+            max: 20,
+            markers: Array.from(Array(20), (_, i) => ((i) + 1)),
+            stickToMarkers: true
+          },
+          {
+            name: 'Unlock zoom',
+            note: 'Disables the maximum zoom limit',
+            id: 'noLimits',
+            type: 'switch',
+            value: false
           }
         ]
       }
@@ -451,15 +474,17 @@ module.exports = (() => {
         /* scroll to toggle mode */
         const scrollToggle = this.props.__BIV_settings.enableMode === 2;
         if ((!scrollToggle || (scrollToggle && e.shiftKey)) && !this.state.zooming) return;
+        const positiveFactor = 1 + (this.props.__BIV_settings.zoomMultiplier / 100);
+        const negativeFactor = 1 - (this.props.__BIV_settings.zoomMultiplier / 100);
         if (e.deltaY < 0) if (e.shiftKey) {
-          this.state.panelWH *= 1.1;
+          this.state.panelWH *= positiveFactor;
           if (Structs.Screen.height > Structs.Screen.width && this.state.panelWH > (this.props.__BIV_settings.outOfScreen ? Structs.Screen.height * 2 : Structs.Screen.height)) this.state.panelWH = this.props.__BIV_settings.outOfScreen ? Structs.Screen.height * 2 : Structs.Screen.height - 2;
           else if (Structs.Screen.height < Structs.Screen.width && this.state.panelWH > (this.props.__BIV_settings.outOfScreen ? Structs.Screen.width * 2 : Structs.Screen.width)) this.state.panelWH = this.props.__BIV_settings.outOfScreen ? Structs.Screen.width * 2 : Structs.Screen.width - 2;
           this.state.panelWH = Math.ceil(this.state.panelWH);
           this._handleMouseMove(e.clientX, e.clientY);
           this._handleSaveLensWHChangeDC.delay();
         } else {
-          this.state.zoom = Math.min(this.state.zoom * 1.1, 60);
+          this.state.zoom = Math.min(this.state.zoom * positiveFactor, this.props.__BIV_settings.noLimits ? Infinity : 60);
           this.updateZoomController({ zoom: this.state.zoom });
           if (scrollToggle && !this.state.zooming) {
             this._handleMouseMove(e.clientX, e.clientY, true);
@@ -467,13 +492,13 @@ module.exports = (() => {
           }
         }
         else if (e.deltaY > 0) if (e.shiftKey) {
-          this.state.panelWH *= 0.9;
+          this.state.panelWH *= negativeFactor;
           if (this.state.panelWH < 75) this.state.panelWH = 75;
           this.state.panelWH = Math.ceil(this.state.panelWH);
           this._handleMouseMove(e.clientX, e.clientY);
           this._handleSaveLensWHChangeDC.delay();
         } else {
-          const nextZoom = this.state.zoom * 0.9;
+          const nextZoom = this.state.zoom * negativeFactor;
           this.state.zoom = Math.max(nextZoom, 1);
           this.updateZoomController({ zoom: this.state.zoom });
           if (scrollToggle && nextZoom < 1) this.setState({ zooming: false });
