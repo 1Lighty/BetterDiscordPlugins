@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.1.0
+ * @version 1.2.0
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.0',
+      version: '1.2.0',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -103,6 +103,13 @@ module.exports = (() => {
         id: 'pinReplies',
         type: 'switch',
         value: true
+      },
+      {
+        name: 'Pin reply notifications even if it would show anyway',
+        note: 'If a reply happens in an unmuted channel, it will pin it',
+        id: 'alwaysPinReplies',
+        type: 'switch',
+        value: false
       },
       {
         name: 'Show notifications even when not focused',
@@ -191,6 +198,13 @@ module.exports = (() => {
         value: true
       },
       {
+        name: 'Pin keyword notifications even if it would show anyway',
+        note: 'If a keyword is triggered in an unmuted channel, it will pin it',
+        id: 'alwaysPinKeyword',
+        type: 'switch',
+        value: false
+      },
+      {
         name: 'Keyword notifications',
         note: 'Show a notification if it matches a keyword',
         id: 'keywords',
@@ -227,15 +241,19 @@ module.exports = (() => {
         title: 'added',
         type: 'added',
         items: [
-          'Added option for keyword notifications to have a different color (on by default).',
-          'Added option to pin keyword notifications (on by default).',
-          'Added option to pin reply notifications (on by default).',
-          'Added option to spoiler media coming from NSFW marked channels (off by default).',
-          'Added option to spoiler all media (off by default).',
-          'Now respects your spoiler settings, so if you turned off spoilers, it should not display any spoilers now.',
-          'Fixed notifications appearing whenever they felt like it apparently.',
-          'Also fixed a bug when you updated from the wannabe plugin by an unnamed developer to mine.',
-          '<:wack:600391312197550090>'
+          'Added option for keyword notifications to either partially or fully match.',
+          'Pin keyword notifications even if chat is unmuted (off by default)',
+          'Pin reply notifications even if chat is unmuted (off by default)',
+          'Only keyword and reply notifications now make you jump to the message on click.',
+          'Keyword and reply notifications no longer auto close when going to the channel they are from.',
+          'Right clicking a notification will close and mark as read any notifications showing messages from before it.'
+        ]
+      },
+      {
+        title: 'fixed',
+        type: 'fixed',
+        items: [
+          'Fixed not working with threads properly.'
         ]
       }
     ]
@@ -287,24 +305,25 @@ module.exports = (() => {
       return React.createElement('svg', { width: 24, height: 24, viewBox: '0 0 24 24', ...props }, React.createElement('path', { fill: 'currentColor', d: 'M18.4 4L12 10.4L5.6 4L4 5.6L10.4 12L4 18.4L5.6 20L12 13.6L18.4 20L20 18.4L13.6 12L20 5.6L18.4 4Z' }));
     }
 
+    function OverflowMenu(props) {
+      return React.createElement('svg', { width: 24, height: 24, viewBox: '0 0 24 24', ...props }, React.createElement('path', { fill: 'currentColor', d: 'M12 16c1.1045695 0 2 .8954305 2 2s-.8954305 2-2 2-2-.8954305-2-2 .8954305-2 2-2zm0-6c1.1045695 0 2 .8954305 2 2s-.8954305 2-2 2-2-.8954305-2-2 .8954305-2 2-2zm0-6c1.1045695 0 2 .8954305 2 2s-.8954305 2-2 2-2-.8954305-2-2 .8954305-2 2-2z' }));
+    }
+
     class KeywordItem extends React.PureComponent {
       constructor(props) {
         super(props);
         this.onTextChange = this.onTextChange.bind(this);
-        this.onSwitchChange = this.onSwitchChange.bind(this);
         this.handleBlur = this.handleBlur.bind(this);
         this.handleRemove = this.handleRemove.bind(this);
+        this.handleOverflow = this.handleOverflow.bind(this);
         this.state = {
           value: props.keyword,
-          caseSensitive: props.caseSensitive
+          caseSensitive: props.caseSensitive,
+          matchWhole: props.matchWhole
         };
       }
       onTextChange(value) {
         this.setState({ value });
-      }
-      onSwitchChange(caseSensitive) {
-        this.setState({ caseSensitive });
-        this.handleBlur();
       }
       handleKeyPress(e) {
         if (e.which === 13) e.currentTarget.blur();
@@ -314,6 +333,12 @@ module.exports = (() => {
       }
       handleRemove() {
         this.props.onRemove(this.props.id);
+      }
+      handleOverflow(e) {
+        this.props.handleOverflow(e, { caseSensitive: this.state.caseSensitive, matchWhole: this.state.matchWhole }, (caseSensitive, matchWhole) => {
+          this.setState({ caseSensitive, matchWhole });
+          this.props.onSave(this.state.value, caseSensitive, matchWhole, this.props.id);
+        });
       }
       render() {
         /* eslint-disable function-call-argument-newline */
@@ -341,11 +366,8 @@ module.exports = (() => {
             // eslint-disable-next-line function-paren-newline
             React.createElement(FlexChild, { align: FlexChild.Align.CENTER, style: { margin: 0 } },
             // eslint-disable-next-line function-paren-newline
-              React.createElement(TooltipContainer, { hideOnClick: false, text: this.state.caseSensitive ? 'Case sensitive' : 'Case insensitive' },
-                React.createElement(Switch, {
-                  onChange: this.onSwitchChange,
-                  checked: this.state.caseSensitive
-                })
+              React.createElement(TooltipContainer, { hideOnClick: false, text: React.createElement(FlexChild, { align: FlexChild.Align.CENTER, direction: FlexChild.Direction.VERTICAL }, React.createElement('div', {}, this.state.caseSensitive ? 'Case sensitive' : 'Case insensitive'), React.createElement('div', {}, this.state.matchWhole ? 'Match whole word' : 'Partial match')) },
+                React.createElement(Button, { size: Button.Sizes.MIN, color: Button.Colors.GREY, look: Button.Looks.BLANK, className: 'IAN-sideButton', onClick: this.handleOverflow }, React.createElement(OverflowMenu))
               )
             ),
             // eslint-disable-next-line function-paren-newline
@@ -359,32 +381,82 @@ module.exports = (() => {
       }
     }
 
+    const CTXMenu = WebpackModules.getByProps('default', 'MenuStyle');
+    const contextMenuItems = WebpackModules.find(m => m.MenuRadioItem && !m.default);
+
+    class InAppKeywordsContextMenu extends React.PureComponent {
+      constructor(props) {
+        super(props);
+        this.handleOnClose = this.handleOnClose.bind(this);
+        this.handleCaseChange = this.handleCaseChange.bind(this);
+        this.handleWholeChange = this.handleWholeChange.bind(this);
+        this.state = {
+          caseSensitive: props.caseSensitive,
+          matchWhole: props.matchWhole
+        };
+      }
+      handleOnClose() {
+        ContextMenuActions.closeContextMenu();
+        if (this.props.target instanceof HTMLElement) this.props.target.focus();
+      }
+      handleCaseChange(e) {
+        const newVal = !this.state.caseSensitive;
+        this.setState({ caseSensitive: newVal });
+        this.props.onChange(newVal, this.state.matchWhole);
+      }
+      handleWholeChange(e) {
+        const newVal = !this.state.matchWhole;
+        this.setState({ matchWhole: newVal });
+        this.props.onChange(this.state.caseSensitive, newVal);
+      }
+      render() {
+        return (
+          React.createElement(CTXMenu.default, {
+            onClose: this.handleOnClose,
+            id: 'xenolib-context'
+          }, XenoLib.createContextMenuGroup([
+            React.createElement(contextMenuItems.MenuCheckboxItem, {
+              id: 'insensitive',
+              label: 'Case Sensitive',
+              checked: this.state.caseSensitive,
+              action: this.handleCaseChange
+            })
+          ]), XenoLib.createContextMenuGroup([
+            React.createElement(contextMenuItems.MenuCheckboxItem, {
+              id: 'whore',
+              label: 'Match Whole',
+              checked: this.state.matchWhole,
+              action: this.handleWholeChange
+            })
+          ]))
+        );
+      }
+    }
+
     class KeywordsComponent extends React.PureComponent {
       constructor(props) {
         super(props);
         this.onTextChange = this.onTextChange.bind(this);
-        this.onSwitchChange = this.onSwitchChange.bind(this);
         this.handleKeyPress = this.handleKeyPress.bind(this);
         this.handleSave = this.handleSave.bind(this);
         this.handleSaveButton = this.handleSaveButton.bind(this);
         this.handleRemoveItem = this.handleRemoveItem.bind(this);
+        this.handleOverflow = this.handleOverflow.bind(this);
         this.state = {
           value: '',
           caseSensitive: false,
+          matchWhole: true,
           items: props.value
         };
       }
       onTextChange(value) {
         this.setState({ value });
       }
-      onSwitchChange(caseSensitive) {
-        this.setState({ caseSensitive });
-      }
       handleKeyPress(e) {
         if (e.which !== 13) return;
         this.handleSave();
       }
-      handleSave(keyword = this.state.value, caseSensitive = this.state.caseSensitive, id = TimestampUtils.fromTimestamp(Date.now())) {
+      handleSave(keyword = this.state.value, caseSensitive = this.state.caseSensitive, matchWhole = this.state.matchWhole, id = TimestampUtils.fromTimestamp(Date.now())) {
         keyword = keyword.trim();
         let found = true;
         const item = this.state.items.find(e => e.id === id) || (found = false, {});
@@ -394,10 +466,11 @@ module.exports = (() => {
         }
         item.keyword = keyword;
         item.caseSensitive = caseSensitive;
+        item.matchWhole = matchWhole;
         item.id = id;
         if (!found) this.state.items.unshift(item);
         this.props.onChange(this.state.items);
-        if (!found) this.setState({ value: '', caseSensitive: false });
+        if (!found) this.setState({ value: '', caseSensitive: false, matchWhole: true });
       }
       handleSaveButton() {
         this.handleSave();
@@ -408,6 +481,12 @@ module.exports = (() => {
         this.state.items.splice(idx, 1);
         this.props.onChange(this.state.items);
         this.forceUpdate();
+      }
+      _handleOverflow(e, values, onChange) {
+        ContextMenuActions.openContextMenu(e, _ => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Donate button CTX menu' }, React.createElement(InAppKeywordsContextMenu, { ...values, onChange })));
+      }
+      handleOverflow(e) {
+        this._handleOverflow(e, { caseSensitive: this.state.caseSensitive, matchWhole: this.state.matchWhole }, (caseSensitive, matchWhole) => this.setState({ caseSensitive, matchWhole }));
       }
       render() {
         /* eslint-disable function-call-argument-newline */
@@ -430,13 +509,10 @@ module.exports = (() => {
                 className: 'IAN-maxWidth'
               }),
               // eslint-disable-next-line function-paren-newline
-              React.createElement(FlexChild, { align: FlexChild.Align.CENTER, style: { marginRight: 0 } },
+              React.createElement(FlexChild, { align: FlexChild.Align.CENTER, style: { margin: 0 } },
               // eslint-disable-next-line function-paren-newline
-                React.createElement(TooltipContainer, { hideOnClick: false, text: this.state.caseSensitive ? 'Case sensitive' : 'Case insensitive' },
-                  React.createElement(Switch, {
-                    onChange: this.onSwitchChange,
-                    checked: this.state.caseSensitive
-                  })
+                React.createElement(TooltipContainer, { hideOnClick: false, text: React.createElement(FlexChild, { align: FlexChild.Align.CENTER, direction: FlexChild.Direction.VERTICAL }, React.createElement('div', {}, this.state.caseSensitive ? 'Case sensitive' : 'Case insensitive'), React.createElement('div', {}, this.state.matchWhole ? 'Match whole word' : 'Partial match')) },
+                  React.createElement(Button, { size: Button.Sizes.MIN, color: Button.Colors.GREY, look: Button.Looks.BLANK, className: 'IAN-sideButton', onClick: this.handleOverflow }, React.createElement(OverflowMenu))
                 )
               ),
               // eslint-disable-next-line function-paren-newline
@@ -445,7 +521,7 @@ module.exports = (() => {
               )
             ),
             // eslint-disable-next-line function-paren-newline
-            React.createElement(Scroller, { className: 'IAN-itemsScroller' }, this.state.items.map(e => React.createElement(KeywordItem, { key: e.id, onSave: this.handleSave, onRemove: this.handleRemoveItem, ...e })))
+            React.createElement(Scroller, { className: 'IAN-itemsScroller' }, this.state.items.map(e => React.createElement(KeywordItem, { key: e.id, onSave: this.handleSave, onRemove: this.handleRemoveItem, handleOverflow: this._handleOverflow, ...e })))
           )
         ];
         /* eslint-enable function-call-argument-newline */
@@ -758,9 +834,17 @@ module.exports = (() => {
     const FriendsSectionSetter = WebpackModules.find(e => e.setSection && ~e.setSection.toString().indexOf('FRIENDS_SET_SECTION'));
 
     const RetTypes = {
+      SILENT: false,
       REPLY: 'reply',
-      KEYWORD: 'keyword'
+      KEYWORD: 'keyword',
+      PING: 'ping',
+      REPLY_NORMAL: 'reply-normal',
+      KEYWORD_NORMAL: 'keyowrd-normal',
+      NORMAL: true
     };
+
+    const ThreadNotificationsStuff = WebpackModules.getByProps('computeThreadNotificationSetting');
+    const ThreadConstants = WebpackModules.getByProps('ThreadMemberFlags');
 
     return class InAppNotifications extends Plugin {
       constructor() {
@@ -971,27 +1055,41 @@ module.exports = (() => {
       }
 
       shouldNotify(message, iChannel, iAuthor) {
-        if (!DiscordAPI.currentUser || !iChannel || !iAuthor) return false;
-        if (!this.settings.showNoFocus && !WindowInfo.isFocused()) return false;
+        if (!DiscordAPI.currentUser || !iChannel || !iAuthor) return RetTypes.SILENT;
+        if (!this.settings.showNoFocus && !WindowInfo.isFocused()) return RetTypes.SILENT;
         const ciChannel = currentChannel();
         const cUID = DiscordAPI.currentUser.id;
-        if (ciChannel && ciChannel.id === iChannel.id) return false; // ignore if channel is open
-        if (iChannel.isManaged()) return false; // not sure what managed channels are.. System maybe?
+        if (ciChannel && ciChannel.id === iChannel.id) return RetTypes.SILENT; // ignore if channel is open
+        if (iChannel.isManaged()) return RetTypes.SILENT; // not sure what managed channels are.. System maybe?
         const guildId = iChannel.getGuildId();
-        if (guildId && LurkerStore.isLurking(guildId)) return false; // ignore servers you're lurking in
-        if (iAuthor.id === cUID || RelationshipStore.isBlocked(iAuthor.id)) return false; // ignore if from self or if it's a blocked user
+        if (guildId && LurkerStore.isLurking(guildId)) return RetTypes.SILENT; // ignore servers you're lurking in
+        if (iAuthor.id === cUID || RelationshipStore.isBlocked(iAuthor.id)) return RetTypes.SILENT; // ignore if from self or if it's a blocked user
         if (!this.settings.dndIgnore && UserSettingsStore.status === DiscordConstants.StatusTypes.DND) return false; // ignore if in DND mode and settings allow
-        if (this.settings.pings && ~message.mentions.map(e => (typeof e !== 'string' ? e.id : e)).indexOf(cUID)) return true; // if mentioned, always show notification
-        if (this.settings.replies && message.referenced_message && message.referenced_message.author && message.referenced_message.author.id === cUID && ~message.referenced_message.mentions.map(e => (typeof e !== 'string' ? e.id : e)).indexOf(cUID)) return RetTypes.REPLY; // always show notifications for replies
-        if (this.settings.userIds.length) if (~this.settings.userIds.findIndex(e => e.someId === iAuthor.id)) return false;
-        if (this.settings.channelIds.length) if (~this.settings.channelIds.findIndex(e => e.someId === iChannel.id)) return false;
-        if (guildId && this.settings.serverIds.length) if (~this.settings.serverIds.findIndex(e => e.someId === guildId)) return false;
-        if (this.settings.keywords.length) for (const { keyword, caseSensitive } of this.settings.keywords) if ((new RegExp(this.escapeRegExp(keyword), caseSensitive ? 'g' : 'gi')).test(message.content)) return RetTypes.KEYWORD;
-        if (iChannel.type === DiscordConstants.ChannelTypes.DM && !this.settings.dms) return false;
-        if (iChannel.type === DiscordConstants.ChannelTypes.GROUP_DM && !this.settings.groupDMs) return false;
-        if ((iChannel.type === DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT || iChannel.type === DiscordConstants.ChannelTypes.GUILD_TEXT) && !this.settings.servers) return false;
-        if (MuteStore.allowAllMessages(iChannel)) return true;// channel has notif settings set to all messages
-        return isMentionedUtils.isRawMessageMentioned(message, cUID, MuteStore.isSuppressEveryoneEnabled(guildId), MuteStore.isSuppressRolesEnabled(iChannel.guild_id));
+        if (this.settings.pings && ~message.mentions.map(e => (typeof e !== 'string' ? e.id : e)).indexOf(cUID)) return RetTypes.PING; // if mentioned, always show notification
+        let ret = RetTypes.SILENT; // default, if a keyword or reply, then it'll pin the notification, but if it'd be true anyway, don't pin
+        if (this.settings.replies && message.referenced_message && message.referenced_message.author && message.referenced_message.author.id === cUID && !~message.referenced_message.mentions.map(e => (typeof e === 'string' ? e : e.id)).indexOf(cUID)) {
+          ret = RetTypes.REPLY; // always show notifications for replies
+          if (this.settings.alwaysPinReplies) return ret;
+        }
+        if (this.settings.userIds.length) if (~this.settings.userIds.findIndex(e => e.someId === iAuthor.id)) return ret;
+        if (this.settings.channelIds.length) if (~this.settings.channelIds.findIndex(e => e.someId === iChannel.id)) return ret;
+        if (guildId && this.settings.serverIds.length) if (~this.settings.serverIds.findIndex(e => e.someId === guildId)) return ret;
+        if (!ret && this.settings.keywords.length) for (const { keyword, caseSensitive, matchWhole } of this.settings.keywords) if ((new RegExp(`${matchWhole ? '\\b' : ''}${this.escapeRegExp(keyword)}${matchWhole ? '\\b' : ''}`, caseSensitive ? 'g' : 'gi')).test(message.content)) {
+          ret = RetTypes.KEYWORD;
+          if (this.settings.alwaysPinKeyword) return ret;
+        }
+        if (iChannel.type === DiscordConstants.ChannelTypes.DM && !this.settings.dms) return ret;
+        if (iChannel.type === DiscordConstants.ChannelTypes.GROUP_DM && !this.settings.groupDMs) return ret;
+        const isThread = iChannel.type === DiscordConstants.ChannelTypes.PUBLIC_THREAD || iChannel.type === DiscordConstants.ChannelTypes.PRIVATE_THREAD;
+        if ((iChannel.type === DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT || iChannel.type === DiscordConstants.ChannelTypes.GUILD_TEXT || isThread) && !this.settings.servers) return ret;
+        if (!isThread && MuteStore.allowAllMessages(iChannel)) return ret === RetTypes.REPLY ? RetTypes.REPLY_NORMAL : ret === RetTypes.KEYWORD ? RetTypes.KEYWORD_NORMAL : RetTypes.NORMAL;// channel has notif settings set to all messages
+        if (isThread) {
+          const notifSetting = ThreadNotificationsStuff.computeThreadNotificationSetting(iChannel);
+          if (notifSetting !== ThreadConstants.ThreadMemberFlags.NO_MESSAGES && (notifSetting === ThreadConstants.ThreadMemberFlags.ALL_MESSAGES || isMentionedUtils.isRawMessageMentioned(message, cUID, false, false))) return true;
+        }
+        const isMentioned = isMentionedUtils.isRawMessageMentioned(message, cUID, MuteStore.isSuppressEveryoneEnabled(guildId), MuteStore.isSuppressRolesEnabled(iChannel.guild_id));
+        if (!isMentioned) return ret;
+        return ret === RetTypes.REPLY ? RetTypes.REPLY_NORMAL : ret === RetTypes.KEYWORD ? RetTypes.KEYWORD_NORMAL : RetTypes.NORMAL;
       }
 
       getChannelName(iChannel, iAuthor) {
@@ -1002,7 +1100,9 @@ module.exports = (() => {
             return recipients.length > 0 ? recipients.map(e => e.username).join(', ') : Messages.UNNAMED;
           case DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT:
           case DiscordConstants.ChannelTypes.GUILD_TEXT:
-            return `#${ iChannel.name}`;
+          case DiscordConstants.ChannelTypes.PUBLIC_THREAD:
+          case DiscordConstants.ChannelTypes.PRIVATE_THREAD:
+            return `#${iChannel.name}`;
           default:
             return iChannel.name;
         }
@@ -1012,6 +1112,8 @@ module.exports = (() => {
         switch (e.type) {
           case DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT:
           case DiscordConstants.ChannelTypes.GUILD_TEXT:
+          case DiscordConstants.ChannelTypes.PUBLIC_THREAD:
+          case DiscordConstants.ChannelTypes.PRIVATE_THREAD:
             return t;
           case DiscordConstants.ChannelTypes.GROUP_DM:
             return n;
@@ -1027,6 +1129,8 @@ module.exports = (() => {
         switch (iChannel.type) {
           case DiscordConstants.ChannelTypes.GUILD_ANNOUNCEMENT:
           case DiscordConstants.ChannelTypes.GUILD_TEXT:
+          case DiscordConstants.ChannelTypes.PUBLIC_THREAD:
+          case DiscordConstants.ChannelTypes.PRIVATE_THREAD:
             const iGuild = GuildStore.getGuild(iChannel.guild_id);
             if (message.type === DiscordConstants.MessageTypes.DEFAULT || iGuild) channel += ` (${this.getChannelName(iChannel)}, ${iGuild.name})`;
             break;
@@ -1073,9 +1177,10 @@ module.exports = (() => {
         const options = {
           timeout,
           onClick: () => {
-            NavigationUtils.transitionTo(`/channels/${iChannel.guild_id || '@me'}/${iChannel.id}`);
+            NavigationUtils.transitionTo(`/channels/${iChannel.guild_id || '@me'}/${iChannel.id}${(notifyStatus === RetTypes.NORMAL) ? '' : `/${message.id}`}`);
           },
           onContext: () => {
+            this.bulkCloseNotifs(iChannel.id, iMessage.id);
             AckUtils.ack(iChannel.id);
             XenoLib.Notifications.remove(notifId);
           },
@@ -1154,9 +1259,18 @@ module.exports = (() => {
 
       CHANNEL_SELECT({ channelId }) {
         const entries = Object.entries(this.n10nMap);
-        for (const [id, { iChannel, notifId }] of entries) {
-          if (iChannel.id !== channelId) continue;
+        for (const [id, { iChannel, notifId, notifyStatus }] of entries) {
+          if (iChannel.id !== channelId || notifyStatus === RetTypes.NORMAL || notifyStatus === RetTypes.KEYWORD_NORMAL || notifyStatus === RetTypes.REPLY_NORMAL) continue;
           XenoLib.Notifications.remove(notifId);
+        }
+      }
+
+      bulkCloseNotifs(channelId, messageId) {
+        const targetTime = Math.trunc((messageId / 4194304) + 14200704e5);
+        for (const { iChannel, iMessage, notifId } of Object.values(this.n10nMap)) {
+          if (iChannel.id !== channelId) continue;
+          const time = Math.trunc((iMessage.id / 4194304) + 14200704e5);
+          if (targetTime >= time) XenoLib.Notifications.remove(notifId);
         }
       }
 
