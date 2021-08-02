@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.3.4
+ * @version 2.3.5
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -48,16 +48,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.3.4',
+      version: '2.3.5',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'justblamezeretf',
-        type: 'fixed',
-        items: ['Fixed not being able to save videos when clicking in certain places.', 'Fixed not being able to save stickers on Powercord.', 'Fixed not being able to save text files.', 'Fixed not being able to install plugins sent directly.', 'Fixed not being able to save linked videos on powercord.']
+        title: 'Added',
+        type: 'added',
+        items: ['Added an option to remove the `SPOILER_` tag from filenames when saving. **(Enabled by default!)**']
       }
     ],
     defaultConfig: [
@@ -111,7 +111,8 @@ module.exports = (() => {
               { name: 'Default 160x160', value: 0 },
               { name: 'Max size 320x320', value: 1 }
             ]
-          }
+          },
+          { name: 'Remove spoiler tag from filename', id: 'removeSpoilerTag', type: 'switch', value: true }
         ]
       },
       { type: 'category', id: 'misc', name: 'Misc', collapsible: true, shown: false, settings: [{ name: 'Context menu option at the bottom instead of top', id: 'contextMenuOnBottom', type: 'switch', value: true }] }
@@ -873,6 +874,9 @@ module.exports = (() => {
         const { extension, previewDate = null, previewRand = null, throwFail = false, onlyDir = false } = options;
         const date = previewDate || new Date();
         const rand = previewRand || this.rand();
+
+        //if filename is nothing but 'SPOILER_' default to 'unknown'
+        if (this.settings.saveOptions.removeSpoilerTag && !name.indexOf('SPOILER_')) name = name.substr(8) || 'unknown';
         let ret = 'INTERNAL_ERROR';
         switch (this.settings.saveOptions.fileNameType) {
           case 0: // original
