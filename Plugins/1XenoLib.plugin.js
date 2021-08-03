@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.39
+ * @version 1.3.40
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.39',
+      version: '1.3.40',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -115,7 +115,7 @@ module.exports = (() => {
       {
         title: 'Minor fixes',
         type: 'fixed',
-        items: ['Fixed color picker not working.', '*Actually* fixed notification updating not working at all on Astra.']
+        items: ['Fixed complete chaos of errors cause of overlay.', 'Added some misc functionality to notifications which will be used in InAppNotifications soon.']
       }
     ],
     defaultConfig: [
@@ -1208,6 +1208,8 @@ module.exports = (() => {
     };
     /* NOTIFICATIONS START */
     let UPDATEKEY = {};
+    const notificationEvents = canUseAstraNotifAPI ? null : new (require('events').EventEmitter)();
+    if (!canUseAstraNotifAPI) notificationEvents.dispatch = data => notificationEvents.emit(data.type, data);
     try {
       if (canUseAstraNotifAPI) {
         const defaultOptions = {
@@ -1247,7 +1249,7 @@ module.exports = (() => {
            * @return {Number} - Notification ID. Store this if you plan on force closing it, changing its content or want to set the progress
            */
           show(content, options = {}) {
-            const { timeout, loading, progress, color, allowDuplicates, onLeave, channelId, onClick, onContext } = Object.assign(Utilities.deepclone(defaultOptions), options);
+            const { timeout, loading, progress, color, allowDuplicates, onLeave, channelId, onClick, onContext, onMiddleClick } = Object.assign(Utilities.deepclone(defaultOptions), options);
             return Astra.n11s.show(content instanceof HTMLElement ? ReactTools.createWrappedElement(content) : content, {
               timeout,
               loading,
@@ -1256,6 +1258,7 @@ module.exports = (() => {
               allowDuplicates,
               onClick,
               onContext,
+              onMiddleClick,
               onClose: onLeave,
               markdownOptions: { channelId }
             });
@@ -1274,7 +1277,7 @@ module.exports = (() => {
            */
           update(id, options) {
             const obj = {};
-            for (const key of ['content', 'timeout', 'loading', 'progress', 'color', 'onClick', 'onContext']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
+            for (const key of ['content', 'timeout', 'loading', 'progress', 'color', 'onClick', 'onContext', 'onMiddleClick']) if (typeof options[key] !== 'undefined') obj[key] = options[key];
             if (options.onLeave) obj.onClose = options.onLeave;
             if (options.channelId) obj.markdownOptions = { channelId: options.channelId };
             Astra.n11s.update(id, obj);
@@ -1355,7 +1358,7 @@ module.exports = (() => {
                 const notif = state.data.find(n => DeepEqualityCheck(n.content, content) && n.timeout === options.timeout && !n.leaving);
                 if (notif) {
                   id = notif.id;
-                  Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_DUPLICATE', id: notif.id });
+                  notificationEvents.dispatch({ type: 'XL_NOTIFS_DUPLICATE', id: notif.id });
                   return state;
                 }
               }
@@ -1367,7 +1370,7 @@ module.exports = (() => {
             return id;
           },
           remove(id) {
-            Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_REMOVE', id });
+            notificationEvents.dispatch({ type: 'XL_NOTIFS_REMOVE', id });
           },
           /**
            * @param {Number} id Notification ID
@@ -1386,7 +1389,7 @@ module.exports = (() => {
               state.data[idx] = Object.assign(state.data[idx], options);
               return state;
             });
-            Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_UPDATE', id, ...options });
+            notificationEvents.dispatch({ type: 'XL_NOTIFS_UPDATE', id, ...options });
           },
           exists(id) {
             return api.getState().data.findIndex(e => e.id === id && !e.leaving) !== -1;
@@ -1425,20 +1428,20 @@ module.exports = (() => {
           componentDidMount() {
             this._unsubscribe = api.subscribe(_ => this.checkOffScreen());
             window.addEventListener('resize', this.handleResizeEvent);
-            Dispatcher.subscribe('XL_NOTIFS_DUPLICATE', this.handleDispatch);
-            Dispatcher.subscribe('XL_NOTIFS_REMOVE', this.handleDispatch);
-            Dispatcher.subscribe('XL_NOTIFS_UPDATE', this.handleDispatch);
-            Dispatcher.subscribe('XL_NOTIFS_ANIMATED', this.handleDispatch);
-            Dispatcher.subscribe('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
+            notificationEvents.on('XL_NOTIFS_DUPLICATE', this.handleDispatch);
+            notificationEvents.on('XL_NOTIFS_REMOVE', this.handleDispatch);
+            notificationEvents.on('XL_NOTIFS_UPDATE', this.handleDispatch);
+            notificationEvents.on('XL_NOTIFS_ANIMATED', this.handleDispatch);
+            notificationEvents.on('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
           }
           componentWillUnmount() {
             this._unsubscribe();
             window.window.removeEventListener('resize', this.handleResizeEvent);
-            Dispatcher.unsubscribe('XL_NOTIFS_DUPLICATE', this.handleDispatch);
-            Dispatcher.unsubscribe('XL_NOTIFS_REMOVE', this.handleDispatch);
-            Dispatcher.unsubscribe('XL_NOTIFS_UPDATE', this.handleDispatch);
-            Dispatcher.unsubscribe('XL_NOTIFS_ANIMATED', this.handleDispatch);
-            Dispatcher.unsubscribe('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
+            notificationEvents.off('XL_NOTIFS_DUPLICATE', this.handleDispatch);
+            notificationEvents.off('XL_NOTIFS_REMOVE', this.handleDispatch);
+            notificationEvents.off('XL_NOTIFS_UPDATE', this.handleDispatch);
+            notificationEvents.off('XL_NOTIFS_ANIMATED', this.handleDispatch);
+            notificationEvents.off('XL_NOTIFS_SETTINGS_UPDATE', this.handleDispatch);
             this.resizeObserver.disconnect();
             this.resizeObserver = null; /* no mem leaks plz */
             this._ref = null;
@@ -1555,7 +1558,7 @@ module.exports = (() => {
                   }
                   const isSettingHeight = this._ref.offsetHeight !== this._contentRef.offsetHeight;
                   await next({ opacity: 1, height: this._contentRef.offsetHeight });
-                  if (isSettingHeight) Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
+                  if (isSettingHeight) notificationEvents.dispatch({ type: 'XL_NOTIFS_ANIMATED' });
                   this.state.initialAnimDone = true;
                   if (this.state.resetBar || (this.state.hovered && LibrarySettings.notifications.timeoutReset)) {
                     await next({ progress: 0 }); /* shit gets reset */
@@ -1633,12 +1636,18 @@ module.exports = (() => {
                     onClick: e => {
                       if (!this.props.onClick) return;
                       if (e.target && e.target.getAttribute('role') === 'button') return;
-                      this.props.onClick();
+                      this.props.onClick(e);
                       this.closeNow();
                     },
                     onContextMenu: e => {
                       if (!this.props.onContext) return;
-                      this.props.onContext();
+                      this.props.onContext(e);
+                      this.closeNow();
+                    },
+                    onMouseUp: e => {
+                      if (!this.props.onMiddleClick || e.button !== 1) return;
+                      if (e.target && e.target.getAttribute('role') === 'button') return;
+                      this.props.onMiddleClick(e);
                       this.closeNow();
                     }
                   },
@@ -2007,9 +2016,12 @@ module.exports = (() => {
             const DOMElement = document.querySelector('.xenoLib-notifications');
             if (DOMElement) {
               DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
-              Dispatcher.dirtyDispatch({ type: 'XL_NOTIFS_ANIMATED' });
+              notificationEvents.dispatch({ type: 'XL_NOTIFS_ANIMATED' });
             }
-          } else if (setting === 'backdrop' || setting === 'backdropColor') Dispatcher.wait(() => Dispatcher.dispatch({ type: 'XL_NOTIFS_SETTINGS_UPDATE', key: UPDATEKEY }), (UPDATEKEY = {}));
+          } else if (setting === 'backdrop' || setting === 'backdropColor') {
+            notificationEvents.dispatch({ type: 'XL_NOTIFS_SETTINGS_UPDATE', key: UPDATEKEY });
+            UPDATEKEY = {};
+          }
 
         } else if (category === 'addons') if (setting === 'extra') {
           if (value && !patchAddonCardAnyway.patched) patchAddonCardAnyway(true);
@@ -2051,7 +2063,7 @@ module.exports = (() => {
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
       b = BdApi.Plugins.get('ZeresPluginLibrary');
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.29') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.31') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
