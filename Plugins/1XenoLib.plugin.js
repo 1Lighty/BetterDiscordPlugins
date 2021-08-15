@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.40
+ * @version 1.3.41
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -41,7 +41,7 @@
 // eslint-disable-next-line no-undef
 if (window.__XL_waitingForWatcherTimeout && !window.__XL_assumingZLibLoaded) clearTimeout(window.__XL_waitingForWatcherTimeout);
 
-const shouldPass = e && e.constructor && typeof e.constructor.name === 'string' && e.constructor.name.indexOf('HTML');
+const shouldPass = e => e && e.constructor && typeof e.constructor.name === 'string' && e.constructor.name.indexOf('HTML');
 
 function _extractMeta(code/* : string */)/* : BDPluginManifest */ {
   const [firstLine] = code.split('\n');
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.40',
+      version: '1.3.41',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
