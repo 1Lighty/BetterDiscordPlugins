@@ -41,7 +41,7 @@
 // eslint-disable-next-line no-undef
 if (window.__XL_waitingForWatcherTimeout && !window.__XL_assumingZLibLoaded) clearTimeout(window.__XL_waitingForWatcherTimeout);
 
-
+const shouldPass = e && e.constructor && typeof e.constructor.name === 'string' && e.constructor.name.indexOf('HTML');
 
 function _extractMeta(code/* : string */)/* : BDPluginManifest */ {
   const [firstLine] = code.split('\n');
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.40',
+      version: '1.3.41',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -115,7 +115,7 @@ module.exports = (() => {
       {
         title: 'Minor fixes',
         type: 'fixed',
-        items: ['Fixed complete chaos of errors cause of overlay.', 'Added some misc functionality to notifications which will be used in InAppNotifications soon.']
+        items: ['Fixed notifications locking up on powercord.', 'Fixed parser not being able to be made', 'Fixed patching issue when using some external mod.']
       }
     ],
     defaultConfig: [
@@ -1041,7 +1041,7 @@ module.exports = (() => {
         }
       }
     })();
-    if (window.Lightcord) return;
+    if (shouldPass(window.Lightcord)) return;
     const AnchorClasses = WebpackModules.getByProps('anchor', 'anchorUnderlineOnHover') || {};
     const EmbedVideo = (() => {
       try {
@@ -1420,7 +1420,7 @@ module.exports = (() => {
             this._animationCancel = DiscordConstants.NOOP;
             this._oldOffsetHeight = 0;
             this._initialProgress = !this.props.timeout ? (this.state.loading && this.state.progress !== -1 ? this.state.progress : 100) : 0;
-            XenoLib._.bindAll(this, ['closeNow', 'handleDispatch', '_setContentRef']);
+            XenoLib._.bindAll(this, ['closeNow', 'handleDispatch', '_setContentRef', 'onMouseEnter', 'onMouseLeave']);
             this.handleResizeEvent = XenoLib._.throttle(this.handleResizeEvent.bind(this), 100);
             this.resizeObserver = new ResizeObserver(this.handleResizeEvent);
             this._timeout = props.timeout;
@@ -1525,9 +1525,26 @@ module.exports = (() => {
             }
           }
           _setContentRef(ref) {
+            if (this._contentRef) {
+              this._contentRef.removeEventListener('mouseenter', this.onMouseEnter);
+              this._contentRef.removeEventListener('mouseleave', this.onMouseLeave);
+            }
             if (!ref) return;
+            ref.addEventListener('mouseenter', this.onMouseEnter);
+            ref.addEventListener('mouseleave', this.onMouseLeave);
             this._contentRef = ref;
             this.resizeObserver.observe(ref);
+          }
+          onMouseEnter(e) {
+            if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
+            this._animationCancel();
+            if (this._startProgressing) this._timeout -= Date.now() - this._startProgressing;
+            this.setState({ hovered: true });
+          }
+          onMouseLeave(e) {
+            if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
+            this._animationCancel();
+            this.setState({ hovered: false });
           }
           render() {
             const config = { duration: 200 };
@@ -1615,19 +1632,6 @@ module.exports = (() => {
                   {
                     className: 'xenoLib-notification-content-wrapper',
                     ref: this._setContentRef,
-                    onMouseEnter: e => {
-                      if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
-                      this._animationCancel();
-                      if (this._startProgressing) this._timeout -= Date.now() - this._startProgressing;
-
-                      this.state.hovered = true;
-                      this.forceUpdate();
-                    },
-                    onMouseLeave: e => {
-                      if (this.state.leaving || !this.props.timeout || this.state.closeFast) return;
-                      this._animationCancel();
-                      this.setState({ hovered: false });
-                    },
                     style: {
                       '--grad-one': this.state.color,
                       '--grad-two': ColorConverter.lightenColor(this.state.color, 20),
@@ -1894,7 +1898,7 @@ module.exports = (() => {
       load() {
         super.load();
         try {
-          if (window.Lightcord) return XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
+          if (shouldPass(window.Lightcord)) return XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
           if (!BdApi.Plugins) return; /* well shit what now */
           if (!BdApi.isSettingEnabled) return;
           const list = BdApi.Plugins.getAll().filter(k => k._XL_PLUGIN || (k.instance && k.instance._XL_PLUGIN)).map(k => k.instance || k);
@@ -1907,7 +1911,7 @@ module.exports = (() => {
               Logger.error('Failed telling you about failing to reload a plugin', list[p], e);
             }
           }
-          if (window.Lightcord) location.reload();
+          if (shouldPass(window.Lightcord)) location.reload();
 
           const pluginsDir = (BdApi.Plugins && BdApi.Plugins.folder) || (window.ContentManager && window.ContentManager.pluginsFolder);
           const PLUGINS_LIST = ['BetterImageViewer', 'BetterTypingUsers', 'BetterUnavailableGuilds', 'CrashRecovery', 'InAppNotifications', 'MessageLoggerV2', 'MultiUploads', 'SaveToRedux', 'UnreadBadgesRedux'];
@@ -1957,7 +1961,7 @@ module.exports = (() => {
                   res.on('data', chunk => ((body += chunk), void 0));
                   res.on('end', () => {
                     try {
-                      if (res.statusCode !== 200) return XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 });
+                      if (res.statusCode !== 200) return /* XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 }) */;
                       if (plugin && (name === 'MessageLoggerV2' || Utilities.getNestedProp(plugin, '_config.info.version')) && !PluginUpdater.defaultComparator(name === 'MessageLoggerV2' ? plugin.getVersion() : plugin._config.info.version, PluginUpdater.defaultVersioner(body))) return;
                       const newFile = `${name}.plugin.js`;
                       fs.unlinkSync(path.join(pluginsDir, file));
