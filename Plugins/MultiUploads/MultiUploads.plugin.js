@@ -1,6 +1,6 @@
 /**
  * @name MultiUploads
- * @version 1.1.5
+ * @version 1.1.6
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MultiUploads
@@ -48,7 +48,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.5',
+      version: '1.1.6',
       description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
@@ -57,7 +57,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed multi file uploads not being spoilered.', 'Fixed comment not being attached to the message if you uploaded multiple files.']
+        items: ['Fixed not being able to paste multiple times.', 'Fixed chatbar not being cleared on multi uploads.']
       }
     ]
   };
@@ -241,7 +241,7 @@ module.exports = (() => {
         Patcher.instead(Upload.component.prototype, 'submitUpload', (_this, [valid, content, upload, channel, hasSpoiler], orig) => {
           if (!valid || upload === null || !_this.props.hasAdditionalUploads || _this.__MU_onlySingle) return orig(valid, content, upload, channel, hasSpoiler);
           let parsed = ParseUtils.parse(channel, content);
-          MessageDraftUtils.saveDraft(channel.id, '');
+          MessageDraftUtils.saveDraft(channel.id, '', _this.props.draftType);
           _this.setState({
             textFocused: false,
             textValue: '',
@@ -335,9 +335,24 @@ module.exports = (() => {
         });
         const promptToUpload = WebpackModules.getByString('.Messages.UPLOAD_AREA_TOO_LARGE_TITLE');
         Patcher.after(Upload.component.prototype, 'render', (_this, _, ret) => {
-          const channelTextEditorContainer = Utilities.findInReactTree(ret, e => Utilities.getNestedProp(e, 'type.type.render.displayName') === 'ChannelTextAreaContainer');
-          if (!channelTextEditorContainer) return;
-          channelTextEditorContainer.props.promptToUpload = promptToUpload;
+          const popout = Utilities.findInReactTree(ret, e => e && (e.type && e.type.displayName === 'Popout' && typeof e.props.children === 'function' && ~e.props.children.toString().indexOf('default.channelTextAreaUpload')));
+          if (!popout) return;
+          const olChildren = popout.props.children;
+          popout.props.children = function() {
+            try {
+              const ret2 = olChildren();
+              ret2.props.promptToUpload = promptToUpload;
+              return ret2;
+            } catch (err) {
+              Logger.stacktrace('Error patching for multi paste', err);
+              try {
+                return olChildren();
+              } catch (err) {
+                Logger.stacktrace('Error patching for multi paste and only returning original', err);
+                return null;
+              }
+            }
+          };
         });
         Upload.forceUpdateAll();
       }
@@ -411,7 +426,7 @@ module.exports = (() => {
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
       b = BdApi.Plugins.get('ZeresPluginLibrary');
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.29') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.31') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
