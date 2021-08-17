@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.0
+ * @version 1.6.1
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.0',
+      version: '1.6.1',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -53,26 +53,12 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed controls sometimes just disappearing.', 'Fixed searching then clicking an image not respecting your search options.', 'Fixed support for threads.']
-      },
-      {
-        title: 'added',
-        type: 'added',
-        items: ['Added the ability to change zoom multiplication factor, in case your mouse drivers hate you (my laptop does an insanely fast zoom..)', 'Added the option to disable the maximum zoom limit.']
-      },
-      {
-        title: '',
-        type: 'added',
-        items: []
-      },
-      {
-        type: 'description',
-        content: 'Hope you\'ve all been doing well this year <3'
+        items: ['Fixed anomaly detected when opening images from search.']
       },
       {
         type: 'image',
-        src: 'https://i.imgur.com/sa4KH1O.jpeg',
-        height: 338
+        src: 'https://cdn.discordapp.com/attachments/853078952783904768/877224671446179880/IO5VUwcJvfLf.jpg',
+        height: 298
       }
     ],
     defaultConfig: [
@@ -855,8 +841,9 @@ module.exports = (() => {
             searchResults.forEach(group => {
               group.forEach(message => {
                 if ((!this._includeNonHits && !message.isSearchHit) || images.findIndex(e => e.id === message.id) !== -1) return;
-                if (!extractImages(message).length) return;
-                images.push(MessageRecordUtils.createMessageRecord(message));
+                const iMessage = MessageRecordUtils.createMessageRecord(message);
+                if (!extractImages(iMessage).length) return;
+                images.push(iMessage);
               });
             });
             images.sort((a, b) => a.timestamp.unix() - b.timestamp.unix());
@@ -1448,7 +1435,8 @@ module.exports = (() => {
         }
         document.querySelector('#app-mount').append(overlayDOMNode);
         this.promises = { state: { cancelled: false } };
-        if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
+        const shouldPass = e => e && e.constructor && typeof e.constructor.name === 'string' && e.constructor.name.indexOf('HTML');
+        if (shouldPass(window.Lightcord)) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         if (PluginBrokenFatal) return this._startFailure('Plugin is in a broken state.');
         if (NoImageZoom) this._startFailure('Image zoom is broken.');
         if (window.powercord?.pluginManager?.get('image-tools')?.ready) XenoLib.Notifications.warning(`[${this.getName()}] **Image Tools** may conflict and cause issues, it is unsupported.`);
