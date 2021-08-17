@@ -1,6 +1,6 @@
 /**
  * @name UnreadBadgesRedux
- * @version 1.0.13
+ * @version 1.0.14
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux
@@ -46,7 +46,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.13',
+      version: '1.0.14',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -421,8 +421,8 @@ module.exports = (() => {
           if (!childProps) return;
           const olChildren = childProps.children;
           childProps.children = [React.createElement(UnreadBadge, { channelId: props.thread.id })];
-          if (this.settings.misc.channelsDisplayOnLeft) childProps.children.push(olChildren);
-          else childProps.children.unshift(olChildren);
+          if (this.settings.misc.channelsDisplayOnLeft) childProps.children.unshift(olChildren);
+          else childProps.children.push(olChildren);
         });
       }
 
