@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.1
+ * @version 1.3.2
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.1',
+      version: '1.3.2',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -271,7 +271,8 @@ module.exports = (() => {
         type: 'fixed',
         items: [
           'Fixed getting notifications from a thread even if it\'s open as a sidebar.',
-          'Fixed opening the channel a notification and keyword notification came from closing the keyword notif and not normal notifs.'
+          'Fixed opening the channel a notification and keyword notification came from closing the keyword notif and not normal notifs.',
+          'Finally fixed files making the notification error out.'
         ]
       }
     ]
@@ -756,6 +757,7 @@ module.exports = (() => {
         const videos = 0;
         for (const item of ret) {
           const props = Utilities.findInReactTree(ret, e => e && e.attachment && typeof e.attachment.content_type === 'string');
+          if (!props) continue;
           props.renderImageComponent = this.renderImageComponent;
           props.renderVideoComponent = this.renderVideoComponent;
           props.__IAN_spoilerAll = this.props.spoilerAll;
