@@ -1,4 +1,11 @@
-//META{"name":"UnreadBadgesRedux","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/UnreadBadgesRedux/","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
+/**
+ * @name UnreadBadgesRedux
+ * @version 1.0.13
+ * @invite NYvWdN5
+ * @donate https://paypal.me/lighty13
+ * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux
+ * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js
+ */
 /*@cc_on
 @if (@_jscript)
   // Offer to self-install for clueless users that try to run this directly.
@@ -39,16 +46,20 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.12',
+      version: '1.0.13',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'RIP BBD on Canary',
+        title: 'fixed',
         type: 'fixed',
-        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
+        items: ['Fixed icons not showing on servers unless hovered.', 'Fixed not showing on threads, also added an option of turning that off.', 'Fixed being wildly incorrect if you put your pc to sleep.', 'Threads now count towards the total unread count for server and folder icons.']
+      },
+      {
+        type: 'description',
+        content: 'This plugin has gone 6+ months with no significant updates without breaking majorly at all :tada:'
       }
     ],
     defaultConfig: [
@@ -110,6 +121,12 @@ module.exports = (() => {
           {
             name: 'Display badge on muted channels',
             id: 'mutedChannels',
+            type: 'switch',
+            value: true
+          },
+          {
+            name: 'Display badge on threads',
+            id: 'threads',
             type: 'switch',
             value: true
           },
@@ -198,13 +215,22 @@ module.exports = (() => {
     const UnreadStore = WebpackModules.getByProps('getUnreadCount');
     const MuteModule = WebpackModules.getByProps('isMuted');
     const AltChannelStore = WebpackModules.find(m => m.getChannels && m.getChannels.length === 1);
+    const ThreadsStore = WebpackModules.getByProps('getActiveJoinedUnreadThreadsForGuild');
 
     const getUnreadCount = (guildId, includeMuted) => {
       const channels = AltChannelStore.getChannels(guildId);
+      if (!channels) return 0;
       let count = 0;
       for (const { channel } of channels.SELECTABLE) {
         /* isChannelMuted is SLOW! */
-        if (includeMuted || (!MuteModule.isChannelMuted(channel.guild_id, channel.id) && (!channel.parent_id || !MuteModule.isChannelMuted(channel.guild_id, channel.parent_id)))) count += UnreadStore.getUnreadCount(channel.id);
+        if (includeMuted || (!MuteModule.isChannelMuted(channel.guild_id, channel.id) && (!channel.parent_id || !MuteModule.isChannelMuted(channel.guild_id, channel.parent_id)))) count += UnreadStore.hasUnread(channel.id) ? UnreadStore.getUnreadCount(channel.id) : 0;
+      }
+      const unreadThreads = ThreadsStore.getActiveJoinedUnreadThreadsForGuild(guildId);
+      for (const channelId in unreadThreads) {
+        const threads = unreadThreads[channelId];
+        for (const threadId in threads) {
+          count += UnreadStore.hasUnread(threadId) ? UnreadStore.getUnreadCount(threadId) : 0
+        }
       }
       return count;
     };
@@ -262,7 +288,8 @@ module.exports = (() => {
         } catch (e) { }
       }
       onStart() {
-        if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
+        const shouldPass = e => e && e.constructor && typeof e.constructor.name === 'string' && e.constructor.name.indexOf('HTML');
+        if (shouldPass(window.Lightcord)) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         this.promises = { state: { cancelled: false } };
         this.patchedModules = [];
         this.patchAll();
@@ -315,6 +342,7 @@ module.exports = (() => {
         Utilities.suppressErrors(this.patchBlobMask.bind(this), 'BlobMask patch')(this.promises.state);
         Utilities.suppressErrors(this.patchGuildIcon.bind(this), 'GuildIcon patch')(this.promises.state);
         Utilities.suppressErrors(this.patchChannelItem.bind(this), 'ChannelItem patch')(this.promises.state);
+        Utilities.suppressErrors(this.patchThreadItem.bind(this), 'Thread item patch')(this.promises.state);
         Utilities.suppressErrors(this.patchConnectedGuild.bind(this), 'ConnectedGuild patch')(this.promises.state);
         Utilities.suppressErrors(this.patchGuildFolder.bind(this), 'GuildFolder patch')(this.promises.state);
       }
@@ -327,7 +355,7 @@ module.exports = (() => {
         function UnreadBadge(e) {
           const unreadCount = StoresModule.useStateFromStores([UnreadStore], () => {
             if ((e.muted && !settings.misc.mutedChannels) || !settings.misc.channels) return 0;
-            const count = UnreadStore.getUnreadCount(e.channelId);
+            const count = UnreadStore.hasUnread(e.channelId) ? UnreadStore.getUnreadCount(e.channelId) : 0;
             if (count > 1000) return Math.floor(count / 1000) * 1000; /* only trigger rerender if it changes in thousands */
             return count;
           });
@@ -364,6 +392,38 @@ module.exports = (() => {
           }
         });
         TextChannel.forceUpdateAll();
+      }
+
+      async patchThreadItem(promiseState) {
+        const GuildSidebarThreadListEntry = WebpackModules.find(e => e.type && e.type.displayName === 'GuildSidebarThreadListEntry');
+        const settings = this.settings;
+        const MentionsBadgeClassname = XenoLib.getClass('iconVisibility mentionsBadge');
+        function UnreadBadge(e) {
+          const unreadCount = StoresModule.useStateFromStores([UnreadStore], () => {
+            if (!settings.misc.threads) return 0;
+            const count = UnreadStore.hasUnread(e.channelId) ? UnreadStore.getUnreadCount(e.channelId) : 0;
+            if (count > 1000) return Math.floor(count / 1000) * 1000; /* only trigger rerender if it changes in thousands */
+            return count;
+          });
+          if (!unreadCount) return null;
+          return React.createElement(
+            'div',
+            {
+              className: MentionsBadgeClassname
+            },
+            BadgesModule.NumberBadge({ count: unreadCount, color: settings.misc.backgroundColor, style: { color: settings.misc.textColor } })
+          );
+        }
+        Patcher.after(GuildSidebarThreadListEntry, 'type', (_this, [props], ret) => {
+          const content = Utilities.findInReactTree(ret, e => e && typeof e.className === 'string' && ~e.className.indexOf('mainContent-u_9PKf'));
+          if (!content) return;
+          const childProps = Utilities.findInReactTree(content, e => e && typeof e.className === 'string' && ~e.className.indexOf("children-3rEycc"));
+          if (!childProps) return;
+          const olChildren = childProps.children;
+          childProps.children = [React.createElement(UnreadBadge, { channelId: props.thread.id })];
+          if (this.settings.misc.channelsDisplayOnLeft) childProps.children.push(olChildren);
+          else childProps.children.unshift(olChildren);
+        });
       }
 
       async patchGuildFolder(promiseState) {
@@ -492,6 +552,11 @@ module.exports = (() => {
             .start();
         });
         const LowerBadgeClassname = XenoLib.joinClassNames(XenoLib.getClass('wrapper lowerBadge'), 'unread-badge');
+        Patcher.before(BlobMask.component, 'getDerivedStateFromProps', (_this, args, ret) => {
+          const [props] = args;
+          if (typeof props.__UBR_unread_count !== 'number' || !props.__UBR_unread_count) return;
+          args[0] = { ...props, selected: true };
+        });
         Patcher.after(BlobMask.component.prototype, 'render', (_this, _, ret) => {
           if (typeof _this.props.__UBR_unread_count !== 'number') return;
           const badges = Utilities.findInTree(ret, e => e && e.type && e.type.displayName === 'TransitionGroup', { walkable: ['props', 'children'] });
@@ -567,7 +632,7 @@ module.exports = (() => {
       b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined'),
       c = BdApi.Plugins.get('ZeresPluginLibrary'),
       d = BdApi.Plugins.get('XenoLib');
-    b(c, '1.2.27') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.35') && (XenoLibOutdated = !0);
+    b(c, '1.2.31') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.41') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }
