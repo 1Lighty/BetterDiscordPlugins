@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.2.0
+ * @version 1.3.0
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.2.0',
+      version: '1.3.0',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -87,6 +87,19 @@ module.exports = (() => {
         name: 'Always show pings',
         note: 'This overrides all settings above except dnd mode',
         id: 'pings',
+        type: 'switch',
+        value: true
+      },
+      {
+        name: 'Show notification if pinged in edit',
+        id: 'editPings',
+        type: 'switch',
+        value: true
+      },
+      {
+        name: 'Pin silent ping notifications',
+        note: 'Pins the notification if you got pinged in an edit',
+        id: 'pinSilentPings',
         type: 'switch',
         value: true
       },
@@ -205,6 +218,12 @@ module.exports = (() => {
         value: false
       },
       {
+        name: 'Show notification if keyword appears in an edit',
+        id: 'editKeyword',
+        type: 'switch',
+        value: true
+      },
+      {
         name: 'Keyword notifications',
         note: 'Show a notification if it matches a keyword',
         id: 'keywords',
@@ -241,19 +260,18 @@ module.exports = (() => {
         title: 'added',
         type: 'added',
         items: [
-          'Added option for keyword notifications to either partially or fully match.',
-          'Pin keyword notifications even if chat is unmuted (off by default)',
-          'Pin reply notifications even if chat is unmuted (off by default)',
-          'Only keyword and reply notifications now make you jump to the message on click.',
-          'Keyword and reply notifications no longer auto close when going to the channel they are from.',
-          'Right clicking a notification will close and mark as read any notifications showing messages from before it.'
+          'Added option to show notification if you got pinged in an edit **(on by default)**.',
+          'Added option to pin notifications if you got pinged in an edit **(on by default)**.',
+          'Added option to show notifications if a keyword appears in an edit **(on by default)**.',
+          'Added ability to quickly close the notification with middle click, holding shift bulk closes notificatiosn from same channel.'
         ]
       },
       {
         title: 'fixed',
         type: 'fixed',
         items: [
-          'Fixed not working with threads properly.'
+          'Fixed getting notifications from a thread even if it\'s open as a sidebar.',
+          'Fixed opening the channel a notification and keyword notification came from closing the keyword notif and not normal notifs.'
         ]
       }
     ]
@@ -845,6 +863,7 @@ module.exports = (() => {
 
     const ThreadNotificationsStuff = WebpackModules.getByProps('computeThreadNotificationSetting');
     const ThreadConstants = WebpackModules.getByProps('ThreadMemberFlags');
+    const ThreadStateStore = WebpackModules.getByProps('getThreadSidebarState');
 
     return class InAppNotifications extends Plugin {
       constructor() {
@@ -1060,12 +1079,14 @@ module.exports = (() => {
         const ciChannel = currentChannel();
         const cUID = DiscordAPI.currentUser.id;
         if (ciChannel && ciChannel.id === iChannel.id) return RetTypes.SILENT; // ignore if channel is open
+        const threadState = ciChannel && ThreadStateStore.getThreadSidebarState(ciChannel.id);
+        if (threadState && threadState.channelId === iChannel.id) return RetTypes.SILENT; // ignore if thread is open
         if (iChannel.isManaged()) return RetTypes.SILENT; // not sure what managed channels are.. System maybe?
         const guildId = iChannel.getGuildId();
         if (guildId && LurkerStore.isLurking(guildId)) return RetTypes.SILENT; // ignore servers you're lurking in
         if (iAuthor.id === cUID || RelationshipStore.isBlocked(iAuthor.id)) return RetTypes.SILENT; // ignore if from self or if it's a blocked user
         if (!this.settings.dndIgnore && UserSettingsStore.status === DiscordConstants.StatusTypes.DND) return false; // ignore if in DND mode and settings allow
-        if (this.settings.pings && ~message.mentions.map(e => (typeof e !== 'string' ? e.id : e)).indexOf(cUID)) return RetTypes.PING; // if mentioned, always show notification
+        if (this.settings.pings && ~message.mentions.map(e => (typeof e === 'string' ? e : e.id)).indexOf(cUID)) return RetTypes.PING; // if mentioned, always show notification
         let ret = RetTypes.SILENT; // default, if a keyword or reply, then it'll pin the notification, but if it'd be true anyway, don't pin
         if (this.settings.replies && message.referenced_message && message.referenced_message.author && message.referenced_message.author.id === cUID && !~message.referenced_message.mentions.map(e => (typeof e === 'string' ? e : e.id)).indexOf(cUID)) {
           ret = RetTypes.REPLY; // always show notifications for replies
@@ -1158,7 +1179,7 @@ module.exports = (() => {
         };
       }
 
-      MESSAGE_CREATE({ channelId, message }) {
+      MESSAGE_CREATE({ channelId, message, isEdit }) {
         const iChannel = ChannelStore.getChannel(channelId);
         if (!iChannel) return; // what?
         let iAuthor = UserStore.getUser(message.author.id);
@@ -1173,7 +1194,7 @@ module.exports = (() => {
         const iMember = GuildMemberStore.getMember(iChannel.guild_id, iAuthor.id);
         const iMessage = DiscordModules.MessageStore.getMessage(channelId, message.id) || MessageActionCreators.createMessageRecord(message);
         const color = notifyStatus === RetTypes.KEYWORD && this.settings.useKeywordColor ? this.settings.keywordColor : this.settings.roleColor && iMember && iMember.colorString;
-        const timeout = ((notifyStatus === RetTypes.KEYWORD && this.settings.pinKeyword) || (notifyStatus === RetTypes.REPLY && this.settings.pinReplies)) ? 0 : this.calculateTimeout(title, content);
+        const timeout = ((notifyStatus === RetTypes.KEYWORD && this.settings.pinKeyword) || (notifyStatus === RetTypes.REPLY && this.settings.pinReplies) || (notifyStatus === RetTypes.PING && isEdit && this.settings.pinSilentPings)) ? 0 : this.calculateTimeout(title, content);
         const options = {
           timeout,
           onClick: () => {
@@ -1182,6 +1203,10 @@ module.exports = (() => {
           onContext: () => {
             this.bulkCloseNotifs(iChannel.id, iMessage.id);
             AckUtils.ack(iChannel.id);
+            XenoLib.Notifications.remove(notifId);
+          },
+          onMiddleClick: e => {
+            if (e.shiftKey) this.bulkCloseNotifs(iChannel.id, iMessage.id);
             XenoLib.Notifications.remove(notifId);
           },
           onLeave: () => {
@@ -1205,7 +1230,21 @@ module.exports = (() => {
       }
 
       MESSAGE_UPDATE({ message }) {
-        if (!this.n10nMap[message.id]) return;
+        if (!this.n10nMap[message.id]) {
+          if (message.author && (this.settings.editKeyword || this.settings.editPings)) {
+            const channelId = message.channel_id;
+            const iChannel = ChannelStore.getChannel(channelId);
+            if (!iChannel) return; // what?
+            let iAuthor = UserStore.getUser(message.author.id);
+            if (!iAuthor) {
+              iAuthor = new CUser(message.author);
+              UserStore.getUsers()[message.author.id] = iAuthor;
+            }
+            const notifyStatus = this.shouldNotify(message, iChannel, iAuthor);
+            if ((this.settings.editKeyword && notifyStatus === RetTypes.KEYWORD) || (this.settings.editPings && notifyStatus === RetTypes.PING)) return this.MESSAGE_CREATE({ message, channelId, isEdit: true });
+          }
+          return;
+        }
         const { iAuthor, iMessage: oiMessage, iChannel, notifId, options, notifyStatus } = this.n10nMap[message.id];
         const iMessage = DiscordModules.MessageStore.getMessage(iChannel.id, message.id) || MessageActionCreators.updateMessageRecord(oiMessage, message);
         const { icon, title, content } = this.makeTextChatNotification(iChannel, iMessage, iAuthor) || {};
@@ -1260,7 +1299,7 @@ module.exports = (() => {
       CHANNEL_SELECT({ channelId }) {
         const entries = Object.entries(this.n10nMap);
         for (const [id, { iChannel, notifId, notifyStatus }] of entries) {
-          if (iChannel.id !== channelId || notifyStatus === RetTypes.NORMAL || notifyStatus === RetTypes.KEYWORD_NORMAL || notifyStatus === RetTypes.REPLY_NORMAL) continue;
+          if (iChannel.id !== channelId || notifyStatus === RetTypes.REPLY || notifyStatus === RetTypes.KEYWORD || notifyStatus === RetTypes.PING) continue;
           XenoLib.Notifications.remove(notifId);
         }
       }
@@ -1437,7 +1476,7 @@ module.exports = (() => {
       n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
       e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '1.2.29') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.38') && (XenoLibOutdated = !0);
+    n(e, '1.2.31') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.41') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
