@@ -2113,7 +2113,7 @@ module.exports = (() => {
       n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
       e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '1.2.31') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.41') && (XenoLibOutdated = !0);
+    n(e, '1.2.31') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.1') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
