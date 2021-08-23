@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.7.72
+ * @version 1.8.0
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -37,7 +37,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.7.72';
+    return '1.8.0';
   }
   getAuthor() {
     return 'Lighty';
@@ -67,8 +67,8 @@ module.exports = class MessageLoggerV2 {
       const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion) || typeof global.isTab !== 'undefined';
       const iXenoLib = BdApi.Plugins.get('XenoLib');
       const iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
-      if (isOutOfDate(iXenoLib, '1.3.35')) XenoLibOutdated = true;
-      if (isOutOfDate(iZeresPluginLibrary, '1.2.28')) ZeresPluginLibraryOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.3.41')) XenoLibOutdated = true;
+      if (isOutOfDate(iZeresPluginLibrary, '1.2.32')) ZeresPluginLibraryOutdated = true;
     }
 
     if (!global.XenoLib || !global.ZeresPluginLibrary || global.DiscordJS || XenoLibOutdated || ZeresPluginLibraryOutdated) {
@@ -177,9 +177,18 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'no longer welcome',
+        title: 'Added',
+        type: 'added',
+        items: ['Added the option of using a different style to indicate a message is deleted.']
+      },
+      {
+        type: 'description',
+        content: 'Old style:\n![old style](https://i.imgur.com/tmgGFQO.png)\nNew style:\n![new style](https://i.imgur.com/D4TczMI.png)'
+      },
+      {
+        title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed a theme blocking the logger.']
+        items: ['Fixed channel context menu not containing message logger options.', 'Fixed logging bot messages only you can see.', 'Fixed not logging bot messages if they were created due to someone using a command.', 'Fixed up menu styling a bit.', 'Fixed edits showing in replies.']
       }
     ];
   }
@@ -205,7 +214,8 @@ module.exports = class MessageLoggerV2 {
     if (BdApi.Plugins && BdApi.Plugins.get('SuppressUserMentions') && BdApi.Plugins.isEnabled('SuppressUserMentions')) XenoLib.Notifications.warning(`[**${this.getName()}**] Using **SuppressUserMentions** with **${this.getName()}** is completely unsupported and will cause issues. Please either disable **SuppressUserMentions** or delete it to avoid issues.`, { timeout: 0 });
     if (BdApi.Plugins && BdApi.Plugins.get('MessageLogger') && BdApi.Plugins.isEnabled('MessageLogger')) XenoLib.Notifications.warning(`[**${this.getName()}**] Using **MessageLogger** with **${this.getName()}** is completely unsupported and will cause issues. Please either disable **MessageLogger** or delete it to avoid issues.`, { timeout: 0 });
     if (window.ED && !this.__isPowerCord) XenoLib.Notifications.warning(`[${this.getName()}] EnhancedDiscord is unsupported! Expect unintended issues and bugs.`, { timeout: 7500 });
-    if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
+    const shouldPass = e => e && e.constructor && typeof e.constructor.name === 'string' && e.constructor.name.indexOf('HTML');
+    if (shouldPass(window.Lightcord)) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
     let defaultSettings = {
       obfuscateCSSClasses: true,
       autoBackup: false,
@@ -259,6 +269,7 @@ module.exports = class MessageLoggerV2 {
       displayDates: true,
       deletedMessageColor: '',
       editedMessageColor: '',
+      useAlternativeDeletedStyle: false,
       showEditedMessages: true,
       showDeletedMessages: true,
       showPurgedMessages: true,
@@ -676,6 +687,7 @@ module.exports = class MessageLoggerV2 {
     this.style = {};
 
     this.style.deleted = this.obfuscatedClass('ml2-deleted');
+    this.style.deletedAlt = this.obfuscatedClass('ml2-deleted-alt');
     this.style.edited = this.obfuscatedClass('ml2-edited');
     this.style.editedCompact = this.obfuscatedClass('ml2-edited-compact');
     this.style.tab = this.obfuscatedClass('ml2-tab');
@@ -700,6 +712,12 @@ module.exports = class MessageLoggerV2 {
                 .${this.style.deleted} .${this.classes.markup}, .${this.style.deleted} .${this.classes.markup} .hljs, .${this.style.deleted} .container-1ov-mD *{
                     color: #f04747 !important;
                 }
+                .${this.style.deletedAlt} {
+                  background-color: rgba(240, 71, 71, 0.15);
+                }
+                .${this.style.deletedAlt}:hover, .${this.style.deletedAlt}.selected-2P5D_Z {
+                  background-color: rgba(240, 71, 71, 0.10) !important;
+                }
                 .theme-dark .${this.classes.markup}.${this.style.edited} .${this.style.edited} {
                     filter: brightness(70%);
                 }
@@ -722,10 +740,12 @@ module.exports = class MessageLoggerV2 {
                 .theme-dark .${this.style.tab} {
                     border-color: transparent;
                     color: rgba(255, 255, 255, 0.4);
+                    padding: 0px 24px;
                 }
                 .theme-light .${this.style.tab} {
                     border-color: transparent;
                     color: rgba(0, 0, 0, 0.4);
+                    padding: 0px 24px;
                 }
 
                 #sent.${this.style.tab} {
@@ -741,6 +761,10 @@ module.exports = class MessageLoggerV2 {
                     color: rgb(0, 0, 0);
                 }
 
+                #${this.style.menuTabBar} {
+                  justify-content: space-around;
+                }
+
                 .${this.style.textIndent} {
                     margin-left: 40px;
                 }
@@ -751,6 +775,15 @@ module.exports = class MessageLoggerV2 {
 
                 #${this.style.menuMessages} {
                   max-height: 0px;
+                }
+                .${this.style.menuRoot} .wrapper-1sSZUt {
+                  width: 100%;
+                }
+                .${this.style.menuRoot} .questionMark-3qBhGj {
+                  margin-left: 5px;
+                }
+                .${this.style.menuRoot} {
+                  width: 960px;
                 }
             `
     );
@@ -1227,6 +1260,12 @@ module.exports = class MessageLoggerV2 {
             id: 'hideNewerEditsFirst',
             type: 'switch',
             callback: () => ZeresPluginLibrary.DiscordModules.Dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT' })
+          },
+          {
+            name: 'Use red background instead of red text for deleted messages',
+            id: 'useAlternativeDeletedStyle',
+            type: 'switch',
+            callback: () => ZeresPluginLibrary.DiscordModules.Dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE' })
           },
           {
             name: 'Display purged messages in chat',
@@ -2468,7 +2507,7 @@ module.exports = class MessageLoggerV2 {
 
       // console.log('INFO: onDispatchEvent -> dispatch', dispatch);
 
-      if (dispatch.message && (dispatch.message.type !== 0 && dispatch.message.type !== 19)) return callDefault(...args); // anti other shit 1
+      if (dispatch.message && (dispatch.message.type !== 0 && dispatch.message.type !== 19 && (dispatch.message.type !== 20 || (dispatch.message.flags & 64) === 64))) return callDefault(...args); // anti other shit 1
 
       const channel = this.tools.getChannel(dispatch.message ? dispatch.message.channel_id : dispatch.channelId);
       if (!channel) return callDefault(...args);
@@ -2533,7 +2572,7 @@ module.exports = class MessageLoggerV2 {
       if (doReturn && this.settings.alwaysLogGhostPings) {
         if (dispatch.type === 'MESSAGE_DELETE') {
           const deleted = (this.tempEditedMessageRecord[dispatch.id] && this.tempEditedMessageRecord[dispatch.id].message) || this.getCachedMessage(dispatch.id, dispatch.channelId);
-          if (!deleted || (deleted.type !== 0 && deleted.type !== 19)) return callDefault(...args); // nothing we can do past this point..
+          if (!deleted || (deleted.type !== 0 && deleted.type !== 19 && deleted.type !== 20)) return callDefault(...args); // nothing we can do past this point..
           if (!this.tools.isMentioned(deleted, this.localUser.id)) return callDefault(...args);
           const record = this.messageRecord[dispatch.id];
           if ((!this.selectedChannel || this.selectedChannel.id != channel.id) && (guild ? this.settings.toastToggles.ghostPings : this.settings.toastTogglesDMs.ghostPings) && (!record || !record.ghost_pinged)) {
@@ -2622,7 +2661,7 @@ module.exports = class MessageLoggerV2 {
               });
             }
           }
-        } else if (dispatch.type == 'MESSAGE_CREATE' && dispatch.message && (dispatch.message.content.length || (dispatch.attachments && dispatch.attachments.length) || (dispatch.embeds && dispatch.embeds.length)) && dispatch.message.state != 'SENDING' && !dispatch.optimistic && (dispatch.message.type === 0 || dispatch.message.type === 19) && this.tools.isMentioned(dispatch.message, this.localUser.id)) {
+        } else if (dispatch.type == 'MESSAGE_CREATE' && dispatch.message && (dispatch.message.content.length || (dispatch.attachments && dispatch.attachments.length) || (dispatch.embeds && dispatch.embeds.length)) && dispatch.message.state != 'SENDING' && !dispatch.optimistic && (dispatch.message.type === 0 || dispatch.message.type === 19 || dispatch.message.type === 20) && this.tools.isMentioned(dispatch.message, this.localUser.id)) {
           if (this.cachedMessageRecord.findIndex(m => m.id === dispatch.message.id) != -1) return callDefault(...args);
           this.cachedMessageRecord.push(dispatch.message);
         }
@@ -2674,7 +2713,7 @@ module.exports = class MessageLoggerV2 {
           return;
         }
 
-        if (deleted.type !== 0 && deleted.type !== 19) return callDefault(...args);
+        if (deleted.type !== 0 && deleted.type !== 19 && (deleted.type !== 20 || (deleted.flags & 64) === 64)) return callDefault(...args);
 
         if (this.settings.showDeletedCount) {
           if (!this.deletedChatMessagesCount[channel.id]) this.deletedChatMessagesCount[channel.id] = 0;
@@ -2883,7 +2922,7 @@ module.exports = class MessageLoggerV2 {
         }
         this.saveData();
         return callDefault(...args);
-      } else if (dispatch.type == 'MESSAGE_CREATE' && dispatch.message && (dispatch.message.content.length || (dispatch.attachments && dispatch.attachments.length) || (dispatch.embeds && dispatch.embeds.length)) && !global.ohgodohfuck && dispatch.message.state != 'SENDING' && !dispatch.optimistic && (dispatch.message.type === 0 || dispatch.message.type === 19)) {
+      } else if (dispatch.type == 'MESSAGE_CREATE' && dispatch.message && (dispatch.message.content.length || (dispatch.attachments && dispatch.attachments.length) || (dispatch.embeds && dispatch.embeds.length)) && !global.ohgodohfuck && dispatch.message.state != 'SENDING' && !dispatch.optimistic && (dispatch.message.type === 0 || dispatch.message.type === 19 || dispatch.message.type === 20)) {
         if (this.cachedMessageRecord.findIndex(m => m.id === dispatch.message.id) != -1) return callDefault(...args);
         this.cachedMessageRecord.push(dispatch.message);
 
@@ -2968,7 +3007,7 @@ module.exports = class MessageLoggerV2 {
           },
           [props.message.id, forceUpdate]
         );
-        if (!this.settings.showEditedMessages) return;
+        if (!this.settings.showEditedMessages || (typeof props.className === 'string' && ~props.className.indexOf('repliedTextContent'))) return;
         if (!this.editedMessageRecord[props.message.channel_id] || this.editedMessageRecord[props.message.channel_id].indexOf(props.message.id) === -1) return;
         const record = this.messageRecord[props.message.id];
         if (!record || record.edits_hidden || !Array.isArray(ret.props.children)) return;
@@ -3046,7 +3085,7 @@ module.exports = class MessageLoggerV2 {
         const record = this.messageRecord[props.message.id];
         if (!record || !record.delete_data) return;
         if (this.noTintIds.indexOf(props.message.id) !== -1) return;
-        ret.props.className += ' ' + this.style.deleted;
+        ret.props.className += ' ' + (this.settings.useAlternativeDeletedStyle ? this.style.deletedAlt : this.style.deleted);
         ret.props.__MLV2_deleteTime = record.delete_data.time;
       })
     );
@@ -3947,32 +3986,6 @@ module.exports = class MessageLoggerV2 {
     tabs.appendChild(createTab('Edited', 'edited'));
     tabs.appendChild(createTab('Purged', 'purged'));
     tabs.appendChild(createTab('Ghost pings', 'ghostpings'));
-    const measureWidth = el => {
-      el = el.cloneNode(true);
-
-      el.style.visibility = 'hidden';
-      el.style.position = 'absolute';
-
-      document.body.appendChild(el);
-      let result = el.getBoundingClientRect().width;
-      el.remove();
-      return result;
-    };
-    const totalWidth = measureWidth(tabs) * 2 - 20;
-    const wantedTabWidth = totalWidth / tabs.childElementCount;
-    const wantedTabMargin = wantedTabWidth / 2;
-    let tab = tabs.firstElementChild;
-    while (tab) {
-      tab.style.marginRight = '0px';
-      const tabWidth = measureWidth(tab);
-      if (tabWidth > wantedTabWidth) {
-        ZeresPluginLibrary.Logger.err(this.getName(), `What the shit? Tab ${tab} is massive!!`);
-        tab = tab.nextElementSibling;
-        continue;
-      }
-      tab.style.paddingRight = tab.style.paddingLeft = `${wantedTabMargin - tabWidth / 2}px`;
-      tab = tab.nextElementSibling;
-    }
     tabBar.style.marginRight = '20px';
     return tabBar;
   }
@@ -4569,7 +4582,7 @@ module.exports = class MessageLoggerV2 {
 
     this.unpatches.push(
       this.Patcher.after(
-        WebpackModules.find((e) => e && (e.default.displayName === 'ChannelListTextChannelContextMenu' && e.default.toString().search(/\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w\),\w=\(0,\w\.default\)\(\w\.id\)/) !== -1 || e.__powercordOriginal_default.displayName === 'ChannelListTextChannelContextMenu' && e.__powercordOriginal_default.toString().search(/\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w,\w\),\w=\(0,\w\.default\)\(\w\),\w=\(0,\w\.default\)\(\w\.id\)/) !== -1)),
+        WebpackModules.find((e) => e && (e.default.displayName === 'ChannelListTextChannelContextMenu' || e.__powercordOriginal_default.displayName === 'ChannelListTextChannelContextMenu')),
         'default',
         (_, [props], ret) => {
           const newItems = [];
