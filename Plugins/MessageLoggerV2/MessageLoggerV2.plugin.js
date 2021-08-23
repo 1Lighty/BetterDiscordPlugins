@@ -179,7 +179,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Added',
         type: 'added',
-        items: ['Added the option of using a different style to indicate a message is deleted.']
+        items: ['Added the option of using a different style to indicate a message is deleted. You can enable it by going to message loggers settings, under Display Settings it is listed as `Use red background instead of red text for deleted messages`']
       },
       {
         type: 'description',
