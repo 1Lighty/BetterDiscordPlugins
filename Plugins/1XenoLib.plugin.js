@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.41
+ * @version 1.3.42
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.41',
+      version: '1.3.42',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -115,7 +115,7 @@ module.exports = (() => {
       {
         title: 'Minor fixes',
         type: 'fixed',
-        items: ['Fixed notifications locking up on powercord.', 'Fixed parser not being able to be made', 'Fixed patching issue when using some external mod.']
+        items: ['Try fix plugins being disabled by auto updater.', 'Fix notifications dying on Powercords new backend.']
       }
     ],
     defaultConfig: [
@@ -1709,9 +1709,9 @@ module.exports = (() => {
         }
         NotificationsWrapper.displayName = 'XenoLibNotifications';
         const DOMElement = document.createElement('div');
+        document.querySelector('#app-mount').appendChild(DOMElement); // fucking incompetent powercord needs me to append it first
         DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
         ReactDOM.render(React.createElement(NotificationsWrapper, {}), DOMElement);
-        document.querySelector('#app-mount').appendChild(DOMElement);
       }
     } catch (e) {
       Logger.stacktrace('There has been an error loading the Notifications system, fallback object has been put in place to prevent errors', e);
@@ -1952,6 +1952,7 @@ module.exports = (() => {
               const https = require('https');
               for (const { name, file } of pluginsToCheck) {
               // eslint-disable-next-line no-undef
+                const isPluginEnabled = BdApi.Plugins.isEnabled(name);
                 let plugin = BdApi.Plugins.get(name);
                 if (plugin && plugin.instance) plugin = plugin.instance;
                 // eslint-disable-next-line no-loop-func
@@ -1975,11 +1976,13 @@ module.exports = (() => {
                           // eslint-disable-next-line curly
                           } else if (BdApi.version ? !BdApi.isSettingEnabled('settings', 'addons', 'autoReload') : !BdApi.isSettingEnabled('fork-ps-5')) {
                             // eslint-disable-next-line no-negated-condition
-                            if (newFile !== file)
+                            if (newFile !== file) {
                             // eslint-disable-next-line no-undef
                               BdApi.showConfirmationModal('Hmm', 'You must reload in order to finish plugin installation', { onConfirm: () => location.reload() });
-                            else BdApi.Plugins.reload(name);
+                              isPluginEnabled = false;
+                            } else BdApi.Plugins.reload(name);
                           }
+                          if (isPluginEnabled) BdApi.Plugins.enable(name);
                         } catch (e) {}
                       }, 1000);
                     } catch (e) {}
