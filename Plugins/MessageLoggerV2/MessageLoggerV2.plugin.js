@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.0
+ * @version 1.8.1
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -37,7 +37,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.0';
+    return '1.8.1';
   }
   getAuthor() {
     return 'Lighty';
@@ -67,7 +67,7 @@ module.exports = class MessageLoggerV2 {
       const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion) || typeof global.isTab !== 'undefined';
       const iXenoLib = BdApi.Plugins.get('XenoLib');
       const iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
-      if (isOutOfDate(iXenoLib, '1.3.41')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.3.42')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '1.2.32')) ZeresPluginLibraryOutdated = true;
     }
 
@@ -177,18 +177,9 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'Added',
-        type: 'added',
-        items: ['Added the option of using a different style to indicate a message is deleted. You can enable it by going to message loggers settings, under Display Settings it is listed as `Use red background instead of red text for deleted messages`']
-      },
-      {
-        type: 'description',
-        content: 'Old style:\n![old style](https://i.imgur.com/tmgGFQO.png)\nNew style:\n![new style](https://i.imgur.com/D4TczMI.png)'
-      },
-      {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed channel context menu not containing message logger options.', 'Fixed logging bot messages only you can see.', 'Fixed not logging bot messages if they were created due to someone using a command.', 'Fixed up menu styling a bit.', 'Fixed edits showing in replies.']
+        items: ['Fixed deleted messages no longer being marked as such.', 'Fixed new deleted message style not working on some themes. (may not work on all still but, progress!)', 'Try fix image caching.']
       }
     ];
   }
@@ -713,7 +704,7 @@ module.exports = class MessageLoggerV2 {
                     color: #f04747 !important;
                 }
                 .${this.style.deletedAlt} {
-                  background-color: rgba(240, 71, 71, 0.15);
+                  background-color: rgba(240, 71, 71, 0.15) !important;
                 }
                 .${this.style.deletedAlt}:hover, .${this.style.deletedAlt}.selected-2P5D_Z {
                   background-color: rgba(240, 71, 71, 0.10) !important;
@@ -2340,7 +2331,7 @@ module.exports = class MessageLoggerV2 {
     return record.message;
   }
   cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts = 0) {
-    this.nodeModules.request({ url: url, encoding: null }, (err, res, buffer) => {
+    this.nodeModules.request({ url: url, encoding: null, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9002 Chrome/83.0.4103.122 Electron/9.3.5 Safari/537.36' }}, (err, res, buffer) => {
       try {
         if (err || res.statusCode != 200) {
           if (res.statusCode == 404 || res.statusCode == 403) return;
@@ -3085,8 +3076,10 @@ module.exports = class MessageLoggerV2 {
         const record = this.messageRecord[props.message.id];
         if (!record || !record.delete_data) return;
         if (this.noTintIds.indexOf(props.message.id) !== -1) return;
-        ret.props.className += ' ' + (this.settings.useAlternativeDeletedStyle ? this.style.deletedAlt : this.style.deleted);
-        ret.props.__MLV2_deleteTime = record.delete_data.time;
+        const messageProps = ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && typeof e.className === 'string' && ~e.className.indexOf('message-2qnXI6'));
+        if (!messageProps) return;
+        messageProps.className += ' ' + (this.settings.useAlternativeDeletedStyle ? this.style.deletedAlt : this.style.deleted);
+        messageProps.__MLV2_deleteTime = record.delete_data.time;
       })
     );
     const Message = ZLibrary.WebpackModules.getModule(e => {
