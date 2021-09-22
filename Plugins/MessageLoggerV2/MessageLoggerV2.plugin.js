@@ -76,7 +76,7 @@ module.exports = class MessageLoggerV2 {
       if ("undefined" != typeof global.isTab) return;
       const a = !!window.powercord && "function" == typeof BdApi.__getPluginConfigPath,
         b = BdApi.findModuleByProps("openModal", "hasModalOpen");
-      if (b && b.hasModalOpen(`${this.name}_DEP_MODAL`)) return;
+      if (b && b.hasModalOpen(`${this.getName()}_DEP_MODAL`)) return;
       const c = !global.XenoLib,
         d = !global.ZeresPluginLibrary,
         e = c && d || (c || d) && (XenoLibOutdated || ZeresPluginLibraryOutdated),
@@ -86,7 +86,7 @@ module.exports = class MessageLoggerV2 {
         })(),
         g = (() => {
           let a = `The ${e ? "libraries" : "library"} `;
-          return c || XenoLibOutdated ? (a += "XenoLib ", (d || ZeresPluginLibraryOutdated) && (a += "and ZeresPluginLibrary ")) : (d || ZeresPluginLibraryOutdated) && (a += "ZeresPluginLibrary "), a += `required for ${this.name} ${e ? "are" : "is"} ${c || d ? "missing" : ""}${XenoLibOutdated || ZeresPluginLibraryOutdated ? c || d ? " and/or outdated" : "outdated" : ""}.`, a
+          return c || XenoLibOutdated ? (a += "XenoLib ", (d || ZeresPluginLibraryOutdated) && (a += "and ZeresPluginLibrary ")) : (d || ZeresPluginLibraryOutdated) && (a += "ZeresPluginLibrary "), a += `required for ${this.getName()} ${e ? "are" : "is"} ${c || d ? "missing" : ""}${XenoLibOutdated || ZeresPluginLibraryOutdated ? c || d ? " and/or outdated" : "outdated" : ""}.`, a
         })(),
         h = BdApi.findModuleByDisplayName("Text"),
         i = BdApi.findModuleByDisplayName("ConfirmModal"),
@@ -163,7 +163,7 @@ module.exports = class MessageLoggerV2 {
           return console.error("There has been an error constructing the modal", a), m = !0, b.closeModal(n), j(), null
         }
       }, {
-        modalKey: `${this.name}_DEP_MODAL`
+        modalKey: `${this.getName()}_DEP_MODAL`
       });
     } else onLoaded();
   }
