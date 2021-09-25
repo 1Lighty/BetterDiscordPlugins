@@ -1,6 +1,6 @@
 /**
  * @name UnreadBadgesRedux
- * @version 1.0.14
+ * @version 1.0.15
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux
@@ -46,7 +46,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.14',
+      version: '1.0.15',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -55,11 +55,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed icons not showing on servers unless hovered.', 'Fixed not showing on threads, also added an option of turning that off.', 'Fixed being wildly incorrect if you put your pc to sleep.', 'Threads now count towards the total unread count for server and folder icons.']
-      },
-      {
-        type: 'description',
-        content: 'This plugin has gone 6+ months with no significant updates without breaking majorly at all :tada:'
+        items: ['Fixed not showing on server icons. If this breaks it for you, just press CTRL + R, so you get the new update :)']
       }
     ],
     defaultConfig: [
@@ -293,6 +289,7 @@ module.exports = (() => {
         this.promises = { state: { cancelled: false } };
         this.patchedModules = [];
         this.patchAll();
+        this.forceUpdateGuildSidebars();
         PluginUtilities.addStyle(
           this.short + '-CSS',
           `
@@ -334,13 +331,30 @@ module.exports = (() => {
 
       forceUpdateAll() {
         this.patchedModules.forEach(e => e());
+        this.forceUpdateGuildSidebars();
+      }
+
+      forceUpdateGuildSidebars() {
+        const guildSidebars = [...document.querySelectorAll(`.${XenoLib.getSingleClass('sidebar guilds')}`)];
+        for (const guild of guildSidebars) {
+          const instance = ReactTools.getReactInstance(guild);
+          if (!instance) {
+            Logger.warn('Found guild sidebar but no instance');
+            continue;
+          }
+          const guildInstance = Utilities.findInTree(instance, e => e && e.type && e.type.displayName === 'Guilds', { walkable: ['return'] });
+          if (!guildInstance) {
+            Logger.warn('Found instance but no guild instance');
+            continue;
+          }
+          if (guildInstance.stateNode && guildInstance.stateNode.forceUpdate) guildInstance.stateNode.forceUpdate();
+        }
       }
 
       /* PATCHES */
 
       patchAll() {
         Utilities.suppressErrors(this.patchBlobMask.bind(this), 'BlobMask patch')(this.promises.state);
-        Utilities.suppressErrors(this.patchGuildIcon.bind(this), 'GuildIcon patch')(this.promises.state);
         Utilities.suppressErrors(this.patchChannelItem.bind(this), 'ChannelItem patch')(this.promises.state);
         Utilities.suppressErrors(this.patchThreadItem.bind(this), 'Thread item patch')(this.promises.state);
         Utilities.suppressErrors(this.patchConnectedGuild.bind(this), 'ConnectedGuild patch')(this.promises.state);
@@ -469,43 +483,34 @@ module.exports = (() => {
         });
       }
 
-      async patchConnectedGuild(promiseState) {
-        const selector = `.${XenoLib.getSingleClass('listItem', true)}`;
-        const ConnectedGuild = await ReactComponents.getComponentByName('DragSource(ConnectedGuild)', selector);
-        if (!ConnectedGuild.selector) ConnectedGuild.selector = selector;
-        if (promiseState.cancelled) return;
-        const settings = this.settings;
-        function PatchedConnectedGuild(e) {
-          /* get on my level scrublords */
-          e.__UBR_unread_count = StoresModule.useStateFromStores([UnreadStore, MuteModule], () => (!settings.misc.guilds || (!settings.misc.mutedGuilds && MuteModule.isMuted(e.guildId)) ? 0 : getUnreadCount(e.guildId, !settings.misc.noMutedInGuildCount)));
-          return e.__UBR_old_type(e);
-        }
-        PatchedConnectedGuild.displayName = 'ConnectedGuild';
-        Patcher.after(ConnectedGuild.component.prototype, 'render', (_this, _, ret) => {
-          const old = ret.props.children;
-          ret.props.children = e => {
-            const ret2 = old(e);
-            ret2.props.__UBR_old_type = ret2.type;
-            ret2.type = PatchedConnectedGuild;
-            return ret2;
-          };
-        });
-        ConnectedGuild.forceUpdateAll();
-        this.patchedModules.push(ConnectedGuild.forceUpdateAll.bind(ConnectedGuild));
-      }
+      patchConnectedGuild() {
+        const GuildIconsModule = WebpackModules.find(e => e.default && e.default.displayName === 'ConnectedGuild');
 
-      async patchGuildIcon(promiseState) {
-        const selector = `.${XenoLib.getSingleClass('listItem', true)}`;
-        const Guild = await ReactComponents.getComponentByName('Guild', selector);
-        if (!Guild.selector) Guild.selector = selector;
-        if (promiseState.cancelled) return;
-        Patcher.after(Guild.component.prototype, 'render', (_this, _, ret) => {
-          const mask = Utilities.findInTree(ret, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
-          if (!mask) return;
-          mask.props.__UBR_unread_count = _this.props.__UBR_unread_count;
-          mask.props.guildId = _this.props.guildId;
+        const settings = this.settings;
+        function PatchedGuild(e) {
+          if (!e) return null;
+          try {
+            const ret = e.__UBR_old_type(e);
+            const unreadCount = StoresModule.useStateFromStores([UnreadStore, MuteModule], () => (!settings.misc.guilds || (!settings.misc.mutedGuilds && MuteModule.isMuted(e.guildId)) ? 0 : getUnreadCount(e.guildId, !settings.misc.noMutedInGuildCount)));
+            const mask = Utilities.findInTree(ret, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
+            if (!mask) return ret;
+            mask.props.__UBR_unread_count = unreadCount;
+            mask.props.guildId = e.guildId;
+            return ret;
+          } catch (err) {
+            Logger.stacktrace('Failed running old of PatchedGuild', err);
+            try {
+              return e.__UBR_old_type(e);
+            } catch (err)  {
+              Logger.stacktrace('Failed running only old of PatchedGuild', err);
+              return null;
+            }
+          }
+        }
+        Patcher.after(GuildIconsModule, 'default', (_, __, ret) => {
+          ret.props.__UBR_old_type = ret.type;
+          ret.type = PatchedGuild;
         });
-        Guild.forceUpdateAll();
       }
 
       async patchBlobMask(promiseState) {
@@ -516,7 +521,7 @@ module.exports = (() => {
         const ensureUnreadBadgeMask = _this => {
           if (_this.state.unreadBadgeMask) return;
           _this.state.unreadBadgeMask = new ReactSpring.Controller({
-            spring: 0
+            spring: !!_this.props.__UBR_unread_count
           });
         };
         Patcher.after(BlobMask.component.prototype, 'componentDidMount', _this => {
@@ -632,7 +637,7 @@ module.exports = (() => {
       b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined'),
       c = BdApi.Plugins.get('ZeresPluginLibrary'),
       d = BdApi.Plugins.get('XenoLib');
-    b(c, '1.2.31') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.41') && (XenoLibOutdated = !0);
+    b(c, '1.2.32') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.42') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }
