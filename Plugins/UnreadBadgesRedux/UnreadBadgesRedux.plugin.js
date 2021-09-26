@@ -1,6 +1,6 @@
 /**
  * @name UnreadBadgesRedux
- * @version 1.0.15
+ * @version 1.0.16
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux
@@ -46,7 +46,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.15',
+      version: '1.0.16',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -55,7 +55,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not showing on server icons. If this breaks it for you, just press CTRL + R, so you get the new update :)']
+        items: ['Fix crasheeeeeeeees']
       }
     ],
     defaultConfig: [
@@ -209,7 +209,7 @@ module.exports = (() => {
     }
 
     const UnreadStore = WebpackModules.getByProps('getUnreadCount');
-    const MuteModule = WebpackModules.getByProps('isMuted');
+    const MuteModule = WebpackModules.getByProps('isChannelMuted');
     const AltChannelStore = WebpackModules.find(m => m.getChannels && m.getChannels.length === 1);
     const ThreadsStore = WebpackModules.getByProps('getActiveJoinedUnreadThreadsForGuild');
 
