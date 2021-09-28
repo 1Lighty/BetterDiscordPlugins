@@ -1,6 +1,6 @@
 /**
  * @name MultiUploads
- * @version 1.1.6
+ * @version 1.1.7
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MultiUploads
@@ -48,7 +48,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.6',
+      version: '1.1.7',
       description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
@@ -57,7 +57,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not being able to paste multiple times.', 'Fixed chatbar not being cleared on multi uploads.']
+        items: ['Fixed not being able to paste multiple times. Again.']
       }
     ]
   };
@@ -119,8 +119,7 @@ module.exports = (() => {
     const { Upload } = WebpackModules.getByProps('Upload') || {};
     const MessageDraftUtils = WebpackModules.getByProps('saveDraft');
     const FileUtils = WebpackModules.getByProps('anyFileTooLarge');
-    const GenericUploaderBase = WebpackModules.find(e => e.prototype && e.prototype.upload && e.prototype.cancel && !e.__proto__.prototype.cancel);
-    const MessageFileUploader = WebpackModules.find(e => e.prototype && e.prototype.upload && e.__proto__ === GenericUploaderBase);
+    const [MessageFileUploader, GenericUploaderBase] = WebpackModules.findAll(e => e.prototype && e.prototype.upload);
     const UploadUtils = WebpackModules.getByProps('upload', 'instantBatchUpload', 'cancel');
 
     return class MultiUploads extends Plugin {
@@ -333,7 +332,7 @@ module.exports = (() => {
             }
           };
         });
-        const promptToUpload = WebpackModules.getByString('.Messages.UPLOAD_AREA_TOO_LARGE_TITLE');
+        const promptToUpload = WebpackModules.getByString('AnalyticEvents.FILE_SIZE_LIMIT_EXCEEDED');
         Patcher.after(Upload.component.prototype, 'render', (_this, _, ret) => {
           const popout = Utilities.findInReactTree(ret, e => e && (e.type && e.type.displayName === 'Popout' && typeof e.props.children === 'function' && ~e.props.children.toString().indexOf('default.channelTextAreaUpload')));
           if (!popout) return;
@@ -424,9 +423,10 @@ module.exports = (() => {
 
   let ZeresPluginLibraryOutdated = false;
   try {
-    const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
-      b = BdApi.Plugins.get('ZeresPluginLibrary');
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.31') && (ZeresPluginLibraryOutdated = !0);
+    const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]);
+    let b = BdApi.Plugins.get('ZeresPluginLibrary');
+    if (b.exports && b.instance) b = b.instance;
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.32') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
