@@ -425,7 +425,7 @@ module.exports = (() => {
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]);
     let b = BdApi.Plugins.get('ZeresPluginLibrary');
-    if (b.exports && b.instance) b = b.instance;
+    if (b && b.exports && b.instance) b = b.instance;
     ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.32') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
