@@ -4712,7 +4712,7 @@ module.exports = class MessageLoggerV2 {
 
     this.unpatches.push(
       this.Patcher.after(
-        WebpackModules.find(({ default: defaul }) => defaul && defaul.displayName === 'GroupDMContextMenu'),
+        WebpackModules.find(({ default: defaul }) => defaul && defaul.displayName === 'GroupDMUserContextMenu'),
         'default',
         (_, [props], ret) => {
           const newItems = [];
