@@ -1,6 +1,6 @@
 /**
  * @name UnreadBadgesRedux
- * @version 1.0.16
+ * @version 1.0.17
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux
@@ -46,7 +46,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.16',
+      version: '1.0.17',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -55,7 +55,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fix crasheeeeeeeees']
+        items: ['Fix not working on channels.', 'Fix not working on server folders.']
       }
     ],
     defaultConfig: [
@@ -389,7 +389,7 @@ module.exports = (() => {
           popout.props.children = () => {
             try {
               const ret = oChildren();
-              const props = Utilities.findInReactTree(ret, e => e && Array.isArray(e.children) && e.children.find(e => e && e.type && e.type.displayName === 'ConnectedEditButton'));
+              const props = Utilities.findInReactTree(ret, e => e && Array.isArray(e.children) && e.children.find(e => e && e.type && e.type.displayName === 'ChannelItemEditButton'));
               if (!props || !props.children) return ret;
               const badge = React.createElement(UnreadBadge, { channelId: _this.props.channel.id, muted: _this.props.muted && !_this.props.selected });
               props.children.splice(this.settings.misc.channelsDisplayOnLeft ? 0 : 2, 0, badge);
@@ -457,8 +457,8 @@ module.exports = (() => {
           return React.createElement(e.__UBR_old_type, e);
         }
         BlobMaskWrapper.displayName = 'BlobMask';
-        const GuildFolderMemo = WebpackModules.find(m => m.type && ((m.__powercordOriginal_type || m.type).toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1 || (m.type.render && (m.type.__powercordOriginal_render || m.type.render).toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1)));
-        Patcher.after(GuildFolderMemo.type.render ? GuildFolderMemo.type : GuildFolderMemo, GuildFolderMemo.type.render ? 'render' : 'type', (_, [props], ret) => {
+        const { GuildFolderComponent } = WebpackModules.getByProps('GuildFolderComponent');
+        Patcher.after(GuildFolderComponent.type, 'render', (_, [props], ret) => {
           const mask = Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'BlobMask');
           if (!mask) return;
           mask.props.__UBR_old_type = mask.type;
@@ -637,6 +637,8 @@ module.exports = (() => {
       b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined'),
       c = BdApi.Plugins.get('ZeresPluginLibrary'),
       d = BdApi.Plugins.get('XenoLib');
+    if (c && c.exports && c.instance) c = c.instance; // BD specific fixes
+    if (d && d.exports && d.instance) d = d.instance; // BD specific fixes
     b(c, '1.2.32') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.42') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
