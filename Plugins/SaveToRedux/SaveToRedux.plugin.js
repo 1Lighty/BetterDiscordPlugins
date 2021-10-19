@@ -4,7 +4,7 @@
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
- * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/MultiUploads/SaveToRedux.plugin.js
+ * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/SaveToRedux/SaveToRedux.plugin.js
  */
 /*@cc_on
 @if (@_jscript)
