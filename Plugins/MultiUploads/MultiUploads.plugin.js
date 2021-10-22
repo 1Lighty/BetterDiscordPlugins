@@ -1,6 +1,6 @@
 /**
  * @name MultiUploads
- * @version 1.1.8
+ * @version 1.1.9
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MultiUploads
@@ -48,7 +48,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.8',
+      version: '1.1.9',
       description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
@@ -57,7 +57,7 @@ module.exports = (() => {
       {
         title: 'sorry',
         type: 'fixed',
-        items: ['Bricked plugin due to concerning issues related to canary.']
+        items: ['Bricked plugin due to concerning issues related to canary.', 'Part 2 because I actually forgot to do the disable part']
       }
     ]
   };
@@ -132,6 +132,7 @@ module.exports = (() => {
       }
       onStart() {
         this.promises = { cancelled: false };
+        return;
         this.patchAll();
         this.uploads = [];
         if (!Upload) throw 'Upload class could not be found';
@@ -142,6 +143,7 @@ module.exports = (() => {
 
       onStop() {
         this.promises.cancelled = true;
+        return;
         Patcher.unpatchAll();
         Dispatcher.unsubscribe('UPLOAD_MODAL_POP_FILE', this.UPLOAD_MODAL_POP_FILE);
         Dispatcher.unsubscribe('UPLOAD_MODAL_PUSH_FILES', this.UPLOAD_MODAL_PUSH_FILES);
