@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.2
+ * @version 1.8.3
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -37,7 +37,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.2';
+    return '1.8.3';
   }
   getAuthor() {
     return 'Lighty';
@@ -49,7 +49,8 @@ module.exports = class MessageLoggerV2 {
   start() {
     let onLoaded = () => {
       try {
-        if (!global.ZeresPluginLibrary || !(this.localUser = ZeresPluginLibrary.DiscordModules.UserStore.getCurrentUser())) setTimeout(onLoaded, 1000);
+        if (global.ZeresPluginLibrary && !this.UserStore) this.UserStore = ZeresPluginLibrary.WebpackModules.getByProps('getCurrentUser', 'getUser');
+        if (!global.ZeresPluginLibrary || !this.UserStore || !(this.localUser = this.UserStore.getCurrentUser())) setTimeout(onLoaded, 1000);
         else this.initialize();
       } catch (err) {
         ZeresPluginLibrary.Logger.stacktrace(this.getName(), 'Failed to start!', err);
@@ -65,9 +66,11 @@ module.exports = class MessageLoggerV2 {
     if (global.BdApi && BdApi.Plugins && typeof BdApi.Plugins.get === 'function' /* you never know with those retarded client mods */) {
       const versionChecker = (a, b) => ((a = a.split('.').map(a => parseInt(a))), (b = b.split('.').map(a => parseInt(a))), !!(b[0] > a[0])) || !!(b[0] == a[0] && b[1] > a[1]) || !!(b[0] == a[0] && b[1] == a[1] && b[2] > a[2]);
       const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion) || typeof global.isTab !== 'undefined';
-      const iXenoLib = BdApi.Plugins.get('XenoLib');
-      const iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
-      if (isOutOfDate(iXenoLib, '1.3.42')) XenoLibOutdated = true;
+      let iXenoLib = BdApi.Plugins.get('XenoLib');
+      let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
+      if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
+      if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
+      if (isOutOfDate(iXenoLib, '1.3.43')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '1.2.32')) ZeresPluginLibraryOutdated = true;
     }
 
@@ -179,7 +182,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed not working at all causing channels to no longer load.', 'Try to make new deleted messages style work with more themes.']
+        items: ['Fixed not working on canary.', 'Fixed ignoring of muted categories not working.', 'Fixed context menu options on group DMs not showing.']
       }
     ];
   }
@@ -482,10 +485,10 @@ module.exports = class MessageLoggerV2 {
     this.unpatches = [];
 
     this.unpatches.push(
-      this.Patcher.after(ZeresPluginLibrary.DiscordModules.UserStore, 'getUser', (_this, args, ret) => {
+      this.Patcher.after(this.UserStore, 'getUser', (_this, args, ret) => {
         if (!ret && !args[1]) {
           const userId = args[0];
-          const users = ZeresPluginLibrary.DiscordModules.UserStore.getUsers();
+          const users = this.UserStore.getUsers();
           if (userRecord[userId]) return (users[userId] = new CUser(userRecord[userId]));
         }
       })
@@ -504,7 +507,7 @@ module.exports = class MessageLoggerV2 {
       getChannel: this.ChannelStore.getChannel,
       copyToClipboard: this.nodeModules.electron.clipboard.writeText,
       getServer: ZeresPluginLibrary.DiscordModules.GuildStore.getGuild,
-      getUser: ZeresPluginLibrary.DiscordModules.UserStore.getUser,
+      getUser: this.UserStore.getUser,
       parse: ZeresPluginLibrary.WebpackModules.getByProps('parse', 'astParserFor').parse,
       getUserAsync: ZeresPluginLibrary.WebpackModules.getByProps('getUser', 'acceptAgreements').getUser,
       isBlocked: ZeresPluginLibrary.WebpackModules.getByProps('isBlocked').isBlocked,
@@ -641,13 +644,12 @@ module.exports = class MessageLoggerV2 {
     this.createModal.imageModal = MLV2ImageModal;
 
     const chatContent = ZeresPluginLibrary.WebpackModules.getByProps('chatContent');
-    const chat = ZeresPluginLibrary.WebpackModules.getByProps('chat');
-    this.observer.chatContentClass = ((chatContent && chatContent.chatContent) || chat.chat).split(/ /g)[0];
-    this.observer.chatClass = chat.chat.split(/ /g)[0];
+    this.observer.chatContentClass = ((chatContent && chatContent.chatContent) || 'chat-3bRxxu').split(/ /g)[0];
+    this.observer.chatClass = 'chat-3bRxxu';
     this.observer.titleClass = !chatContent ? 'ERROR-CLASSWTF' : ZeresPluginLibrary.WebpackModules.getByProps('title', 'chatContent').title.split(/ /g)[0];
     this.observer.containerCozyClass = this.safeGetClass(() => ZeresPluginLibrary.WebpackModules.getByProps('containerCozyBounded').containerCozyBounded.split(/ /g)[0], 'containerCozyBounded');
 
-    this.localUser = ZeresPluginLibrary.DiscordModules.UserStore.getCurrentUser();
+    this.localUser = this.UserStore.getCurrentUser();
 
     this.deletedChatMessagesCount = {};
     this.editedChatMessagesCount = {};
@@ -775,6 +777,9 @@ module.exports = class MessageLoggerV2 {
                 }
                 .${this.style.menuRoot} {
                   width: 960px;
+                }
+                #${this.style.filter} {
+                  opacity: 1;
                 }
             `
     );
@@ -1799,7 +1804,7 @@ module.exports = class MessageLoggerV2 {
       type: message.type,
       embeds: message.embeds || [],
       author: this.cleanupUserObject(message.author),
-      mentions: (message.mentions || []).map(e => (typeof e === 'string' ? ZeresPluginLibrary.DiscordModules.UserStore.getUser(e) ? this.cleanupUserObject(ZeresPluginLibrary.DiscordModules.UserStore.getUser(e)) : e : this.cleanupUserObject(e))),
+      mentions: (message.mentions || []).map(e => (typeof e === 'string' ? this.UserStore.getUser(e) ? this.cleanupUserObject(this.UserStore.getUser(e)) : e : this.cleanupUserObject(e))),
       mention_roles: message.mention_roles || message.mentionRoles || [],
       id: message.id,
       flags: message.flags,
@@ -3113,7 +3118,7 @@ module.exports = class MessageLoggerV2 {
     const unpatch = this.Patcher.after(instance, 'render', (_this, _, ret) => {
       unpatch();
       if (!ret) return;
-      ret.key = ZeresPluginLibrary.DiscordModules.KeyGenerator();
+      ret.key = Math.random().toString(36).substring(2, 10).toUpperCase();
       ret.ref = () => _this.forceUpdate();
     });
     instance.forceUpdate();
