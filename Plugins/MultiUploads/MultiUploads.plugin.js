@@ -1,6 +1,6 @@
 /**
  * @name MultiUploads
- * @version 1.1.7
+ * @version 1.1.8
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MultiUploads
@@ -48,16 +48,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.1.7',
+      version: '1.1.8',
       description: 'Multiple uploads send in a single message, like on mobile. Hold shift while pressing the upload button to only upload one. Adds ability to paste multiple times.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MultiUploads/MultiUploads.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
+        title: 'sorry',
         type: 'fixed',
-        items: ['Fixed not being able to paste multiple times. Again.']
+        items: ['Bricked plugin due to concerning issues related to canary.']
       }
     ]
   };
