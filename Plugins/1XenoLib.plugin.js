@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.42
+ * @version 1.3.43
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.42',
+      version: '1.3.43',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -115,7 +115,7 @@ module.exports = (() => {
       {
         title: 'Minor fixes',
         type: 'fixed',
-        items: ['Try fix plugins being disabled by auto updater.', 'Fix notifications dying on Powercords new backend.']
+        items: ['Fixed not loading on canary.']
       }
     ],
     defaultConfig: [
@@ -475,7 +475,34 @@ module.exports = (() => {
 			`
     );
 
-    XenoLib.joinClassNames = WebpackModules.getModule(e => e.default && e.default.default);
+    {
+      const hasOwn = {}.hasOwnProperty;
+
+      XenoLib.joinClassNames = function classNames(...args/* : VariableClassNamesArgs */)/* : string */ {
+        const classes = [];
+        for (let i = 0, len = args.length; i < len; i++) {
+          const arg = args[i];
+          if (!arg) continue;
+          const argType = typeof arg;
+          if (argType === 'string' || argType === 'number') classes.push(arg);
+          else if (Array.isArray(arg)) {
+            if (arg.length) {
+              const inner = classNames(...arg);
+              if (inner) classes.push(inner);
+            }
+          // eslint-disable-next-line curly
+          } else if (argType === 'object') {
+            if (arg.toString === Object.prototype.toString) for (const key in arg/*  as any */) {
+              if (hasOwn.call(arg, key) && arg[key]) classes.push(key);
+            }
+            else classes.push(arg.toString());
+          }
+        }
+      
+        return classes.join(' ');
+      }
+    }
+
     XenoLib.authorId = '239513071272329217';
     XenoLib.supportServerId = '389049952732446731';
 
@@ -2068,9 +2095,10 @@ module.exports = (() => {
 
   let ZeresPluginLibraryOutdated = false;
   try {
-    const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
-      b = BdApi.Plugins.get('ZeresPluginLibrary');
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.31') && (ZeresPluginLibraryOutdated = !0);
+    const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]);
+    let b = BdApi.Plugins.get('ZeresPluginLibrary');
+    if (b && b.instance) b = b.instance;
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.32') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
