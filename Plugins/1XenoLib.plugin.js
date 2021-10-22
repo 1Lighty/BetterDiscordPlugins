@@ -1037,7 +1037,7 @@ module.exports = (() => {
         });
         fs.renameSync(currentName, path.resolve(pluginsFolder, `${newName}.plugin.js`));
         XenoLib.Notifications.success(`[**XenoLib**] \`${pluginName}\` file has been renamed to \`${newName}\``);
-        if ((!BdApi.Plugins || !BdApi.Plugins.isEnabled || !BdApi.Plugins.enable) && (!global.pluginCookie || !global.pluginModule)) Modals.showAlertModal('Plugin has been renamed', 'Plugin has been renamed, but your client mod has a missing feature, as such, the plugin could not be enabled (if it even was enabled).');
+        if ((!BdApi.Plugins || !BdApi.Plugins.isEnabled || !BdApi.Plugins.enable) && (!global.pluginCookie || !global.pluginModule)) BdApi.showConfirmationModal('Plugin has been renamed', 'Plugin has been renamed, but your client mod has a missing feature, as such, the plugin could not be enabled (if it even was enabled).');
         else {
           if (!wasEnabled) return;
           setTimeout(() => (BdApi.Plugins && BdApi.Plugins.enable ? BdApi.Plugins.enable(newName) : pluginModule.enablePlugin(newName)), 1000); /* /shrug */
