@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.1
+ * @version 1.6.2
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.1',
+      version: '1.6.2',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -53,12 +53,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed anomaly detected when opening images from search.']
-      },
-      {
-        type: 'image',
-        src: 'https://cdn.discordapp.com/attachments/853078952783904768/877224671446179880/IO5VUwcJvfLf.jpg',
-        height: 298
+        items: ['Fixed not working on canary.']
       }
     ],
     defaultConfig: [
@@ -1673,7 +1668,7 @@ module.exports = (() => {
       }
 
       patchLazyImageZoomable() {
-        const patchKey = DiscordModules.KeyGenerator();
+        const patchKey = Math.random().toString(36).substring(2, 10).toUpperCase();
         const MaskedLink = WebpackModules.getByDisplayName('MaskedLink');
         const renderLinkComponent = props => React.createElement(MaskedLink, props);
         const Modals = WebpackModules.getByProps('ModalRoot');
@@ -2110,10 +2105,12 @@ module.exports = (() => {
   let XenoLibOutdated = false;
   try {
     const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
-      n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
-      e = BdApi.Plugins.get('ZeresPluginLibrary'),
+      n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e);
+    let e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '1.2.31') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.1') && (XenoLibOutdated = !0);
+    if (e && e.instance) e = e.instance;
+    if (o && o.instance) o = o.instance;
+    n(e, '1.2.32') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.43') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
