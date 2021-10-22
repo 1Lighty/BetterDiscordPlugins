@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.3
+ * @version 1.8.4
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -37,7 +37,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.3';
+    return '1.8.4';
   }
   getAuthor() {
     return 'Lighty';
@@ -182,7 +182,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed not working on canary.', 'Fixed ignoring of muted categories not working.', 'Fixed context menu options on group DMs not showing.']
+        items: ['Fixed not working on canary. For real this time.', 'Fixed ignoring of muted categories not working.', 'Fixed context menu options on group DMs not showing.']
       }
     ];
   }
@@ -660,7 +660,7 @@ module.exports = class MessageLoggerV2 {
 
     this.unpatches.push(
       this.Patcher.instead(
-        ZeresPluginLibrary.WebpackModules.find(m => m.dispatch),
+        ZeresPluginLibrary.WebpackModules.find(e => e.dispatch && !e.getCurrentUser),
         'dispatch',
         (_, args, original) => this.onDispatchEvent(args, original)
       )
@@ -947,7 +947,7 @@ module.exports = class MessageLoggerV2 {
         this.stop();
         this.start();
       }, 3000);
-      ZeresPluginLibrary.WebpackModules.find(m => m.dispatch).dispatch({
+      ZeresPluginLibrary.WebpackModules.find(m => m.dispatch && !m.getCurrentUser).dispatch({
         type: 'MESSAGE_LOGGER_V2_SELF_TEST'
       });
     }, 10000);
