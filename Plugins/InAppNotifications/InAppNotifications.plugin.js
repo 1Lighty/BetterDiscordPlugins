@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.2
+ * @version 1.3.3
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.2',
+      version: '1.3.3',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -257,22 +257,10 @@ module.exports = (() => {
     ],
     changelog: [
       {
-        title: 'added',
-        type: 'added',
-        items: [
-          'Added option to show notification if you got pinged in an edit **(on by default)**.',
-          'Added option to pin notifications if you got pinged in an edit **(on by default)**.',
-          'Added option to show notifications if a keyword appears in an edit **(on by default)**.',
-          'Added ability to quickly close the notification with middle click, holding shift bulk closes notificatiosn from same channel.'
-        ]
-      },
-      {
         title: 'fixed',
         type: 'fixed',
         items: [
-          'Fixed getting notifications from a thread even if it\'s open as a sidebar.',
-          'Fixed opening the channel a notification and keyword notification came from closing the keyword notif and not normal notifs.',
-          'Finally fixed files making the notification error out.'
+          'Fixed not working on canary.'
         ]
       }
     ]
@@ -281,11 +269,12 @@ module.exports = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver, SelectedChannelStore, PrivateChannelActions } = DiscordModules;
-
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, GuildStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver, SelectedChannelStore, PrivateChannelActions } = DiscordModules;
+  
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const ChannelStore = WebpackModules.getByProps('getChannel', 'getDMFromUserId');
+    const UserStore = WebpackModules.getByProps('getCurrentUser', 'getUser');
 
     const LurkerStore = WebpackModules.getByProps('isLurking');
     const MuteStore = WebpackModules.getByProps('allowNoMessages');
@@ -1356,7 +1345,6 @@ module.exports = (() => {
       }
 
       renderContent(icon, title, content, iChannel, iMessage) {
-        const renderSpoilers = iChannel ? shouldRenderSpoilers(UserSettingsStore.renderSpoilers, PermissionsStore.can(DiscordConstants.Permissions.MANAGE_MESSAGES, iChannel)) : true;
         return (
           React.createElement(
             'div',
@@ -1374,33 +1362,38 @@ module.exports = (() => {
               },
               title
             ),
-            React.createElement(SpoilerDisplayContext.Provider, {
-              value: renderSpoilers
-            }, React.createElement('div', { className: XenoLib.joinClassNames(MarkupClassname, MessageClasses.messageContent) }, ParserModule.parse(content, true, { channelId: iChannel && iChannel.id }))),
-            // eslint-disable-next-line function-call-argument-newline
-            iChannel && iMessage ? React.createElement(SpoilerDisplayContext.Provider, {
-              value: (this.settings.spoilerAll || this.settings.spoilerNSFW && iChannel.nsfw) ? false : renderSpoilers
-            }, React.createElement(MessageAccessories, {
-              channel: iChannel,
-              message: iMessage,
-              canDeleteAttachments: false,
-              canSuppressEmbeds: false,
-              compact: true,
-              disableReactionCreates: true,
-              disableReactionReads: true,
-              disableReactionUpdates: true,
-              gifAutoPlay: true,
-              hasSpoilerEmbeds: false,
-              inlineAttachmentMedia: true,
-              inlineEmbedMedia: true,
-              isInteracting: false,
-              isLurking: false,
-              isPendingMember: false,
-              onAttachmentContextMenu: () => { },
-              renderEmbeds: true,
-              renderReactions: true,
-              spoilerAll: this.settings.spoilerAll || (this.settings.spoilerNSFW && iChannel.nsfw)
-            })) : null
+            React.createElement(props => {
+              const renderSpoilers = iChannel ? shouldRenderSpoilers(UserSettingsStore.renderSpoilers, PermissionsStore.can(DiscordConstants.Permissions.MANAGE_MESSAGES, iChannel)) : true;
+              return [
+                React.createElement(SpoilerDisplayContext.Provider, {
+                  value: renderSpoilers
+                }, props.children),
+                // eslint-disable-next-line function-call-argument-newline
+                iChannel && iMessage ? React.createElement(SpoilerDisplayContext.Provider, {
+                  value: (this.settings.spoilerAll || this.settings.spoilerNSFW && iChannel.nsfw) ? false : renderSpoilers
+                }, React.createElement(MessageAccessories, {
+                  channel: iChannel,
+                  message: iMessage,
+                  canDeleteAttachments: false,
+                  canSuppressEmbeds: false,
+                  compact: true,
+                  disableReactionCreates: true,
+                  disableReactionReads: true,
+                  disableReactionUpdates: true,
+                  gifAutoPlay: true,
+                  hasSpoilerEmbeds: false,
+                  inlineAttachmentMedia: true,
+                  inlineEmbedMedia: true,
+                  isInteracting: false,
+                  isLurking: false,
+                  isPendingMember: false,
+                  onAttachmentContextMenu: () => { },
+                  renderEmbeds: true,
+                  renderReactions: true,
+                  spoilerAll: this.settings.spoilerAll || (this.settings.spoilerNSFW && iChannel.nsfw)
+                })) : null
+             ] 
+            }, {}, React.createElement('div', { className: XenoLib.joinClassNames(MarkupClassname, MessageClasses.messageContent) }, ParserModule.parse(content, true, { channelId: iChannel && iChannel.id })))
           )
         );
       }
@@ -1476,10 +1469,12 @@ module.exports = (() => {
   let XenoLibOutdated = false;
   try {
     const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
-      n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
-      e = BdApi.Plugins.get('ZeresPluginLibrary'),
+      n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e);
+    let  e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '1.2.31') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.41') && (XenoLibOutdated = !0);
+    if (e && e.instance) e = e.instance;
+    if (o && o.instance) o = o.instance;
+    n(e, '1.2.32') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.43') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
