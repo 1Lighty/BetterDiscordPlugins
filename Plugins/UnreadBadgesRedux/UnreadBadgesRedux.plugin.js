@@ -1,6 +1,6 @@
 /**
  * @name UnreadBadgesRedux
- * @version 1.0.17
+ * @version 1.0.18
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux
@@ -46,7 +46,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.17',
+      version: '1.0.18',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -55,7 +55,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fix not working on channels.', 'Fix not working on server folders.']
+        items: ['Fixed plugin incompatibility causing crashes.']
       }
     ],
     defaultConfig: [
@@ -210,7 +210,7 @@ module.exports = (() => {
 
     const UnreadStore = WebpackModules.getByProps('getUnreadCount');
     const MuteModule = WebpackModules.getByProps('isChannelMuted');
-    const AltChannelStore = WebpackModules.find(m => m.getChannels && m.getChannels.length === 1);
+    const AltChannelStore = WebpackModules.find(m => m.getChannels && m.getDefaultChannel);
     const ThreadsStore = WebpackModules.getByProps('getActiveJoinedUnreadThreadsForGuild');
 
     const getUnreadCount = (guildId, includeMuted) => {
@@ -445,14 +445,19 @@ module.exports = (() => {
         const FolderStore = WebpackModules.getByProps('isFolderExpanded');
         function BlobMaskWrapper(e) {
           e.__UBR_unread_count = StoresModule.useStateFromStores([UnreadStore, MuteModule], () => {
-            if ((e.__UBR_folder_expanded && settings.misc.expandedFolders) || !settings.misc.folders) return 0;
-            let count = 0;
-            for (let i = 0; i < e.__UBR_guildIds.length; i++) {
-              const guildId = e.__UBR_guildIds[i];
-              if (!settings.misc.noMutedGuildsInFolderCount || (settings.misc.noMutedGuildsInFolderCount && !MuteModule.isMuted(guildId))) count += getUnreadCount(guildId, !settings.misc.noMutedChannelsInGuildsInFolderCount);
+            try {
+              if ((e.__UBR_folder_expanded && settings.misc.expandedFolders) || !settings.misc.folders) return 0;
+              let count = 0;
+              for (let i = 0; i < e.__UBR_guildIds.length; i++) {
+                const guildId = e.__UBR_guildIds[i];
+                if (!settings.misc.noMutedGuildsInFolderCount || (settings.misc.noMutedGuildsInFolderCount && !MuteModule.isMuted(guildId))) count += getUnreadCount(guildId, !settings.misc.noMutedChannelsInGuildsInFolderCount);
+              }
+              if (count > 1000) return Math.floor(count / 1000) * 1000; /* only trigger rerender if it changes in thousands */
+              return count;
+            } catch (err) {
+              Logger.stacktrace('Error in guild folder blobk mask wrapper', err);
+              return 0;
             }
-            if (count > 1000) return Math.floor(count / 1000) * 1000; /* only trigger rerender if it changes in thousands */
-            return count;
           });
           return React.createElement(e.__UBR_old_type, e);
         }
@@ -491,7 +496,14 @@ module.exports = (() => {
           if (!e) return null;
           try {
             const ret = e.__UBR_old_type(e);
-            const unreadCount = StoresModule.useStateFromStores([UnreadStore, MuteModule], () => (!settings.misc.guilds || (!settings.misc.mutedGuilds && MuteModule.isMuted(e.guildId)) ? 0 : getUnreadCount(e.guildId, !settings.misc.noMutedInGuildCount)));
+            const unreadCount = StoresModule.useStateFromStores([UnreadStore, MuteModule], () => {
+              try {
+                return (!settings.misc.guilds || (!settings.misc.mutedGuilds && MuteModule.isMuted(e.guildId)) ? 0 : getUnreadCount(e.guildId, !settings.misc.noMutedInGuildCount));
+              } catch (err) {
+                Logger.stacktrace('Error in conneced guild patch', err);
+                return 0;
+              }
+            });
             const mask = Utilities.findInTree(ret, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
             if (!mask) return ret;
             mask.props.__UBR_unread_count = unreadCount;
@@ -501,7 +513,7 @@ module.exports = (() => {
             Logger.stacktrace('Failed running old of PatchedGuild', err);
             try {
               return e.__UBR_old_type(e);
-            } catch (err)  {
+            } catch (err) {
               Logger.stacktrace('Failed running only old of PatchedGuild', err);
               return null;
             }
@@ -634,12 +646,12 @@ module.exports = (() => {
   let XenoLibOutdated = false;
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
-      b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined'),
-      c = BdApi.Plugins.get('ZeresPluginLibrary'),
+      b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined');
+    let c = BdApi.Plugins.get('ZeresPluginLibrary'),
       d = BdApi.Plugins.get('XenoLib');
     if (c && c.exports && c.instance) c = c.instance; // BD specific fixes
     if (d && d.exports && d.instance) d = d.instance; // BD specific fixes
-    b(c, '1.2.32') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.42') && (XenoLibOutdated = !0);
+    b(c, '1.2.33') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.42') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }
