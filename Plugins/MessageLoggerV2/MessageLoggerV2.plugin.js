@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.4
+ * @version 1.8.5
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -37,7 +37,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.4';
+    return '1.8.5';
   }
   getAuthor() {
     return 'Lighty';
@@ -71,7 +71,7 @@ module.exports = class MessageLoggerV2 {
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
       if (isOutOfDate(iXenoLib, '1.3.43')) XenoLibOutdated = true;
-      if (isOutOfDate(iZeresPluginLibrary, '1.2.32')) ZeresPluginLibraryOutdated = true;
+      if (isOutOfDate(iZeresPluginLibrary, '1.2.33')) ZeresPluginLibraryOutdated = true;
     }
 
     if (!global.XenoLib || !global.ZeresPluginLibrary || global.DiscordJS || XenoLibOutdated || ZeresPluginLibraryOutdated) {
@@ -182,7 +182,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed not working on canary. For real this time.', 'Fixed ignoring of muted categories not working.', 'Fixed context menu options on group DMs not showing.']
+        items: ['Fixed context menu missing on channels.', 'Fixed edited tag being empty.', 'Fixed menu search bar vanishing.']
       }
     ];
   }
@@ -597,10 +597,10 @@ module.exports = class MessageLoggerV2 {
     this.menu.open = false;
 
     this.createTextBox.classes = {
-      inputWrapper: XenoLib.getClass('inputWrapper'),
-      inputMultiInput: XenoLib.getClass('input') + ' ' + XenoLib.getClass('multiInput'),
+      inputWrapper: XenoLib.getClass('inputMini inputWrapper'),
+      inputMultiInput: XenoLib.getClass('inputPrefix input') + ' ' + XenoLib.getClass('multiInput'),
       multiInputFirst: XenoLib.getClass('multiInputFirst'),
-      inputDefaultMultiInputField: XenoLib.getClass('inputDefault') + ' ' + XenoLib.getClass('multiInputField'),
+      inputDefaultMultiInputField: XenoLib.getClass('inputPrefix inputDefault') + ' ' + XenoLib.getClass('multiInputField'),
       questionMark: XenoLib.getClass('questionMark'),
       icon: XenoLib.getClass('questionMark'),
       focused: ZeresPluginLibrary.WebpackModules.getByProps('focused').focused.split(/ /g),
@@ -2336,7 +2336,7 @@ module.exports = class MessageLoggerV2 {
     return record.message;
   }
   cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts = 0) {
-    this.nodeModules.request({ url: url, encoding: null, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9002 Chrome/83.0.4103.122 Electron/9.3.5 Safari/537.36' }}, (err, res, buffer) => {
+    this.nodeModules.request({ url: url, encoding: null, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9002 Chrome/83.0.4103.122 Electron/9.3.5 Safari/537.36' } }, (err, res, buffer) => {
       try {
         if (err || res.statusCode != 200) {
           if (res.statusCode == 404 || res.statusCode == 403) return;
@@ -2979,8 +2979,9 @@ module.exports = class MessageLoggerV2 {
   patchMessages() {
     const Tooltip = ZeresPluginLibrary.WebpackModules.getByDisplayName('Tooltip');
     const TimeUtils = ZeresPluginLibrary.WebpackModules.getByProps('dateFormat');
+    const i18n = ZLibrary.WebpackModules.find(e => e.Messages && e.Messages.HOME);
     /* suck it you retarded asshole devilfuck */
-    const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => ZeresPluginLibrary.DiscordModules.React.createElement(Tooltip, { text: e.timestamp ? TimeUtils.dateFormat(e.timestamp, 'LLLL') : null }, tt => ZeresPluginLibrary.DiscordModules.React.createElement('time', Object.assign({ dateTime: e.timestamp.toISOString(), className: this.multiClasses.edited, role: 'note' }, tt), `(${ZeresPluginLibrary.DiscordModules.LocaleManager.Messages.MESSAGE_EDITED})`)));
+    const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => ZeresPluginLibrary.DiscordModules.React.createElement(Tooltip, { text: e.timestamp ? TimeUtils.dateFormat(e.timestamp, 'LLLL') : null }, tt => ZeresPluginLibrary.DiscordModules.React.createElement('time', Object.assign({ dateTime: e.timestamp.toISOString(), className: this.multiClasses.edited, role: 'note' }, tt), `(${i18n.Messages.MESSAGE_EDITED})`)));
     SuffixEdited.displayName = 'SuffixEdited';
     const parseContent = ZeresPluginLibrary.WebpackModules.getByProps('renderMessageMarkupToAST').default;
     const MessageContent = ZeresPluginLibrary.WebpackModules.find(m => m.type && m.type.displayName === 'MessageContent' || m.__powercordOriginal_type && m.__powercordOriginal_type.displayName === 'MessageContent');
@@ -4578,33 +4579,37 @@ module.exports = class MessageLoggerV2 {
       );
     };
 
-    this.unpatches.push(
-      this.Patcher.after(
-        WebpackModules.find((e) => e && (e.default.displayName === 'ChannelListTextChannelContextMenu' || e.__powercordOriginal_default.displayName === 'ChannelListTextChannelContextMenu')),
-        'default',
-        (_, [props], ret) => {
-          const newItems = [];
-          const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-            ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
-            'props.children'
-          );
-          if (!Array.isArray(menu)) return;
-          const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
-          addElement('Open Logs', () => this.openWindow(), this.obfuscatedClass('open'));
-          addElement(
-            `Open Log For Channel`,
-            () => {
-              this.menu.filter = `channel:${props.channel.id}`;
-              this.openWindow();
-            },
-            this.obfuscatedClass('open-channel')
-          );
-          handleWhiteBlackList(newItems, props.channel.id);
-          if (!newItems.length) return;
-          menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(this.settings.contextmenuSubmenuName, newItems, this.obfuscatedClass('mlv2'))]));
-        }
-      )
-    );
+    WebpackModules.findAll((e) => e && (e.__powercordOriginal_default || e.default).displayName === 'ChannelListTextChannelContextMenu').
+      forEach(mod => {
+        this.unpatches.push(
+          this.Patcher.after(
+            mod,
+            'default',
+            (_, [props], ret) => {
+              if (props.channel && props.channel.type === 4) return; // no lol, categories are unsupported
+              const newItems = [];
+              const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+                ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+                'props.children'
+              );
+              if (!Array.isArray(menu)) return;
+              const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
+              addElement('Open Logs', () => this.openWindow(), this.obfuscatedClass('open'));
+              addElement(
+                `Open Log For Channel`,
+                () => {
+                  this.menu.filter = `channel:${props.channel.id}`;
+                  this.openWindow();
+                },
+                this.obfuscatedClass('open-channel')
+              );
+              handleWhiteBlackList(newItems, props.channel.id);
+              if (!newItems.length) return;
+              menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(this.settings.contextmenuSubmenuName, newItems, this.obfuscatedClass('mlv2'))]));
+            }
+          )
+        )
+      });
 
     this.unpatches.push(
       this.Patcher.after(
