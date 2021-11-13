@@ -1,6 +1,6 @@
 /**
  * @name UnreadBadgesRedux
- * @version 1.0.18
+ * @version 1.0.19
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux
@@ -46,7 +46,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.18',
+      version: '1.0.19',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -55,7 +55,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed plugin incompatibility causing crashes.']
+        items: ['Hit it with a hammer a few times \'till it works.']
       }
     ],
     defaultConfig: [
@@ -462,13 +462,13 @@ module.exports = (() => {
           return React.createElement(e.__UBR_old_type, e);
         }
         BlobMaskWrapper.displayName = 'BlobMask';
-        const { GuildFolderComponent } = WebpackModules.getByProps('GuildFolderComponent');
-        Patcher.after(GuildFolderComponent.type, 'render', (_, [props], ret) => {
+        const FolderHeader = WebpackModules.find(e => e.default && e.default.displayName === 'FolderHeader');
+        Patcher.after(FolderHeader, 'default', (_, [props], ret) => {
           const mask = Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'BlobMask');
           if (!mask) return;
           mask.props.__UBR_old_type = mask.type;
-          mask.props.__UBR_guildIds = props.guildIds;
-          mask.props.__UBR_folder_expanded = FolderStore.isFolderExpanded(props.folderId);
+          mask.props.__UBR_guildIds = props.folderNode.children.map(e => e.id);
+          mask.props.__UBR_folder_expanded = FolderStore.isFolderExpanded(props.folderNode.id);
           mask.type = BlobMaskWrapper;
         });
         const folders = [...document.querySelectorAll('.wrapper-21YSNc')].map(e => ReactTools.getOwnerInstance(e));
@@ -489,39 +489,73 @@ module.exports = (() => {
       }
 
       patchConnectedGuild() {
-        const GuildIconsModule = WebpackModules.find(e => e.default && e.default.displayName === 'ConnectedGuild');
+        const GuildIconNode = WebpackModules.find(e => e.default && ~e.default.toString().indexOf('.renderUnavailableBadge'));
 
         const settings = this.settings;
-        function PatchedGuild(e) {
+        function PatchedGuildTooltip(e) {
           if (!e) return null;
           try {
             const ret = e.__UBR_old_type(e);
+            const guildId = e.guild.id;
             const unreadCount = StoresModule.useStateFromStores([UnreadStore, MuteModule], () => {
               try {
-                return (!settings.misc.guilds || (!settings.misc.mutedGuilds && MuteModule.isMuted(e.guildId)) ? 0 : getUnreadCount(e.guildId, !settings.misc.noMutedInGuildCount));
+                return (!settings.misc.guilds || (!settings.misc.mutedGuilds && MuteModule.isMuted(guildId)) ? 0 : getUnreadCount(guildId, !settings.misc.noMutedInGuildCount));
               } catch (err) {
                 Logger.stacktrace('Error in conneced guild patch', err);
                 return 0;
               }
             });
-            const mask = Utilities.findInTree(ret, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
-            if (!mask) return ret;
-            mask.props.__UBR_unread_count = unreadCount;
-            mask.props.guildId = e.guildId;
+            const blobMarkRef = React.useRef(null);
+            React.useLayoutEffect(() => {
+              try {
+                const bmi = blobMarkRef.current;
+                if (!bmi) return;
+                if (bmi.state.__UBR_unread_count === unreadCount) return;
+                bmi.props = unreadCount;
+                bmi.forceUpdate();
+              } catch (err) {
+                Logger.stacktrace('Error in guild hack');
+              }
+            }, [unreadCount]);
+            if (ret.type.displayName === 'Tooltip') {
+            ret.props.__UBR_unread_count = unreadCount;
+            const oChildren = ret.props.children;
+            ret.props.children = e => {
+              try {
+                const ret2 = oChildren(e);
+                const mask = Utilities.findInTree(ret2, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
+                if (!mask) return ret2;
+                mask.props.__UBR_unread_count = unreadCount;
+                mask.props.guildId = guildId;
+                mask.ref = blobMarkRef;
+                return ret2;
+              } catch (err) {
+                Logger.stacktrace('Failed running old of children in PatchedGuildTooltip!', err);
+                try {
+                  return oChildren(e);
+                } catch (err) {
+                  Logger.stacktrace('Failed running only old of children in PatchedGuildTooltip', err);
+                  return null;
+                }
+              }
+            };
+            }
             return ret;
           } catch (err) {
-            Logger.stacktrace('Failed running old of PatchedGuild', err);
+            Logger.stacktrace('Failed running old of PatchedGuildTooltip', err);
             try {
               return e.__UBR_old_type(e);
             } catch (err) {
-              Logger.stacktrace('Failed running only old of PatchedGuild', err);
+              Logger.stacktrace('Failed running only old of PatchedGuildTooltip', err);
               return null;
             }
           }
         }
-        Patcher.after(GuildIconsModule, 'default', (_, __, ret) => {
-          ret.props.__UBR_old_type = ret.type;
-          ret.type = PatchedGuild;
+        Patcher.after(GuildIconNode, 'default', (_, __, ret) => {
+          const tooltip = Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'GuildTooltip');
+          if (!tooltip) return;
+          tooltip.props.__UBR_old_type = tooltip.type;
+          tooltip.type = PatchedGuildTooltip;
         });
       }
 
@@ -553,8 +587,9 @@ module.exports = (() => {
           else _this.state.unreadBadgeMask.dispose();
           _this.state.unreadBadgeMask = null;
         });
-        Patcher.after(BlobMask.component.prototype, 'componentDidUpdate', (_this, [{ __UBR_unread_count }]) => {
-          if (typeof _this.props.__UBR_unread_count !== 'number' || _this.props.__UBR_unread_count === __UBR_unread_count) return;
+        Patcher.after(BlobMask.component.prototype, 'componentDidUpdate', (_this) => {
+          if (typeof _this.props.__UBR_unread_count !== 'number' || _this.props.__UBR_unread_count === _this.state.__UBR_unread_count) return;
+          _this.state.__UBR_unread_count = _this.props.__UBR_unread_count;
           ensureUnreadBadgeMask(_this);
           _this.state.unreadBadgeMask
             .update({
@@ -567,6 +602,9 @@ module.exports = (() => {
               }
             })
             .start();
+          setImmediate(() => {
+            _this.state.unreadBadgeMask.start();
+          })
         });
         const LowerBadgeClassname = XenoLib.joinClassNames(XenoLib.getClass('wrapper lowerBadge'), 'unread-badge');
         Patcher.before(BlobMask.component, 'getDerivedStateFromProps', (_this, args, ret) => {
@@ -651,7 +689,7 @@ module.exports = (() => {
       d = BdApi.Plugins.get('XenoLib');
     if (c && c.exports && c.instance) c = c.instance; // BD specific fixes
     if (d && d.exports && d.instance) d = d.instance; // BD specific fixes
-    b(c, '1.2.33') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.42') && (XenoLibOutdated = !0);
+    b(c, '1.2.33') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.43') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }
