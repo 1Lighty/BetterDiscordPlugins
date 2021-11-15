@@ -1,4 +1,11 @@
-//META{"name":"CrashRecovery","source":"https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/CrashRecovery/","website":"https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery","authorId":"239513071272329217","invite":"NYvWdN5","donate":"https://paypal.me/lighty13"}*//
+/**
+ * @name CrashRecovery
+ * @version 1.0.4
+ * @invite NYvWdN5
+ * @donate https://paypal.me/lighty13
+ * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery
+ * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/CrashRecovery/CrashRecovery.plugin.js
+ */
 /*@cc_on
 @if (@_jscript)
   // Offer to self-install for clueless users that try to run this directly.
@@ -39,16 +46,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.3',
+      version: '1.0.4',
       description: 'In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
     },
     changelog: [
       {
-        title: 'RIP BBD on Canary',
+        title: 'Fixes',
         type: 'fixed',
-        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
+        items: ['Fixed adding null randomly on Astra.', 'Fixed not closing all modals.']
       }
     ],
     defaultConfig: [
@@ -72,7 +79,7 @@ module.exports = (() => {
     const DelayedCall = (WebpackModules.getByProps('DelayedCall') || {}).DelayedCall;
     const ElectronDiscordModule = WebpackModules.getByProps('cleanupDisplaySleep') || { cleanupDisplaySleep: DiscordModules.DiscordConstants.NOOP };
 
-    const ModalStack = WebpackModules.getByProps('openModal');
+    const ModalStack = WebpackModules.getByProps('closeAllModals');
 
     const isPowercord = !!window.powercord;
     const BLACKLISTED_BUILTIN_PC_PLUGINS = ['Updater', 'Commands Manager', 'I18n', 'Module Manager', 'Settings']
@@ -134,7 +141,9 @@ module.exports = (() => {
           this.suspectedPlugin2 = null;
           this.attempts = 0;
           const appMount = document.querySelector('#app-mount');
-          appMount.append(document.querySelector('.xenoLib-notifications'));
+          if (!appMount) return;
+          const xlContainer = document.querySelector('.xenoLib-notifications');
+          if (xlContainer) appMount.append(xlContainer);
           const BIVOverlay = document.querySelector('.biv-overlay');
           if (BIVOverlay) appMount.append(BIVOverlay);
           Logger.info('Corrected incorrectly placed containers');
@@ -290,19 +299,14 @@ module.exports = (() => {
             Logger.stacktrace('Failed to pop all layers', err);
           }
           try {
-            DiscordModules.PopoutStack.closeAll();
+            ModalStack.closeAllModals();
           } catch (err) {
-            Logger.stacktrace('Failed to close all popouts', err);
-          }
-          try {
-            (ModalStack.modalsApi || ModalStack.useModalsStore).setState(() => ({ default: [] })); /* slow? unsafe? async? */
-          } catch (err) {
-            Logger.stacktrace('Failed to pop new modalstack');
+            Logger.stacktrace('Failed to pop new modalstack', err);
           }
           try {
             if (!this.settings.useThirdStep) DiscordModules.NavigationUtils.transitionTo('/channels/@me');
           } catch (err) {
-            Logger.stacktrace('Failed to transition to home');
+            Logger.stacktrace('Failed to transition to home', err);
           }
         });
       }
@@ -467,10 +471,12 @@ module.exports = (() => {
   let XenoLibOutdated = false;
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]),
-      b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined'),
-      c = BdApi.Plugins.get('ZeresPluginLibrary'),
+      b = (b, c) => ((b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c)) || typeof global.isTab !== 'undefined');
+    let c = BdApi.Plugins.get('ZeresPluginLibrary'),
       d = BdApi.Plugins.get('XenoLib');
-    b(c, '1.2.27') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.35') && (XenoLibOutdated = !0);
+    if (c && c.instance) c = c.instance;
+    if (d && d.instance) d = d.instance;
+    b(c, '1.2.33') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.43') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }
