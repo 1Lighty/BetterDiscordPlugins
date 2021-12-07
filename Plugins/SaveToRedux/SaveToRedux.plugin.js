@@ -1492,7 +1492,8 @@ module.exports = (() => {
             if (!folder) return BdApi.showToast('Folder no longer exists', { type: 'error' });
             const path = `${folder.path}/${formattedurl.fileName}`;
             saveFile(path, folder.path);
-          }
+          },
+          subtext: this.lastUsedFolder !== -1 ? this.folders[this.lastUsedFolder] ? this.folders[this.lastUsedFolder].path : null : null
         });
       }
 
