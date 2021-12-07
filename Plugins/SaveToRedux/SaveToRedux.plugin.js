@@ -1485,7 +1485,7 @@ module.exports = (() => {
             : null
         );
         if (extraData.onlyItems) return subItems;
-        return XenoLib.createContextMenuSubMenu(`Save ${type} To`, subItems, 'str', {
+        return XenoLib.createContextMenuSubMenu(`Save ${type} To${this.lastUsedFolder !== -1 ? `\n(${this.folders[this.lastUsedFolder]?.path})` : ''}`, subItems, 'str', {
           action: () => {
             if (this.lastUsedFolder === -1) return BdApi.showToast('No folder has been used yet', { type: 'error' });
             const folder = this.folders[this.lastUsedFolder];
