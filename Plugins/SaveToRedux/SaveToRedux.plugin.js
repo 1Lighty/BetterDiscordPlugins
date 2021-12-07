@@ -1493,7 +1493,7 @@ module.exports = (() => {
             const path = `${folder.path}/${formattedurl.fileName}`;
             saveFile(path, folder.path);
           },
-          subtext: this.lastUsedFolder !== -1 ? this.folders[this.lastUsedFolder].path : null
+          subtext: this.lastUsedFolder !== -1 ? this.folders[this.lastUsedFolder] ? this.folders[this.lastUsedFolder].path : null : null
         });
       }
 
