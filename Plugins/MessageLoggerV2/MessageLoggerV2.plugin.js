@@ -1,10 +1,11 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.5
+ * @version 1.8.6
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js
+ * @updateUrl https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js
  */
 /*@cc_on
 @if (@_jscript)
@@ -37,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.5';
+    return '1.8.6';
   }
   getAuthor() {
     return 'Lighty';
@@ -180,9 +181,9 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'Fixed',
+        title: 'Dirtiest of hotfixes',
         type: 'fixed',
-        items: ['Fixed context menu missing on channels.', 'Fixed edited tag being empty.', 'Fixed menu search bar vanishing.']
+        items: ['Fixed not working on canary']
       }
     ];
   }
@@ -4579,37 +4580,42 @@ module.exports = class MessageLoggerV2 {
       );
     };
 
+    // quit and dirty fix
+    setTimeout(() => {
+      try {
     WebpackModules.findAll((e) => e && (e.__powercordOriginal_default || e.default).displayName === 'ChannelListTextChannelContextMenu').
-      forEach(mod => {
-        this.unpatches.push(
-          this.Patcher.after(
-            mod,
-            'default',
-            (_, [props], ret) => {
-              if (props.channel && props.channel.type === 4) return; // no lol, categories are unsupported
-              const newItems = [];
-              const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-                ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
-                'props.children'
-              );
-              if (!Array.isArray(menu)) return;
-              const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
-              addElement('Open Logs', () => this.openWindow(), this.obfuscatedClass('open'));
-              addElement(
-                `Open Log For Channel`,
-                () => {
-                  this.menu.filter = `channel:${props.channel.id}`;
-                  this.openWindow();
-                },
-                this.obfuscatedClass('open-channel')
-              );
-              handleWhiteBlackList(newItems, props.channel.id);
-              if (!newItems.length) return;
-              menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(this.settings.contextmenuSubmenuName, newItems, this.obfuscatedClass('mlv2'))]));
-            }
-          )
+    forEach(mod => {
+      this.unpatches.push(
+        this.Patcher.after(
+          mod,
+          'default',
+          (_, [props], ret) => {
+            if (props.channel && props.channel.type === 4) return; // no lol, categories are unsupported
+            const newItems = [];
+            const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+              ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+              'props.children'
+            );
+            if (!Array.isArray(menu)) return;
+            const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
+            addElement('Open Logs', () => this.openWindow(), this.obfuscatedClass('open'));
+            addElement(
+              `Open Log For Channel`,
+              () => {
+                this.menu.filter = `channel:${props.channel.id}`;
+                this.openWindow();
+              },
+              this.obfuscatedClass('open-channel')
+            );
+            handleWhiteBlackList(newItems, props.channel.id);
+            if (!newItems.length) return;
+            menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(this.settings.contextmenuSubmenuName, newItems, this.obfuscatedClass('mlv2'))]));
+          }
         )
-      });
+      )
+    });
+  } catch (err) {}
+    }, 1000);
 
     this.unpatches.push(
       this.Patcher.after(
