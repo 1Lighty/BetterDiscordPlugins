@@ -183,7 +183,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixes',
         type: 'fixed',
-        items: ['Fixed context menus being gone', 'Somewhat fixed the menu, works fully if you open a user profile and the tag change UI.', 'Hi DustyAngel47 <:FA_FoxWave:747469063248150539>']
+        items: ['Fixed context menus being gone', 'Somewhat fixed the menu, works fully if you open a user profile and the tag change UI.']
       }
     ];
   }
