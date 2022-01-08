@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.43
+ * @version 1.4.0
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,16 +106,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.43',
+      version: '1.4.0',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
     },
     changelog: [
       {
-        title: 'Minor fixes',
+        title: 'Wee',
         type: 'fixed',
-        items: ['Fixed not loading on canary.']
+        items: ['Added some ability to lazy patch context menus.']
       }
     ],
     defaultConfig: [
@@ -200,6 +200,7 @@ module.exports = (() => {
 
     if (global.XenoLib) try {
       global.XenoLib.shutdown();
+      XenoLib._lazyContextMenuListeners = global.XenoLib._lazyContextMenuListeners || [];
     } catch (e) { }
 
     const XenoLib = {};
@@ -264,31 +265,24 @@ module.exports = (() => {
     XenoLib.getClass.__warns = {};
     XenoLib.getSingleClass.__warns = {};
 
-    const rendererFunctionClass = (() => {
-      try {
-        const topContext = require('electron').webFrame.top.context;
-        if (topContext === window) return null;
-        return topContext.Function;
-      } catch {
-        return null;
-      }
-    })();
     const originalFunctionClass = Function;
     XenoLib.createSmartPatcher = patcher => {
       const createPatcher = patcher => (moduleToPatch, functionName, callback, options = {}) => {
         try {
           var origDef = moduleToPatch[functionName];
-        } catch (_) {
-          return Logger.error(`Failed to patch ${functionName}`);
+        } catch (err) {
+          return Logger.error(`Failed to patch ${functionName}`, err);
         }
-        if (rendererFunctionClass && origDef && !(origDef instanceof originalFunctionClass) && origDef instanceof rendererFunctionClass) window.Function = rendererFunctionClass;
+        if (origDef && typeof origDef === 'function' && origDef.constructor !== originalFunctionClass) {
+          window.Function = origDef.constructor;
+        }
         const unpatches = [];
         try {
           unpatches.push(patcher(moduleToPatch, functionName, callback, options) || DiscordConstants.NOOP);
         } catch (err) {
           throw err;
         } finally {
-          if (rendererFunctionClass) window.Function = originalFunctionClass;
+          window.Function = originalFunctionClass;
         }
         try {
           if (origDef && origDef.__isBDFDBpatched && moduleToPatch.BDFDBpatch && typeof moduleToPatch.BDFDBpatch[functionName].originalMethod === 'function') {
@@ -303,9 +297,11 @@ module.exports = (() => {
           unpatches.forEach(e => e());
         };
       };
-      return { ...patcher, before: createPatcher(patcher.before),
+      return {
+        ...patcher, before: createPatcher(patcher.before),
         instead: createPatcher(patcher.instead),
-        after: createPatcher(patcher.after) };
+        after: createPatcher(patcher.after)
+      };
     };
 
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
@@ -490,7 +486,7 @@ module.exports = (() => {
               const inner = classNames(...arg);
               if (inner) classes.push(inner);
             }
-          // eslint-disable-next-line curly
+            // eslint-disable-next-line curly
           } else if (argType === 'object') {
             if (arg.toString === Object.prototype.toString) for (const key in arg/*  as any */) {
               if (hasOwn.call(arg, key) && arg[key]) classes.push(key);
@@ -498,7 +494,7 @@ module.exports = (() => {
             else classes.push(arg.toString());
           }
         }
-      
+
         return classes.join(' ');
       }
     }
@@ -569,6 +565,81 @@ module.exports = (() => {
     XenoLib.createContextMenuItem = (label, action, id, options = {}) => (!contextMenuItems ? null : React.createElement(contextMenuItems.MenuItem, { label, id, action: () => (!options.noClose && ContextMenuActions.closeContextMenu(), action()), ...options }));
     XenoLib.createContextMenuSubMenu = (label, children, id, options = {}) => (!contextMenuItems ? null : React.createElement(contextMenuItems.MenuItem, { label, children, id, ...options }));
     XenoLib.createContextMenuGroup = (children, options) => (!contextMenuItems ? null : React.createElement(contextMenuItems.MenuGroup, { children, ...options }));
+
+
+    const lazyContextMenu = WebpackModules.getByProps('openContextMenuLazy');
+    if (lazyContextMenu) {
+      XenoLib.listenLazyContextMenu = (menuNameOrFilter, callback, multi) => {
+        XenoLib._lazyContextMenuListeners = XenoLib._lazyContextMenuListeners || [];
+        XenoLib._lazyContextMenuListeners.push({ menuNameOrFilter, callback, multi, patchedModules: [] });
+        return () => {
+          XenoLib._lazyContextMenuListeners = XenoLib._lazyContextMenuListeners.filter(l => l.callback !== callback);
+        }
+      };
+      Patcher.before(WebpackModules.getByProps('openContextMenuLazy'), 'openContextMenuLazy', (_, args) => {
+        const [, lazyRunner] = args;
+        if (typeof lazyRunner !== 'function') return;
+        args[1] = (...args) => lazyRunner(...args).then(renderer => {
+          let moduleOverride = null;
+          return props => {
+            let ret = () => null;
+            try {
+              ret = renderer(props);
+              if (XenoLib._lazyContextMenuListeners && ret) {
+                const {type} = ret;
+                let changed = false;
+                for (const {menuNameOrFilter, callback, multi, patchedModules} of [...XenoLib._lazyContextMenuListeners]) {
+                  if (typeof menuNameOrFilter === 'string' && menuNameOrFilter !== type.displayName) continue;
+                  if (typeof menuNameOrFilter === 'function' && !menuNameOrFilter(type)) continue;
+                  if (multi && patchedModules.indexOf(type) !== -1) continue;
+                  changed = callback() || changed;
+                  if (multi) {
+                    patchedModules.push(type);
+                    continue;
+                  }
+                  XenoLib._lazyContextMenuListeners = XenoLib._lazyContextMenuListeners.filter(l => l.callback !== callback);
+                }
+                console.log(ret.type.displayName, changed);
+                if (changed) {
+                  requestAnimationFrame(() => {
+                    const instance = Utilities.findInTree(ReactTools.getReactInstance(document.querySelector('.menu-3sdvDG')), e => e && e.type && e.type.displayName === 'ContextMenus', { walkable: ['return'] });
+                    if (instance) {
+                      const { stateNode } = instance;
+                      if (stateNode && stateNode.props && stateNode.props.renderLazy && stateNode.setState) {
+                        stateNode.props.renderLazy().then(e => {
+                          stateNode.setState({ render: e });
+                        });
+                      }
+                    }
+                  });
+                  /* 
+                  const mod = WebpackModules.find(e => {
+                    if (!e.__powercordOriginal_default && !e.default) return false;
+                    if (e.__powercordOriginal_default && e.__powercordOriginal_default === ret.type) return true;
+                    const def = e.default;
+                    if (def === ret.type) return true;
+                    if (def.__originalFunction === ret.type || (def.__originalFunction && def.__originalFunction.__originalFunction) === ret.type) return true;
+                    return false;
+                  });
+                  console.log('Found mod', !!mod, mod, type);
+                  if (mod) {
+                    ret.type = mod.default;
+                    moduleOverride = mod.default;
+                  } */
+                }/*  else if (moduleOverride) ret.type = moduleOverride; */
+              }
+            } catch (err) {
+              Logger.stacktrace('Failed to render lazy context menu', err);
+            }
+            return ret;
+          };
+        })
+      });
+    } else {
+      XenoLib.listenLazyContextMenu = (menuNameOrFilter, callback, multi) => {
+        callback();
+      }
+    }
 
     try {
       XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('ButtonLink');
@@ -649,7 +720,7 @@ module.exports = (() => {
           }
           footerProps.children.push(websiteLink || sourceLink ? ' | ' : null, React.createElement('a', { className: 'bda-link bda-link-website', onClick: e => ContextMenuActions.openContextMenu(e, e => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Donate button CTX menu' }, React.createElement(ContextMenuWrapper, { menu: XenoLib.createContextMenuGroup([XenoLib.createContextMenuItem('Paypal', () => window.open('https://paypal.me/lighty13'), 'paypal'), XenoLib.createContextMenuItem('Ko-fi', () => window.open('https://ko-fi.com/lighty_'), 'kofi'), XenoLib.createContextMenuItem('Patreon', () => window.open('https://www.patreon.com/lightyp'), 'patreon')]), ...e }))) }, 'Donate'));
           footerProps.children.push(' | ', supportServerLink || React.createElement('a', { className: 'bda-link bda-link-website', onClick: () => (LayerManager.popLayer(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }, 'Support Server'));
-          footerProps.children.push(' | ', React.createElement('a', { className: 'bda-link bda-link-website', onClick: () => (_this.props.addon.plugin.showChangelog ? _this.props.addon.plugin.showChangelog() : Modals.showChangelogModal(`${_this.props.addon.plugin.getName() } Changelog`, _this.props.addon.plugin.getVersion(), _this.props.addon.plugin.getChanges())) }, 'Changelog'));
+          footerProps.children.push(' | ', React.createElement('a', { className: 'bda-link bda-link-website', onClick: () => (_this.props.addon.plugin.showChangelog ? _this.props.addon.plugin.showChangelog() : Modals.showChangelogModal(`${_this.props.addon.plugin.getName()} Changelog`, _this.props.addon.plugin.getVersion(), _this.props.addon.plugin.getChanges())) }, 'Changelog'));
           footerProps = null;
         };
         async function patchRewriteCard() {
@@ -1125,13 +1196,13 @@ module.exports = (() => {
                     {},
                     Array.isArray(e)
                       ? e.map(e =>
-                        (Array.isArray(e)
-                          ? React.createElement(
-                            'ul',
-                            {},
-                            e.map(e => React.createElement('li', {}, FancyParser(e)))
-                          )
-                          : FancyParser(e)))
+                      (Array.isArray(e)
+                        ? React.createElement(
+                          'ul',
+                          {},
+                          e.map(e => React.createElement('li', {}, FancyParser(e)))
+                        )
+                        : FancyParser(e)))
                       : FancyParser(e)
                   )
                 ))
@@ -1594,8 +1665,8 @@ module.exports = (() => {
                     await next({ opacity: 1, height: this._contentRef.offsetHeight, loadbrightness: 1 });
                     if (this.props.timeout) await next({ progress: 0 });
                     else
-                    if (this.state.loading && this.state.progress !== -1) await next({ progress: 0 });
-                    else await next({ progress: 100 });
+                      if (this.state.loading && this.state.progress !== -1) await next({ progress: 0 });
+                      else await next({ progress: 100 });
 
 
                     return;
@@ -1700,7 +1771,7 @@ module.exports = (() => {
                     },
                     React.createElement(ReactSpring.animated.div, {
                       className: XenoLib.joinClassNames('xenoLib-notification-loadbar', { 'xenoLib-notification-loadbar-striped': !this.props.timeout && this.state.loading, 'xenoLib-notification-loadbar-user': !this.props.timeout && !this.state.loading }),
-                      style: { right: e.progress.to(e => `${100 - e }%`), filter: e.loadbrightness.to(e => `brightness(${e * 100}%)`) }
+                      style: { right: e.progress.to(e => `${100 - e}%`), filter: e.loadbrightness.to(e => `brightness(${e * 100}%)`) }
                     }),
                     React.createElement(
                       XenoLib.ReactComponents.Button,
@@ -1972,13 +2043,13 @@ module.exports = (() => {
                 continue;
               }
               pluginsToCheck.push({ name, file });
-            } catch (e) {}
+            } catch (e) { }
           }
           setTimeout(() => {
             try {
               const https = require('https');
               for (const { name, file } of pluginsToCheck) {
-              // eslint-disable-next-line no-undef
+                // eslint-disable-next-line no-undef
                 const isPluginEnabled = BdApi.Plugins.isEnabled(name);
                 let plugin = BdApi.Plugins.get(name);
                 if (plugin && plugin.instance) plugin = plugin.instance;
@@ -2000,25 +2071,25 @@ module.exports = (() => {
                           if (window.pluginModule && window.pluginModule.loadPlugin) {
                             BdApi.Plugins.reload(name);
                             if (newFile !== file) window.pluginModule.loadPlugin(name);
-                          // eslint-disable-next-line curly
+                            // eslint-disable-next-line curly
                           } else if (BdApi.version ? !BdApi.isSettingEnabled('settings', 'addons', 'autoReload') : !BdApi.isSettingEnabled('fork-ps-5')) {
                             // eslint-disable-next-line no-negated-condition
                             if (newFile !== file) {
-                            // eslint-disable-next-line no-undef
+                              // eslint-disable-next-line no-undef
                               BdApi.showConfirmationModal('Hmm', 'You must reload in order to finish plugin installation', { onConfirm: () => location.reload() });
                               isPluginEnabled = false;
                             } else BdApi.Plugins.reload(name);
                           }
                           if (isPluginEnabled) BdApi.Plugins.enable(name);
-                        } catch (e) {}
+                        } catch (e) { }
                       }, 1000);
-                    } catch (e) {}
+                    } catch (e) { }
                   });
                 });
                 req.on('error', _ => XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 }));
                 req.end();
               }
-            } catch (e) {}
+            } catch (e) { }
           }, 3000);
         } catch (err) {
           Logger.log('Failed to execute load', err);
@@ -2098,7 +2169,7 @@ module.exports = (() => {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]);
     let b = BdApi.Plugins.get('ZeresPluginLibrary');
     if (b && b.instance) b = b.instance;
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.32') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.33') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
@@ -2118,13 +2189,13 @@ module.exports = (() => {
         return this.version;
       }
       getDescription() {
-        return `${this.description } You are missing ZeresPluginLibrary for this plugin, please enable the plugin to download it.`;
+        return `${this.description} You are missing ZeresPluginLibrary for this plugin, please enable the plugin to download it.`;
       }
       start() { }
       load() {
         try {
-        // asking people to do simple tasks is stupid, relying on stupid modals that are *supposed* to help them is unreliable
-        // forcing the download on enable is good enough
+          // asking people to do simple tasks is stupid, relying on stupid modals that are *supposed* to help them is unreliable
+          // forcing the download on enable is good enough
           const fs = require('fs');
           const path = require('path');
           const pluginsDir = (BdApi.Plugins && BdApi.Plugins.folder) || (window.ContentManager && window.ContentManager.pluginsFolder);
@@ -2145,9 +2216,9 @@ module.exports = (() => {
                     // what the fuck?
                     BdApi.Plugins.reload(this.getName());
                   }, 3000);
-                } catch (e) {}
+                } catch (e) { }
               }, 1000);
-            } catch (e) {}
+            } catch (e) { }
             return;
           }
 
@@ -2169,7 +2240,7 @@ module.exports = (() => {
                 }
                 default: continue;
               }
-            } catch (e) {}
+            } catch (e) { }
           }
 
           const https = require('https');
@@ -2195,10 +2266,10 @@ module.exports = (() => {
                           window.__XL_waitingForWatcherTimeout = setTimeout(() => {
                             try {
                               location.reload();
-                            } catch (e) {}
+                            } catch (e) { }
                           }, 3000);
                           BdApi.Plugins.reload(this.getName());
-                        } catch (e) {}
+                        } catch (e) { }
                       }, window.__XL_requireRenamePls ? 3000 : 0);
                       if (window.__XL_requireRenamePls) {
                         delete window.__XL_requireRenamePls;
@@ -2220,7 +2291,7 @@ module.exports = (() => {
                             window.__XL_waitingForWatcherTimeout = setTimeout(onFail, 3000);
                             BdApi.Plugins.reload(this.getName());
                             if (!BdApi.Plugins.get('XenoLib')) window.pluginModule.loadPlugin('1XenoLib');
-                          } catch (e) {}
+                          } catch (e) { }
                         }, window.__XL_requireRenamePls ? 3000 : 0);
                         if (window.__XL_requireRenamePls) {
                           delete window.__XL_requireRenamePls;
@@ -2230,18 +2301,18 @@ module.exports = (() => {
                           fs.unlinkSync(oldSelfPath);
                           fs.writeFileSync(path.join(pluginsDir, '1XenoLib.plugin.js'), selfContent);
                         }
-                      } catch (e) {}
+                      } catch (e) { }
                     }, 3000);
-                  } catch (e) {}
+                  } catch (e) { }
                 }, 3000);
-              } catch (e) {}
+              } catch (e) { }
             });
           });
           req.on('error', _ => {
             onFail();
           });
           req.end();
-        } catch (e) {}
+        } catch (e) { }
       }
       stop() { }
       get name() {
