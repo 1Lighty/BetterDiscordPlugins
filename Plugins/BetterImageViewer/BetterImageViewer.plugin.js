@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.2
+ * @version 1.6.3
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.2',
+      version: '1.6.3',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -240,11 +240,13 @@ module.exports = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, PluginUtilities, PluginUpdater, Structs } = Api;
-    const { React, ReactDOM, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, MessageStore, APIModule, NavigationUtils, SelectedChannelStore } = DiscordModules;
+    const { React, ReactDOM, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, APIModule, NavigationUtils, SelectedChannelStore } = DiscordModules;
 
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const ChannelStore = WebpackModules.getByProps('getChannel', 'getDMFromUserId');
+
+    const MessageStore = WebpackModules.getByProps('getMessages', 'getMessage');
 
     const ModalStack = WebpackModules.getByProps('openModal', 'hasModalOpen');
 
@@ -1591,9 +1593,6 @@ module.exports = (() => {
           .theme-light .BIV-text-bold {
             color: white;
           }
-          .${WebpackModules.find(e => Object.keys(e).length === 2 && e.modal && e.inner).modal.split(' ')[0]} > .${WebpackModules.find(e => Object.keys(e).length === 2 && e.modal && e.inner).inner.split(' ')[0]} > .${XenoLib.getSingleClass('imageZoom imageWrapper')} {
-            display: table; /* lol */
-          }
         `
         );
       }
@@ -2110,7 +2109,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '1.2.32') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.43') && (XenoLibOutdated = !0);
+    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.0') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
