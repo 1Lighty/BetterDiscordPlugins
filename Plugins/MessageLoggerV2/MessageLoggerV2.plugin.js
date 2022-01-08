@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.6
+ * @version 1.8.7
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -38,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.6';
+    return '1.8.7';
   }
   getAuthor() {
     return 'Lighty';
@@ -183,7 +183,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Dirtiest of hotfixes',
         type: 'fixed',
-        items: ['Fixed not working on canary']
+        items: ['Fixed not working on canary, part 2, electric boogaloo']
       }
     ];
   }
@@ -372,6 +372,7 @@ module.exports = class MessageLoggerV2 {
     ZeresPluginLibrary.Logger.info(this.getName(), `Data file size is ${dataFileSize.toFixed(2)}MB`);
     if (this.slowSaveModeStep) ZeresPluginLibrary.Logger.warn(this.getName(), 'Data file is too large, severity level', this.slowSaveModeStep);
 */
+    this.messageStore = ZeresPluginLibrary.WebpackModules.getByProps('getMessages', 'getMessage');
     this.ChannelStore = ZeresPluginLibrary.WebpackModules.getByProps('getChannel', 'getDMFromUserId');
     if (!this.settings.dontSaveData) {
       const records = data.messageRecord;
@@ -502,7 +503,7 @@ module.exports = class MessageLoggerV2 {
     }
     this.tools = {
       openUserContextMenu: null /* NeatoLib.Modules.get('openUserContextMenu').openUserContextMenu */, // TODO: move here
-      getMessage: ZeresPluginLibrary.DiscordModules.MessageStore.getMessage,
+      getMessage: this.messageStore.getMessage,
       fetchMessages: ZeresPluginLibrary.DiscordModules.MessageActions.fetchMessages,
       transitionTo: null /* NeatoLib.Modules.get('transitionTo').transitionTo */,
       getChannel: this.ChannelStore.getChannel,
@@ -919,7 +920,7 @@ module.exports = class MessageLoggerV2 {
     );
 
     this.unpatches.push(
-      this.Patcher.instead(ZeresPluginLibrary.DiscordModules.MessageStore, 'getLastEditableMessage', (_this, [channelId]) => {
+      this.Patcher.instead(this.messageStore, 'getLastEditableMessage', (_this, [channelId]) => {
         const me = ZeresPluginLibrary.DiscordAPI.currentUser.id;
         return _this
           .getMessages(channelId)
@@ -1817,8 +1818,8 @@ module.exports = class MessageLoggerV2 {
       if (ret.message_reference) {
         if (message.referenced_message) {
           ret.referenced_message = this.cleanupMessageObject(message.referenced_message);
-        } else if (ZeresPluginLibrary.DiscordModules.MessageStore.getMessage(ret.message_reference.channel_id, ret.message_reference.message_id)) {
-          ret.referenced_message = this.cleanupMessageObject(ZeresPluginLibrary.DiscordModules.MessageStore.getMessage(ret.message_reference.channel_id, ret.message_reference.message_id));
+        } else if (this.messageStore.getMessage(ret.message_reference.channel_id, ret.message_reference.message_id)) {
+          ret.referenced_message = this.cleanupMessageObject(this.messageStore.getMessage(ret.message_reference.channel_id, ret.message_reference.message_id));
         }
       }
     }
