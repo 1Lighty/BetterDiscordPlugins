@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.3
+ * @version 1.3.4
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.3',
+      version: '1.3.4',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -270,7 +270,7 @@ module.exports = (() => {
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
     const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, GuildStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver, SelectedChannelStore, PrivateChannelActions } = DiscordModules;
-  
+
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const ChannelStore = WebpackModules.getByProps('getChannel', 'getDMFromUserId');
@@ -855,6 +855,7 @@ module.exports = (() => {
     const ThreadNotificationsStuff = WebpackModules.getByProps('computeThreadNotificationSetting');
     const ThreadConstants = WebpackModules.getByProps('ThreadMemberFlags');
     const ThreadStateStore = WebpackModules.getByProps('getThreadSidebarState');
+    const MessageStore = WebpackModules.getByProps('getMessages', 'getMessage');
 
     return class InAppNotifications extends Plugin {
       constructor() {
@@ -1078,7 +1079,7 @@ module.exports = (() => {
         if (guildId && LurkerStore.isLurking(guildId)) return RetTypes.SILENT; // ignore servers you're lurking in
         if (iAuthor.id === cUID || RelationshipStore.isBlocked(iAuthor.id)) return RetTypes.SILENT; // ignore if from self or if it's a blocked user
         if (!this.settings.dndIgnore && UserSettingsStore.status === DiscordConstants.StatusTypes.DND) return false; // ignore if in DND mode and settings allow
-        if (this.settings.pings && ~message.mentions.map(e => (typeof e === 'string' ? e : e.id)).indexOf(cUID)) return RetTypes.PING; // if mentioned, always show notification
+        if (this.settings.pings && Array.isArray(message.mentions) && ~message.mentions.map(e => (typeof e === 'string' ? e : e.id)).indexOf(cUID)) return RetTypes.PING; // if mentioned, always show notification
         let ret = RetTypes.SILENT; // default, if a keyword or reply, then it'll pin the notification, but if it'd be true anyway, don't pin
         if (this.settings.replies && message.referenced_message && message.referenced_message.author && message.referenced_message.author.id === cUID && !~message.referenced_message.mentions.map(e => (typeof e === 'string' ? e : e.id)).indexOf(cUID)) {
           ret = RetTypes.REPLY; // always show notifications for replies
@@ -1184,7 +1185,7 @@ module.exports = (() => {
         const { icon, title, content } = this.makeTextChatNotification(iChannel, message, iAuthor) || {};
         if (!title) return; /* wah */
         const iMember = GuildMemberStore.getMember(iChannel.guild_id, iAuthor.id);
-        const iMessage = DiscordModules.MessageStore.getMessage(channelId, message.id) || MessageActionCreators.createMessageRecord(message);
+        const iMessage = MessageStore.getMessage(channelId, message.id) || MessageActionCreators.createMessageRecord(message);
         const color = notifyStatus === RetTypes.KEYWORD && this.settings.useKeywordColor ? this.settings.keywordColor : this.settings.roleColor && iMember && iMember.colorString;
         const timeout = ((notifyStatus === RetTypes.KEYWORD && this.settings.pinKeyword) || (notifyStatus === RetTypes.REPLY && this.settings.pinReplies) || (notifyStatus === RetTypes.PING && isEdit && this.settings.pinSilentPings)) ? 0 : this.calculateTimeout(title, content);
         const options = {
@@ -1238,7 +1239,7 @@ module.exports = (() => {
           return;
         }
         const { iAuthor, iMessage: oiMessage, iChannel, notifId, options, notifyStatus } = this.n10nMap[message.id];
-        const iMessage = DiscordModules.MessageStore.getMessage(iChannel.id, message.id) || MessageActionCreators.updateMessageRecord(oiMessage, message);
+        const iMessage = MessageStore.getMessage(iChannel.id, message.id) || MessageActionCreators.updateMessageRecord(oiMessage, message);
         const { icon, title, content } = this.makeTextChatNotification(iChannel, iMessage, iAuthor) || {};
         const timeout = ((notifyStatus === RetTypes.KEYWORD && this.settings.pinKeyword) || (notifyStatus === RetTypes.REPLY && this.settings.pinReplies)) ? 0 : this.calculateTimeout(title, content);
         if (!title) return; /* wah */
@@ -1392,7 +1393,7 @@ module.exports = (() => {
                   renderReactions: true,
                   spoilerAll: this.settings.spoilerAll || (this.settings.spoilerNSFW && iChannel.nsfw)
                 })) : null
-             ] 
+              ];
             }, {}, React.createElement('div', { className: XenoLib.joinClassNames(MarkupClassname, MessageClasses.messageContent) }, ParserModule.parse(content, true, { channelId: iChannel && iChannel.id })))
           )
         );
@@ -1470,11 +1471,11 @@ module.exports = (() => {
   try {
     const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
       n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e);
-    let  e = BdApi.Plugins.get('ZeresPluginLibrary'),
+    let e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '1.2.32') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.43') && (XenoLibOutdated = !0);
+    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.0') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
