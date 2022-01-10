@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.8
+ * @version 1.8.9
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -38,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.8';
+    return '1.8.9';
   }
   getAuthor() {
     return 'Lighty';
@@ -71,7 +71,7 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.0')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.1')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '1.2.33')) ZeresPluginLibraryOutdated = true;
     }
 
@@ -183,7 +183,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixes',
         type: 'fixed',
-        items: ['Fixed context menus being gone', 'Somewhat fixed the menu, works fully if you open a user profile and the tag change UI.', 'Hi DustyAngel47 <:FA_FoxWave:747469063248150539>']
+        items: ['Fixed deleted messages not appearing as so', 'Fixed menu being borked beyond repair', '<a:FA_FoxWork:742462902384197752>']
       }
     ];
   }
@@ -297,6 +297,10 @@ module.exports = class MessageLoggerV2 {
     if (!this.settings || !Object.keys(this.settings).length) {
       XenoLib.Notifications.error(`[${this.getName()}] Settings file corrupted! All settings restored to default.`, { timeout: 0 });
       this.settings = defaultSettings; // todo: does defaultSettings get changed?
+      settingsChanged = true;
+    }
+    if (this.settings.versionInfo === '1.7.55') {
+      this.settings = defaultSettings; // bad default settings
       settingsChanged = true;
     }
     // if (!this.settings.openLogKeybind.length) {
@@ -678,6 +682,14 @@ module.exports = class MessageLoggerV2 {
     this.style.menuTabBar = this.obfuscatedClass('ML2-MENU-TABBAR');
     this.style.menuRoot = this.obfuscatedClass('MLv2-menu-root');
     this.style.imageRoot = this.obfuscatedClass('MLv2-image-root');
+    this.style.inputWrapper = this.obfuscatedClass('MLv2-input-wrapper');
+    this.style.multiInput = this.obfuscatedClass('MLv2-input');
+    this.style.multiInputFirst = this.obfuscatedClass('MLv2-input-first');
+    this.style.input = this.obfuscatedClass('MLv2-input-input');
+    this.style.questionMark = this.obfuscatedClass('MLv2-question-mark');
+    this.style.tabBarContainer = this.obfuscatedClass('MLv2-tab-bar-container');
+    this.style.tabBar = this.obfuscatedClass('MLv2-tab-bar');
+    this.style.tabBarItem = this.obfuscatedClass('MLv2-tab-bar-item');
 
     this.invalidateAllChannelCache();
     this.selectedChannel = this.getSelectedTextChannel();
@@ -754,10 +766,10 @@ module.exports = class MessageLoggerV2 {
                 #${this.style.menuMessages} {
                   max-height: 0px;
                 }
-                .${this.style.menuRoot} .wrapper-1sSZUt {
+                .${this.style.menuRoot} .${XenoLib.getSingleClass('base wrapper')} {
                   width: 100%;
                 }
-                .${this.style.menuRoot} .questionMark-3qBhGj {
+                .${this.style.menuRoot} .${this.style.questionMark} {
                   margin-left: 5px;
                 }
                 .${this.style.menuRoot} {
@@ -765,6 +777,103 @@ module.exports = class MessageLoggerV2 {
                 }
                 #${this.style.filter} {
                   opacity: 1;
+                }
+                .${this.style.inputWrapper} {
+                  display: -webkit-box;
+                  display: -ms-flexbox;
+                  display: flex;
+                  -webkit-box-orient: vertical;
+                  -webkit-box-direction: normal;
+                  -ms-flex-direction: column;
+                  flex-direction: column;
+                }
+                .${this.style.multiInput} {
+                  font-size: 16px;
+                  -webkit-box-sizing: border-box;
+                  box-sizing: border-box;
+                  width: 100%;
+                  border-radius: 3px;
+                  color: var(--text-normal);
+                  background-color: var(--deprecated-text-input-bg);
+                  border: 1px solid var(--deprecated-text-input-border);
+                  -webkit-transition: border-color .2s ease-in-out;
+                  transition: border-color .2s ease-in-out;
+                  display: -webkit-box;
+                  display: -ms-flexbox;
+                  display: flex;
+                  -webkit-box-align: center;
+                  -ms-flex-align: center;
+                  align-items: center;
+                }
+                .${this.style.multiInputFirst} {
+                  -webkit-box-flex: 1;
+                  -ms-flex-positive: 1;
+                  flex-grow: 1;
+                }
+                .${this.style.input} {
+                  font-size: 16px;
+                  -webkit-box-sizing: border-box;
+                  box-sizing: border-box;
+                  width: 100%;
+                  border-radius: 3px;
+                  color: var(--text-normal);
+                  background-color: var(--deprecated-text-input-bg);
+                  border: 1px solid var(--deprecated-text-input-border);
+                  -webkit-transition: border-color .2s ease-in-out;
+                  transition: border-color .2s ease-in-out;
+                  padding: 10px;
+                  height: 40px;
+                  border: none;
+                  background-color: transparent;
+                }
+                .${this.style.questionMark} {
+                  display: -webkit-box;
+                  display: -ms-flexbox;
+                  display: flex;
+                  -webkit-box-align: center;
+                  -ms-flex-align: center;
+                  align-items: center;
+                  -webkit-box-pack: center;
+                  -ms-flex-pack: center;
+                  justify-content: center;
+                  width: 32px;
+                  height: 32px;
+                  border-radius: 2px;
+                  margin-right: 4px;
+                  padding: 0;
+                  min-width: 0;
+                  min-height: 0;
+                  background-color: var(--brand-experiment);
+                }
+                .${this.style.tabBarContainer} {
+                  border-bottom: 1px solid var(--background-modifier-accent);
+                  padding-left: 20px;
+                }
+                .${this.style.tabBar} {
+                  display: flex;
+                  height: 55px;
+                  align-items: stretch;
+                  -ms-flex-align: stretch;
+                  -webkit-box-align: stretch;
+                }
+                .${this.style.tabBarItem} {
+                  display: flex;
+                  font-size: 14px;
+                  margin-right: 40px;
+                  border-bottom: 2px solid transparent;
+                  align-items: center;
+                  -ms-flex-align: center;
+                  -webkit-box-align: center;
+                  cursor: pointer;
+                  line-height: 20px;
+                  font-size: 16px;
+                  position: relative;
+                  font-weight: 500;
+                  flex-shrink: 0;
+                  -ms-flex-negative: 0;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
                 }
             `
     );
@@ -2020,7 +2129,9 @@ module.exports = class MessageLoggerV2 {
     if (!this.selectedChannel) return;
     const parent = document.querySelector('div[class*="chat-"] div[class*="toolbar-"]');
     if (!parent) return;
-    parent.insertBefore(this.channelLogButton, parent.querySelector('div[class*="search-"]'));
+    const srch = parent.querySelector('div[class*="search-"]'); // you know who you are that think this is my issue
+    if (!srch) return;
+    parent.insertBefore(this.channelLogButton, srch);
   }
   removeOpenLogsButton() {
     this.channelLogButton.remove();
@@ -3050,6 +3161,7 @@ module.exports = class MessageLoggerV2 {
         ret.props.children = [edits, oContent];
       })
     );
+    const messageClass = XenoLib.getSingleClass('ephemeral message')
     this.unpatches.push(
       this.Patcher.after(MemoMessage, 'type', (_, [props], ret) => {
         const forceUpdate = ZeresPluginLibrary.DiscordModules.React.useState()[1];
@@ -3068,7 +3180,7 @@ module.exports = class MessageLoggerV2 {
         const record = this.messageRecord[props.message.id];
         if (!record || !record.delete_data) return;
         if (this.noTintIds.indexOf(props.message.id) !== -1) return;
-        const messageProps = ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && typeof e.className === 'string' && ~e.className.indexOf('message-2qnXI6'));
+        const messageProps = ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && typeof e.className === 'string' && ~e.className.indexOf(messageClass));
         if (!messageProps) return;
         messageProps.className += ' ' + (this.settings.useAlternativeDeletedStyle ? this.style.deletedAlt : this.style.deleted);
         messageProps.__MLV2_deleteTime = record.delete_data.time;
@@ -3226,8 +3338,8 @@ module.exports = class MessageLoggerV2 {
         /* 0 */ XenoLib.joinClassNames(XenoLib.getClass('groupStart message'), XenoLib.getClass('groupStart cozyMessage'), XenoLib.getClass('systemMessage groupStart'), XenoLib.getClass('zalgo wrapper'), XenoLib.getClass('zalgo cozy'), XenoLib.getClass('cozy zalgo')),
         /* 1 */ XenoLib.joinClassNames(XenoLib.getClass('groupStart message'), XenoLib.getClass('groupStart cozyMessage'), XenoLib.getClass('zalgo wrapper'), XenoLib.getClass('zalgo cozy'), XenoLib.getClass('cozy zalgo')),
         /* 2 */ XenoLib.getClass('username header'),
-        /* 3 */ XenoLib.joinClassNames(XenoLib.getClass('clickable avatar'), XenoLib.getClass('avatar clickable')),
-        /* 4 */ XenoLib.joinClassNames(XenoLib.getClass('timestampTooltip username'), XenoLib.getClass('avatar clickable')),
+        /* 3 */ XenoLib.joinClassNames(XenoLib.getClass('edited avatar'), XenoLib.getClass('edited avatar clickable')),
+        /* 4 */ XenoLib.joinClassNames(XenoLib.getClass('timestampTooltip username'), XenoLib.getClass('edited avatar clickable')),
         /* 5 */ XenoLib.joinClassNames(XenoLib.getClass('separator timestamp'), XenoLib.getClass('separator timestampInline')),
         /* 6 */ XenoLib.joinClassNames(this.multiClasses.markup, XenoLib.getClass('buttonContainer markupRtl')),
         /* 7 */ XenoLib.getClass('embedWrapper container'),
@@ -3962,10 +4074,10 @@ module.exports = class MessageLoggerV2 {
       try {
         const TabBarStuffs = ZeresPluginLibrary.WebpackModules.getByProps('body', 'tabBar');
         this.createHeader.classes = {
-          itemTabBarItem: TabBarStuffs.tabBarItem + ' ' + ZeresPluginLibrary.WebpackModules.find(m => m.item && m.selected && m.topPill).item,
-          tabBarContainer: TabBarStuffs.tabBarContainer,
-          tabBar: TabBarStuffs.tabBar,
-          tabBarSingle: TabBarStuffs.tabBar.split(/ /g)[0]
+          itemTabBarItem: this.style.tabBarItem,
+          tabBarContainer: this.style.tabBarContainer,
+          tabBar: this.style.tabBar,
+          tabBarSingle: this.style.tabBar
         };
       } catch {
         this.createHeader.classes = {
@@ -3997,14 +4109,14 @@ module.exports = class MessageLoggerV2 {
     if (!this.createTextBox.classes || this.createTextBox.classes.__errored) {
       try {
         this.createTextBox.classes = {
-          inputWrapper: XenoLib.getClass('inputMini inputWrapper'),
-          inputMultiInput: XenoLib.getClass('inputPrefix input', ) + ' ' + XenoLib.getClass('multiInput'),
-          multiInputFirst: XenoLib.getClass('multiInputFirst'),
-          inputDefaultMultiInputField: XenoLib.getClass('inputPrefix inputDefault') + ' ' + XenoLib.getClass('multiInputField'),
-          questionMark: XenoLib.getClass('questionMark', true),
-          icon: XenoLib.getClass('questionMark'),
+          inputWrapper: this.style.inputWrapper,
+          inputMultiInput: this.style.multiInput,
+          multiInputFirst: this.style.multiInputFirst,
+          inputDefaultMultiInputField: this.style.input,
+          questionMark: this.style.questionMark,
+          icon: this.style.questionMark,
           focused: ZeresPluginLibrary.WebpackModules.getByProps('focused').focused.split(/ /g),
-          questionMarkSingle: XenoLib.getSingleClass('questionMark', true)
+          questionMarkSingle: this.style.questionMark
         }
       } catch {
         this.createTextBox.classes = {
