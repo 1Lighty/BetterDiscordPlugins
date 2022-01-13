@@ -1,11 +1,13 @@
 /**
  * @name SaveToRedux
- * @version 2.3.5
+ * @version 2.4.0
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
- * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/MultiUploads/SaveToRedux.plugin.js
+ * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/SaveToRedux/SaveToRedux.plugin.js
+ * @updateUrl https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js
  */
+/* eslint-disable no-loop-func */
 /*@cc_on
 @if (@_jscript)
 
@@ -30,7 +32,7 @@
 
 @else@*/
 /*
- * Copyright © 2019-2020, _Lighty_
+ * Copyright © 2019-2021, _Lighty_
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
@@ -48,16 +50,21 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.3.5',
+      version: '2.4.0',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
+        title: 'Fixed',
+        type: 'fixed',
+        items: ['Fixed context menus not showing up after update.', 'Fixed saving emojis as webp instead of png.', 'Fixed twitter embed images being marked as Files.']
+      },
+      {
         title: 'Added',
         type: 'added',
-        items: ['Added an option to remove the `SPOILER_` tag from filenames when saving. **(Enabled by default!)**']
+        items: ['Added saving emojis and stickers directly from the picker.', 'Added saving server banners.', 'Added saving user banners.', 'Added saving user server banners.', 'Added saving user server avatars.', 'Added option to view emojis, avatars, banners, reactions.']
       }
     ],
     defaultConfig: [
@@ -122,7 +129,7 @@ module.exports = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Settings, Utilities, WebpackModules, DiscordModules, DiscordClasses, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, ReactTools } = Api;
-    const { React, ContextMenuActions, GuildStore, DiscordConstants, Dispatcher, EmojiUtils, EmojiStore, EmojiInfo } = DiscordModules;
+    const { React, ContextMenuActions, GuildStore, DiscordConstants, Dispatcher, EmojiUtils, EmojiStore, EmojiInfo, GuildMemberStore, UserStore } = DiscordModules;
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const ConfirmModal = ZeresPluginLibrary.WebpackModules.getByDisplayName('ConfirmModal');
@@ -142,6 +149,7 @@ module.exports = (() => {
     const Markdown = WebpackModules.getByDisplayName('Markdown');
 
     const Modals = {
+      ...(WebpackModules.getByProps('ModalRoot') || {}),
       showModal(title, content, options) {
         return ModalStack.openModal(e => React.createElement(ConfirmationModal, { title, children: content, cancelText: 'Cancel', ...e, ...options }));
       },
@@ -162,7 +170,7 @@ module.exports = (() => {
     const openPath = Utilities.getNestedProp(require('electron'), 'shell.openPath') || Utilities.getNestedProp(require('electron'), 'shell.openItem');
     const DelayedCall = Utilities.getNestedProp(WebpackModules.getByProps('DelayedCall'), 'DelayedCall');
     const FsModule = require('fs');
-    const RequestModule = require('request');
+    const HttpsModule = require('https');
     const PathModule = require('path');
     const MimeTypesModule = require('mime-types');
     const FormItem = WebpackModules.getByDisplayName('FormItem');
@@ -291,7 +299,13 @@ module.exports = (() => {
       }
     }
 
-    const { Buffer } = require('buffer');
+    const { Buffer } = (() => {
+      try {
+        return require('buffer');
+      } catch {
+        return {};
+      }
+    })();
 
     /*
      * I DO NOT OWN THESE TWO
@@ -337,10 +351,12 @@ module.exports = (() => {
 
       return class fuck{};
     }) */
+    const GuildBannerShit = WebpackModules.getByProps('getUserBannerURLForContext');
+    const GuildBannerShit2pointo = WebpackModules.getByProps('getGuildBannerURL');
 
     const faultyVars = [];
     {
-      const vars = { TextComponent, getEmojiURL, openPath, DelayedCall, FormItem, Messages, TextInput, AvatarModule, TrustStore };
+      const vars = { TextComponent, getEmojiURL, openPath, DelayedCall, FormItem, Messages, TextInput, AvatarModule, TrustStore, Buffer, UserStore, GuildMemberStore, GuildStore, GuildBannerShit, GuildBannerShit2pointo };
       for (const varName in vars) if (!vars[varName]) faultyVars.push(varName);
 
     }
@@ -360,8 +376,11 @@ module.exports = (() => {
     const workerDataURL = window.URL.createObjectURL(new Blob([webWorkerData], { type: 'text/javascript' }));
 
     const StickerClasses = WebpackModules.getByProps('pngImage', 'lottieCanvas');
+    const ImageModal = WebpackModules.getByDisplayName('ImageModal');
+    const MaskedLink = WebpackModules.getByDisplayName('MaskedLink');
+    const ImageModalClasses = WebpackModules.find(m => typeof m.image === 'string' && typeof m.modal === 'string' && !m.content && !m.card) || WebpackModules.getByProps('modal', 'image');
 
-    const cssPath = function (el) {
+    const cssPath = function(el) {
       if (!el) return '';
       const path = [];
       while (el.nodeType === Node.ELEMENT_NODE) {
@@ -411,6 +430,7 @@ module.exports = (() => {
       }
       onStart() {
         this.promises = { state: { cancelled: false } };
+        this.lazyContextMenuCancels = [];
         if (faultyVars.length) {
           Logger.error(`Following vars are invalid: ${faultyVars.map(e => `\n${e}`).reduce((e, b) => e + b, '')}`);
           PluginUpdater.checkForUpdate(this.name, this.version, this._config.info.github_raw);
@@ -446,10 +466,12 @@ module.exports = (() => {
         div[id$="-str"] + .${XenoLib.getSingleClass('layerContainer layer')} {
           z-index: 1;
         }
-        div[id$="-str-stickers"] + .${XenoLib.getSingleClass('layerContainer layer')} {
-          z-index: 2;
-        }
-        div[id$="-str-stickers-pack"] + .${XenoLib.getSingleClass('layerContainer layer')} {
+        div[id$="-str-stickers"] + .${XenoLib.getSingleClass('layerContainer layer')},
+        div[id$="-str-sticker-pack"] + .${XenoLib.getSingleClass('layerContainer layer')},
+        div[id$="-str-banner"] + .${XenoLib.getSingleClass('layerContainer layer')},
+        div[id$="-str-server-banner"] + .${XenoLib.getSingleClass('layerContainer layer')},
+        div[id$="-str-server-avatar"] + .${XenoLib.getSingleClass('layerContainer layer')},
+        div[id$="-str-guild-banner"] + .${XenoLib.getSingleClass('layerContainer layer')} {
           z-index: 2;
         }
         `
@@ -459,6 +481,7 @@ module.exports = (() => {
 
       onStop() {
         this.promises.state.cancelled = true;
+        if (Array.isArray(this.lazyContextMenuCancels)) this.lazyContextMenuCancels.forEach(e => e());
         Patcher.unpatchAll();
         PluginUtilities.removeStyle(`${this.short}-CSS`);
       }
@@ -615,39 +638,47 @@ module.exports = (() => {
         this.patchUserContextMenus();
         this.patchImageContextMenus();
         this.patchGuildContextMenu();
+        this.patchExpressionPickerContextMenu();
       }
 
       patchUserContextMenus() {
-        const CTXs = WebpackModules.findAll(m => m.default && m.default.displayName && (m.default.displayName.endsWith('UserContextMenu') || m.default.displayName === 'GroupDMContextMenu'));
-        for (const CTX of CTXs) Patcher.after(CTX, 'default', (_, [props], ret) => {
-          const menu = Utilities.getNestedProp(
-            Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
-            'props.children'
-          );
-          if (!Array.isArray(menu)) return;
-          let saveType;
-          let url;
-          let customName;
-          if (props.user && props.user.getAvatarURL) {
-            saveType = 'Avatar';
-            url = props.user.getAvatarURL();
-            if (this.settings.saveOptions.saveByName) customName = props.user.username;
-          } else if (props.channel && props.channel.type === 3 /* group DM */) {
-            url = AvatarModule.getChannelIconURL(props.channel);
-            saveType = 'Icon';
-          } else return Logger.warn('Uknonwn context menu') /* hurr durr? */;
-          if (!url.indexOf('/assets/')) url = `https://discordapp.com${url}`;
-          url = useIdealExtensions(url);
-          try {
-            const submenu = this.constructMenu(url.split('?')[0], saveType, customName);
-            const group = XenoLib.createContextMenuGroup([submenu]);
-            if (this.settings.misc.contextMenuOnBottom) menu.push(group);
-            else menu.unshift(group);
-          } catch (e) {
-            Logger.warn('Failed to parse URL...', url, e);
-          }
-        });
-
+        const patchedMods = [];
+        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu(m => m.displayName && (m.displayName.endsWith('UserContextMenu') || m.displayName === 'GroupDMContextMenu'), () => {
+          const CTXs = WebpackModules.findAll(m => m.default && m.default.displayName && (m.default.displayName.endsWith('UserContextMenu') || m.default.displayName === 'GroupDMContextMenu') && !patchedMods.includes(m));
+          if (!CTXs) return false;
+          patchedMods.push(...CTXs);
+          for (const CTX of CTXs) Patcher.after(CTX, 'default', (_, [props], ret) => {
+            const menu = Utilities.getNestedProp(
+              Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+              'props.children'
+            );
+            if (!Array.isArray(menu)) return;
+            let saveType;
+            let url;
+            let customName;
+            const extraData = {};
+            if (props.user && props.user.getAvatarURL) {
+              saveType = 'Avatar';
+              url = props.user.getAvatarURL();
+              extraData.userId = props.user.id;
+              if (this.settings.saveOptions.saveByName) customName = props.user.username;
+            } else if (props.channel && props.channel.type === 3 /* group DM */) {
+              url = AvatarModule.getChannelIconURL(props.channel);
+              saveType = 'Icon';
+            } else return Logger.warn('Uknonwn context menu') /* hurr durr? */;
+            if (!url.indexOf('/assets/')) url = `https://discordapp.com${url}`;
+            url = useIdealExtensions(url);
+            try {
+              const submenu = this.constructMenu(url.split('?')[0], saveType, customName, () => {}, null, null, extraData);
+              const group = XenoLib.createContextMenuGroup([submenu]);
+              if (this.settings.misc.contextMenuOnBottom) menu.push(group);
+              else menu.unshift(group);
+            } catch (e) {
+              Logger.warn('Failed to parse URL...', url, e);
+            }
+          });
+          return true;
+        }, true));
       }
 
       patchImageContextMenus() {
@@ -678,7 +709,7 @@ module.exports = (() => {
           const targetClassName = Utilities.getNestedProp(props, 'target.className') || '';
           if (StickerClasses && typeof targetClassName === 'string' && (targetClassName.indexOf(StickerClasses.lottieCanvas.split(' ')[0]) !== -1 || targetClassName.indexOf(StickerClasses.pngImage.split(' ')[0]) !== -1)) {
             const { memoizedProps } = Utilities.findInTree(ReactTools.getReactInstance(document.querySelector(cssPath(props.target))), e => e && e.type && e.type.displayName === 'StickerMessage', { walkable: ['return'] }) || {};
-            const sticker  = memoizedProps.renderableSticker || {};
+            const sticker = memoizedProps.renderableSticker || {};
             if (!sticker) return;
             src = StickerUtils.getStickerAssetUrl(sticker);
             customName = sticker.name;
@@ -696,16 +727,6 @@ module.exports = (() => {
             }
           }
           if (!src) src = Utilities.getNestedProp(props, 'attachment.href') || Utilities.getNestedProp(props, 'attachment.url');
-          /* is that enough specific cases? */
-          if (typeof src === 'string') {
-            src = src.split('?')[0];
-            if (src.indexOf('//giphy.com/gifs/') !== -1) src = `https://i.giphy.com/media/${src.match(/-([^-]+)$/)[1]}/giphy.gif`;
-            else if (src.indexOf('//tenor.com/view/') !== -1) {
-              src = props.src;
-              saveType = 'Video';
-            } else if (src.indexOf('//preview.redd.it/') !== -1) src = src.replace('preview', 'i');
-            else if (src.indexOf('twimg.com/') !== -1) saveType = 'Image';
-          }
           if (!src) {
             let C = props.target;
             let proxiedsauce;
@@ -737,6 +758,16 @@ module.exports = (() => {
               src = proxiedsauce;
               proxiedUrl = '';
             }
+            /* is that enough specific cases? */
+            if (typeof src === 'string') {
+              src = src.split('?')[0];
+              if (src.indexOf('//giphy.com/gifs/') !== -1) src = `https://i.giphy.com/media/${src.match(/-([^-]+)$/)[1]}/giphy.gif`;
+              else if (src.indexOf('//tenor.com/view/') !== -1) {
+                src = props.src;
+                saveType = 'Video';
+              } else if (src.indexOf('//preview.redd.it/') !== -1) src = src.replace('preview', 'i');
+              else if (src.indexOf('twimg.com/') !== -1) saveType = 'Image';
+            }
             if (!src) return;
           }
           url = src;
@@ -761,11 +792,12 @@ module.exports = (() => {
                   if (alt) customName = alt.split(':')[1] || alt;
                 }
               } else customName = emoji.name;
+              url = useIdealExtensions(url);
             } else if (state.__STR_extension) {
               if (isImage(state.__STR_extension)) saveType = 'Image';
               else if (isVideo(state.__STR_extension)) saveType = 'Video';
               else if (isAudio(state.__STR_extension)) saveType = 'Audio';
-            } else if (url.indexOf('//discordapp.com/assets/') !== -1 && props.target && props.target.className.indexOf('emoji') !== -1) {
+            } else if ((url.indexOf('discordapp.com/assets/') !== -1 || url.indexOf('discord.com/assets/') !== -1) && props.target && props.target.className.indexOf('emoji') !== -1) {
               const { alt } = props.target;
               if (alt) {
                 customName = alt.split(':')[1] || alt;
@@ -788,12 +820,11 @@ module.exports = (() => {
                 if (state.__STR_requesting || state.__STR_requested) return;
                 if (!isTrustedDomain(targetUrl)) return;
                 state.__STR_requesting = true;
-                RequestModule.head(targetUrl, (err, res) => {
-                  if (err || res.statusCode !== 200) return setState({ __STR_requesting: false, __STR_requested: true });
+                HttpsModule.request(targetUrl, { method: 'HEAD' }, res => {
+                  if (res.statusCode !== 200) return setState({ __STR_requesting: false, __STR_requested: true });
                   const extension = MimeTypesModule.extension(res.headers['content-type']);
                   setState({ __STR_requesting: false, __STR_requested: true, __STR_extension: extension });
-                });
-                targetUrl;
+                }).on('error', () => {}).end();
               },
               state.__STR_extension,
               proxiedUrl,
@@ -806,49 +837,130 @@ module.exports = (() => {
             Logger.warn('Failed to parse URL...', url, e);
           }
         };
-
-        Patcher.after(
-          WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'NativeImageContextMenu'),
-          'default',
-          (_, [props], ret) => patchHandler(props, ret, true)
-        );
-        Patcher.after(
-          WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'MessageContextMenu'),
-          'default',
-          (_, [props], ret) => patchHandler(props, ret)
-        );
-        Patcher.after(
-          WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'MessageSearchResultContextMenu'),
-          'default',
-          (_, [props], ret) => patchHandler(props, ret)
-        );
+        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu('NativeImageContextMenu', () => {
+          const mod = WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'NativeImageContextMenu');
+          if (!mod) return Logger.warn('Could not find NativeImageContextMenu');
+          Patcher.after(
+            mod,
+            'default',
+            (_, [props], ret) => patchHandler(props, ret, true)
+          );
+          return true;
+        }));
+        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu('MessageContextMenu', () => {
+          const mod = WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'MessageContextMenu');
+          if (!mod) return Logger.warn('Could not find MessageContextMenu');
+          Patcher.after(
+            mod,
+            'default',
+            (_, [props], ret) => patchHandler(props, ret)
+          );
+          return true;
+        }));
+        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu('MessageSearchResultContextMenu', () => {
+          const mod = WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'MessageSearchResultContextMenu');
+          if (!mod) return Logger.warn('Could not find MessageSearchResultContextMenu');
+          Patcher.after(
+            mod,
+            'default',
+            (_, [props], ret) => patchHandler(props, ret)
+          );
+          return true;
+        }));
       }
 
       patchGuildContextMenu() {
-        Patcher.after(
-          WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'GuildContextMenu'),
-          'default',
-          (_, [props], ret) => {
-            const menu = Utilities.getNestedProp(
-              Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
-              'props.children'
-            );
-            if (!Array.isArray(menu)) return;
-            let url = props.guild.getIconURL();
-            if (!url) return;
-            let customName;
-            if (this.settings.saveOptions.saveByName) customName = props.guild.name;
-            url = useIdealExtensions(url);
-            try {
-              const submenu = this.constructMenu(url.split('?')[0], 'Icon', customName);
-              const group = XenoLib.createContextMenuGroup([submenu]);
-              if (this.settings.misc.contextMenuOnBottom) menu.push(group);
-              else menu.unshift(group);
-            } catch (e) {
-              Logger.warn('Failed to parse URL...', url, e);
+        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu('GuildContextMenu', () => {
+          const mod = WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'GuildContextMenu');
+          if (!mod) return Logger.warn('Could not find GuildContextMenu');
+          Patcher.after(
+            mod,
+            'default',
+            (_, [props], ret) => {
+              const menu = Utilities.getNestedProp(
+                Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+                'props.children'
+              );
+              if (!Array.isArray(menu)) return;
+              let url = props.guild.getIconURL();
+              if (!url) return;
+              let customName;
+              const extraData = { guildId: props.guild.id };
+              if (this.settings.saveOptions.saveByName) customName = props.guild.name;
+              url = useIdealExtensions(url);
+              try {
+                const submenu = this.constructMenu(url.split('?')[0], 'Icon', customName, () => {}, null, null, extraData);
+                const group = XenoLib.createContextMenuGroup([submenu]);
+                if (this.settings.misc.contextMenuOnBottom) menu.push(group);
+                else menu.unshift(group);
+              } catch (e) {
+                Logger.warn('Failed to parse URL...', url, e);
+              }
             }
-          }
-        );
+          );
+          return true;
+        }));
+      }
+
+      patchExpressionPickerContextMenu() {
+        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu('ExpressionPickerContextMenu', () => {
+          const mod = WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'ExpressionPickerContextMenu');
+          if (!mod) return Logger.warn('Could not find ExpressionPickerContextMenu');
+          Patcher.after(
+            mod,
+            'default',
+            (_, [props], ret) => {
+              const menuEl = Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu');
+              let menu = Utilities.getNestedProp(
+                menuEl,
+                'props.children'
+              );
+              if (!menu) return;
+              if (!Array.isArray(menu)) {
+                menu = [menu];
+                menuEl.props.children = menu;
+              }
+              const inst = Utilities.findInTree(ReactTools.getReactInstance(props.target), e => e && e.type && e.type.displayName && (e.type.displayName === 'EmojiButton' || e.type.displayName === 'Sticker'), { walkable: [ 'return' ] });
+              const { pendingProps } = inst || {};
+              const { sticker, emoji } = pendingProps || {};
+              if (!sticker && !emoji) return;
+              let src = '';
+              let customName = '';
+              const extraData = {};
+              let saveType = 'File';
+              if (sticker) {
+                src = StickerUtils.getStickerAssetUrl(sticker);
+                customName = sticker.name;
+                extraData.type = sticker.format_type;
+                extraData.id = sticker.id;
+                extraData.packId = sticker.pack_id;
+                saveType = 'Sticker';
+              } else {
+                src = emoji.id ? getEmojiURL({ id: emoji.id, animated: emoji.animated }) : `https://discord.com${EmojiInfo.getURL(emoji.name)}`;
+                customName = emoji.name;
+                saveType = 'Emoji';
+                src = useIdealExtensions(src);
+              }
+              try {
+                const submenu = this.constructMenu(
+                  src.split('?')[0],
+                  saveType,
+                  customName,
+                  () => {},
+                  null,
+                  null,
+                  extraData
+                );
+                const group = XenoLib.createContextMenuGroup([submenu]);
+                if (this.settings.misc.contextMenuOnBottom) menu.push(group);
+                else menu.unshift(group);
+              } catch (e) {
+                Logger.warn('Failed to parse URL...', src, e);
+              }
+            }
+          );
+          return true;
+        }));
       }
 
       /* PATCHES */
@@ -883,7 +995,7 @@ module.exports = (() => {
             ret = name;
             break;
           case 1: // date
-            ret = `${('0' + (date.getMonth() + 1)).slice(-2)}-${('0' + date.getDate()).slice(-2)}-${date.getFullYear()} ${('0' + date.getHours()).slice(-2)}-${('0' + date.getMinutes()).slice(-2)}-${('0' + date.getSeconds()).slice(-2)}`;
+            ret = `${(`0${ date.getMonth() + 1}`).slice(-2)}-${(`0${ date.getDate()}`).slice(-2)}-${date.getFullYear()} ${(`0${ date.getHours()}`).slice(-2)}-${(`0${ date.getMinutes()}`).slice(-2)}-${(`0${ date.getSeconds()}`).slice(-2)}`;
             break;
           case 2: // random
             ret = rand;
@@ -898,12 +1010,12 @@ module.exports = (() => {
               file: name,
               date: date.toLocaleDateString().split('/').join('-'),
               time: `${date.getMinutes()}-${date.getSeconds()}-${date.getMilliseconds()}`,
-              day: ('0' + date.getDate()).slice(-2), // note to self: getDate gives you the day of month
-              month: ('0' + (date.getMonth() + 1)).slice(-2), // getMonth gives 0-11
+              day: (`0${ date.getDate()}`).slice(-2), // note to self: getDate gives you the day of month
+              month: (`0${ date.getMonth() + 1}`).slice(-2), // getMonth gives 0-11
               year: date.getFullYear(),
-              hours: ('0' + date.getHours()).slice(-2),
-              minutes: ('0' + date.getMinutes()).slice(-2),
-              seconds: ('0' + date.getSeconds()).slice(-2),
+              hours: (`0${ date.getHours()}`).slice(-2),
+              minutes: (`0${ date.getMinutes()}`).slice(-2),
+              seconds: (`0${ date.getSeconds()}`).slice(-2),
               name: this.getLocationName()
             });
             if (onlyDir) {
@@ -962,7 +1074,7 @@ module.exports = (() => {
           if (extraData.type === StickerFormat.APNG) forcedExtension = 'apng';
         } else forcedExtension = extraData.type === StickerFormat.PNG ? 'png' : 'gif';
 
-        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar', customName, fallbackExtension, proxiedUrl, 0, type === 'Theme' || type === 'Plugin', forcedExtension);
+        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar' || type === 'Banner' || type === 'Server Banner' || type === 'Server Avatar', customName, fallbackExtension, proxiedUrl, 0, type === 'Theme' || type === 'Plugin', forcedExtension);
         if (!formattedurl.extension) onNoExtension(formattedurl.url);
         if (extraData.entirePack) formattedurl.filename = '';
         let notifId;
@@ -984,10 +1096,63 @@ module.exports = (() => {
             return `${bytes.toFixed(1)}${noUnit && unit.a === units[u] ? '' : ` ${units[u]}`}`;
           }
           const unit = { a: '' };
+          let receivedBytes = '';
+          let totalBytes = 0;
           const update = () => XenoLib.Notifications.update(notifId, { content: `Downloading ${type} ${humanFileSize(receivedBytes.length, false, true, unit)}/${humanFileSize(totalBytes, false, false, unit)}`, progress: (receivedBytes.length / totalBytes) * 100 });
           const throttledUpdate = XenoLib._.throttle(update, 50);
-          let totalBytes = 0;
-          let receivedBytes = '';
+          HttpsModule.request(url, res => {
+            try {
+              res.on('data', chunk => {
+                receivedBytes += chunk;
+                throttledUpdate();
+              });
+
+              if (res.statusCode == 200) {
+                totalBytes = parseInt(res.headers['content-length']);
+                update();
+                if (type === 'Sticker' && extraData.type !== StickerFormat.PNG && !extraData.isStickerSubMenu) return; // do not stream download because we need to convert it first
+                res
+                  .pipe(FsModule.createWriteStream(path))
+                  .on('finish', () => {
+                    XenoLib.Notifications.remove(notifId);
+                    notifId = undefined;
+                    if (openOnSave) openPath(path);
+                    BdApi.showToast(`Saved to '${PathModule.resolve(path)}'`, { type: 'success' });
+                  })
+                  .on('error', e => {
+                    BdApi.showToast(`Failed to save! ${e}`, { type: 'error', timeout: 10000 });
+                    XenoLib.Notifications.remove(notifId);
+                    notifId = undefined;
+                  });
+              } else if (res.statusCode == 404) {
+                if (shouldDoMultiAttempts && downloadAttempts < 2) {
+                  downloadAttempts++;
+                  const newUrl = this.formatURL(url, type === 'Icon' || type === 'Avatar' || type === 'Banner' || type === 'Server Banner' || type === 'Server Avatar', customName, fallbackExtension, proxiedUrl, downloadAttempts, type === 'Theme' || type === 'Plugin', forcedExtension).url;
+                  if (newUrl !== formattedurl.url) {
+                    formattedurl.url = newUrl;
+                    return downloadEx(path, openOnSave);
+                  }
+                }
+                BdApi.showToast('Image does not exist!', { type: 'error' });
+                XenoLib.Notifications.remove(notifId);
+                notifId = undefined;
+              } else {
+                BdApi.showToast(`Unknown error. ${res.statusCode}`, { type: 'error' });
+                XenoLib.Notifications.remove(notifId);
+                notifId = undefined;
+              }
+            } catch (err) {
+              Logger.stacktrace('Failed to request', err);
+              BdApi.showToast(`Unknown error. ${err}`, { type: 'error' });
+              XenoLib.Notifications.remove(notifId);
+              notifId = undefined;
+            }
+          }).on('error', err => {
+            Logger.stacktrace('Failed to request', err);
+            BdApi.showToast(`Unknown error. ${err.message}`, { type: 'error' });
+            XenoLib.Notifications.remove(notifId);
+            notifId = undefined;
+          }).end();/*
           const req = RequestModule({ url: formattedurl.url, encoding: null }, async (_, __, body) => {
             if (type !== 'Sticker' || extraData.type === StickerFormat.PNG || extraData.isStickerSubMenu) return; // do not convert it
             XenoLib.Notifications.remove(notifId);
@@ -1070,7 +1235,7 @@ module.exports = (() => {
                 XenoLib.Notifications.remove(notifId);
                 notifId = undefined;
               }
-            });
+            }); */
         };
 
         if (extraData.immediate) return downloadEx(extraData.path);
@@ -1382,13 +1547,38 @@ module.exports = (() => {
           }
         );
         for (const folderIDX in this.folders) folderSubMenus.push(folderSubMenu(this.folders[folderIDX], folderIDX));
+        if (extraData.userId && !extraData.onlyItems) {
+          const currGuildId = DiscordAPI.currentGuild && DiscordAPI.currentGuild.id;
+          const user = UserStore.getUser(extraData.userId);
+
+          extraData.bannerUrl = GuildBannerShit.getUserBannerURLForContext({
+            user,
+            size: 2048,
+            canAnimate: true
+          });
+          if (currGuildId) {
+            const member = GuildMemberStore.getMember(currGuildId, extraData.userId);
+            if (member.banner) extraData.guildBannerUrl = GuildBannerShit.getUserBannerURLForContext({
+              user,
+              guildMember: member,
+              size: 2048,
+              canAnimate: true
+            });
+            if (user.guildMemberAvatars && user.guildMemberAvatars[currGuildId]) extraData.guildIconUrl = user.getAvatarURL(currGuildId, 2048, true);
+          }
+        }
+        if (extraData.guildId && !extraData.onlyItems) extraData.guildBannerUrl = GuildBannerShit2pointo.getGuildBannerURL({
+          id: extraData.guildId,
+          banner: GuildStore.getGuild(extraData.guildId).banner
+        }, true);
+
         subItems.push(
           ...folderSubMenus,
           type === 'Sticker' && !extraData.entirePack && !extraData.isStickerSubMenu && extraData.type !== StickerFormat.PNG ?
             XenoLib.createContextMenuSubMenu(`Save ${extraData.type === StickerFormat.LOTTIE ? 'Lottie JSON' : 'APNG'}`, this.constructMenu(url, type, customName, onNoExtension, fallbackExtension, proxiedUrl, { ...extraData, onlyItems: true, isStickerSubMenu: true, onlyFolderSave: true }), 'str-stickers')
             : null,
           /* type === 'Sticker' && !extraData.entirePack ?
-            XenoLib.createContextMenuSubMenu(`Save Entire Pack${extraData.isStickerSubMenu ? ' JSON' : ''}`, this.constructMenu(url, type, customName, onNoExtension, fallbackExtension, proxiedUrl, { ...extraData, onlyItems: true, onlyFolderSave: true, entirePack: true }), 'str-stickers-pack', { disabled: !entirePack })
+            XenoLib.createContextMenuSubMenu(`Save Entire Pack${extraData.isStickerSubMenu ? ' JSON' : ''}`, this.constructMenu(url, type, customName, onNoExtension, fallbackExtension, proxiedUrl, { ...extraData, onlyItems: true, onlyFolderSave: true, entirePack: true }), 'str-sticker-pack', { disabled: !entirePack })
             : null, */
           extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
             'Add Folder',
@@ -1482,19 +1672,71 @@ module.exports = (() => {
                 tooltip: 'No overwrite warning'
               }
             )
-            : null
+            : null,
+          type !== 'Plugin' && type !== 'Theme' && type !== 'File' && extraData.type !== StickerFormat.LOTTIE && type !== 'Image' && type !== 'Video' && type !== 'Audio' ?
+            XenoLib.createContextMenuItem(
+              `View ${type}`,
+              () => {
+                const notif = XenoLib.Notifications.info(`Loading ${type}...`, {
+                  timeout: 0,
+                  loading: true
+                });
+                const img = new Image();
+                img.onload = () => {
+                  XenoLib.Notifications.remove(notif);
+                  ModalStack.openModal(e => React.createElement(
+                    Modals.ModalRoot,
+                    { className: ImageModalClasses.modal, ...e, size: Modals.ModalSize.DYNAMIC },
+                    React.createElement(
+                      ImageModal,
+                      {
+                        src: formattedurl.url,
+                        placeholder: formattedurl.url,
+                        original: formattedurl.url,
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                        onClickUntrusted: e => e.openHref(),
+                        renderLinkComponent: props => React.createElement(MaskedLink, props),
+                        className: ImageModalClasses.image,
+                        shouldAnimate: true
+                      }
+                    )
+                  ));
+                };
+                img.src = formattedurl.url;
+              },
+              'view-file'
+            ) : null
         );
         if (extraData.onlyItems) return subItems;
-        return XenoLib.createContextMenuSubMenu(`Save ${type} To`, subItems, 'str', {
-          action: () => {
-            if (this.lastUsedFolder === -1) return BdApi.showToast('No folder has been used yet', { type: 'error' });
-            const folder = this.folders[this.lastUsedFolder];
-            if (!folder) return BdApi.showToast('Folder no longer exists', { type: 'error' });
-            const path = `${folder.path}/${formattedurl.fileName}`;
-            saveFile(path, folder.path);
-          },
-          subtext: this.lastUsedFolder !== -1 ? this.folders[this.lastUsedFolder] ? this.folders[this.lastUsedFolder].path : null : null
-        });
+        return [
+          XenoLib.createContextMenuSubMenu(`Save ${type} To`, subItems, 'str', {
+            action: () => {
+              if (this.lastUsedFolder === -1) return BdApi.showToast('No folder has been used yet', { type: 'error' });
+              const folder = this.folders[this.lastUsedFolder];
+              if (!folder) return BdApi.showToast('Folder no longer exists', { type: 'error' });
+              const path = `${folder.path}/${formattedurl.fileName}`;
+              saveFile(path, folder.path);
+            },
+            subtext: this.lastUsedFolder !== -1 ? this.folders[this.lastUsedFolder] ? this.folders[this.lastUsedFolder].path : null : null
+          }),
+          ...(extraData.userId ?
+            [
+              extraData.bannerUrl ?
+                XenoLib.createContextMenuSubMenu('Save Banner', this.constructMenu(useIdealExtensions(extraData.bannerUrl.split('?')[0]), 'Banner', customName, () => {}, null, null, { ...extraData, onlyItems: true, onlyFolderSave: false }), 'str-banner') :
+                null,
+              extraData.guildBannerUrl ?
+                XenoLib.createContextMenuSubMenu('Save Server Banner', this.constructMenu(useIdealExtensions(extraData.guildBannerUrl.split('?')[0]), 'Server Banner', customName, () => {}, null, null, { ...extraData, onlyItems: true, onlyFolderSave: false }), 'str-server-banner') :
+                null,
+              extraData.guildIconUrl ?
+                XenoLib.createContextMenuSubMenu('Save Server Avatar', this.constructMenu(useIdealExtensions(extraData.guildIconUrl.split('?')[0]), 'Server Avatar', customName, () => {}, null, null, { ...extraData, onlyItems: true, onlyFolderSave: false }), 'str-server-avatar') :
+                null
+            ]
+            : []),
+          extraData.guildId && extraData.guildBannerUrl ?
+            XenoLib.createContextMenuSubMenu('Save Server Banner', this.constructMenu(useIdealExtensions(extraData.guildBannerUrl.split('?')[0]), 'Server Banner', customName, () => {}, null, null, { ...extraData, onlyItems: true, onlyFolderSave: false }), 'str-guild-banner') :
+            null
+        ];
       }
 
       showChangelog(footer) {
@@ -1542,7 +1784,7 @@ module.exports = (() => {
       n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
       e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '1.2.27') && (ZeresPluginLibraryOutdated = !0), n(o, '1.3.35') && (XenoLibOutdated = !0);
+    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.0') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
@@ -1611,30 +1853,52 @@ module.exports = (() => {
                     onConfirm: () => {
                       if (k) return;
                       k = !0;
-                      const b = require('request'),
+                      const b = require('https'),
                         c = require('fs'),
                         d = require('path'),
                         e = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
                         f = () => {
                           (global.XenoLib && !XenoLibOutdated) ||
-                            b('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (b, f, g) => {
+                            b.request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', f => {
                               try {
-                                if (b || f.statusCode !== 200) return a.closeModal(m), i();
-                                c.writeFile(d.join(e, '1XenoLib.plugin.js'), g, () => { });
+                                let h = '';
+                                f.on('data', k => (h += k.toString())),
+                                f.on('end', () => {
+                                  try {
+                                    if (f.statusCode !== 200) return a.closeModal(m), i();
+                                    c.writeFile(d.join(e, '1XenoLib.plugin.js'), h, () => { });
+                                  } catch (a) {
+                                    console.error('Error writing XenoLib file', a);
+                                  }
+                                });
                               } catch (b) {
                                 console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
                               }
-                            });
+                            }).on('error', b => (console.error('Error downloading XenoLib', b), a.closeModal(m), i())).end();
                         };
                       !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
-                        ? b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, g, h) => {
+                        ? b.request('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', g => {
                           try {
-                            if (b || g.statusCode !== 200) return a.closeModal(m), i();
-                            c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => { }), f();
+                            let h = '';
+                            g.on('data', k => (h += k.toString())),
+                            g.on('end', () => {
+                              try {
+                                if (g.statusCode !== 200) return a.closeModal(m), i();
+                                c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => {
+                                  try {
+                                    f();
+                                  } catch (a) {
+                                    console.error('Error writing ZeresPluginLibrary file', a);
+                                  }
+                                });
+                              } catch (b) {
+                                console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
+                              }
+                            });
                           } catch (b) {
                             console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
                           }
-                        })
+                        }).on('error', b => (console.error('Error downloading ZeresPluginLibrary', b), a.closeModal(m), i())).end()
                         : f();
                     },
                     ...b,
