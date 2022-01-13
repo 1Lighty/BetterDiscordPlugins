@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.0
+ * @version 2.4.1
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -50,7 +50,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.4.0',
+      version: '2.4.1',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -59,7 +59,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed context menus not showing up after update.', 'Fixed saving emojis as webp instead of png.', 'Fixed twitter embed images being marked as Files.']
+        items: ['Fixed context menus not showing up after update.', 'Fixed saving emojis as webp instead of png.', 'Fixed twitter embed images being marked as Files.', 'Fixed downloading from wrong url var.']
       },
       {
         title: 'Added',
@@ -1100,7 +1100,7 @@ module.exports = (() => {
           let totalBytes = 0;
           const update = () => XenoLib.Notifications.update(notifId, { content: `Downloading ${type} ${humanFileSize(receivedBytes.length, false, true, unit)}/${humanFileSize(totalBytes, false, false, unit)}`, progress: (receivedBytes.length / totalBytes) * 100 });
           const throttledUpdate = XenoLib._.throttle(update, 50);
-          HttpsModule.request(url, res => {
+          HttpsModule.request(formattedurl.url, res => {
             try {
               res.on('data', chunk => {
                 receivedBytes += chunk;
