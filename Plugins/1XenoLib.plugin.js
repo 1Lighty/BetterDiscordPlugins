@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.1
+ * @version 1.4.2
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,16 +106,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.1',
+      version: '1.4.2',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
     },
     changelog: [
       {
-        title: 'Wee',
+        title: 'HOTFIX',
         type: 'fixed',
-        items: ['Fixed parser errors', 'Fixed other misc errors related to classes', 'Fixed color pickers', 'Made context menu patching more reliable', 'Added a confirmation modal to the `Join my support server` text below because people kept joining by accident']
+        items: ['Remove use of deprecated API']
       }
     ],
     defaultConfig: [
@@ -176,8 +176,8 @@ module.exports = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Titles, Changelog: ChangelogModal } = DiscordModules;
+    const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, Logger, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Titles, Changelog: ChangelogModal, SelectedChannelStore, SelectedGuildStore } = DiscordModules;
 
     if (window.__XL_waitingForWatcherTimeout) clearTimeout(window.__XL_waitingForWatcherTimeout);
 
@@ -548,6 +548,29 @@ module.exports = (() => {
       }
     };
 
+    // replica of zeres deprecated DiscordAPI
+    XenoLib.DiscordAPI = {
+      get userId() {
+        const user = UserStore.getCurrentUser();
+        return user && user.id;
+      },
+      get channelId() {
+        return SelectedChannelStore.getChannelId();
+      },
+      get guildId() {
+        return SelectedGuildStore.getGuildId();
+      },
+      get user() {
+        return UserStore.getCurrentUser();
+      },
+      get channel() {
+        return ChannelStore.getChannel(this.channelId);
+      },
+      get guild() {
+        return GuildStore.getGuild(this.guildId);
+      }
+    };
+
     /* —————————————— Copyright (c) 2022 1Lighty, All rights reserved ——————————————
     *
     * A utility from Astra
@@ -743,9 +766,9 @@ module.exports = (() => {
           const author = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf('bda-author') !== -1);
           if (!author || typeof author.props.children !== 'string' || author.props.children.indexOf('Lighty') === -1) return;
           const onClick = () => {
-            if (DiscordAPI.currentUser.id === XenoLib.authorId) return;
-            PrivateChannelActions.ensurePrivateChannel(DiscordAPI.currentUser.id, XenoLib.authorId).then(() => {
-              PrivateChannelActions.openPrivateChannel(DiscordAPI.currentUser.id, XenoLib.authorId);
+            if (XenoLib.DiscordAPI.userId === XenoLib.authorId) return;
+            PrivateChannelActions.ensurePrivateChannel(XenoLib.DiscordAPI.userId, XenoLib.authorId).then(() => {
+              PrivateChannelActions.openPrivateChannel(XenoLib.DiscordAPI.userId, XenoLib.authorId);
               LayerManager.popLayer();
             });
           };
