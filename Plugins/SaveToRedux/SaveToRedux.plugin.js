@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.1
+ * @version 2.4.2
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -50,21 +50,21 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.4.1',
+      version: '2.4.2',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'Fixed',
+        title: 'HOTFIX',
         type: 'fixed',
-        items: ['Fixed context menus not showing up after update.', 'Fixed saving emojis as webp instead of png.', 'Fixed twitter embed images being marked as Files.', 'Fixed downloading from wrong url var.']
+        items: ['Removed use of deprecated API']
       },
       {
         title: 'Added',
         type: 'added',
-        items: ['Added saving emojis and stickers directly from the picker.', 'Added saving server banners.', 'Added saving user banners.', 'Added saving user server banners.', 'Added saving user server avatars.', 'Added option to view emojis, avatars, banners, reactions.']
+        items: ['Added option to copy link of pfp, banners, etc.']
       }
     ],
     defaultConfig: [
@@ -128,7 +128,7 @@ module.exports = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { Settings, Utilities, WebpackModules, DiscordModules, DiscordClasses, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, ReactTools } = Api;
+    const { Settings, Utilities, WebpackModules, DiscordModules, DiscordClasses, ReactComponents, Logger, PluginUpdater, PluginUtilities, ReactTools } = Api;
     const { React, ContextMenuActions, GuildStore, DiscordConstants, Dispatcher, EmojiUtils, EmojiStore, EmojiInfo, GuildMemberStore, UserStore } = DiscordModules;
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
@@ -781,8 +781,8 @@ module.exports = (() => {
               const emojiId = url.split('emojis/')[1].split('.')[0];
               const emoji = EmojiUtils.getDisambiguatedEmojiContext().getById(emojiId);
               if (!emoji) {
-                if (!DiscordAPI.currentChannel || !this.channelMessages[DiscordAPI.currentChannel.id]) return;
-                const message = this.channelMessages[DiscordAPI.currentChannel.id]._array.find(m => m.content.indexOf(emojiId) !== -1);
+                if (!XenoLib.DiscordAPI.channelId || !this.channelMessages[XenoLib.DiscordAPI.channelId]) return;
+                const message = this.channelMessages[XenoLib.DiscordAPI.channelId]._array.find(m => m.content.indexOf(emojiId) !== -1);
                 if (message && message.content) {
                   const group = message.content.match(new RegExp(`<a?:([^:>]*):${emojiId}>`));
                   if (group && group[1]) customName = group[1];
@@ -975,11 +975,19 @@ module.exports = (() => {
       }
 
       getLocationName() {
-        if (DiscordAPI.currentGuild) return DiscordAPI.currentGuild.name;
-        if (!DiscordAPI.currentChannel) return '';
-        if (DiscordAPI.currentChannel.recipient) return DiscordAPI.currentChannel.recipient.username;
-        if (DiscordAPI.currentChannel.name) return DiscordAPI.currentChannel.name;
-        return DiscordAPI.currentChannel.members.reduce((p, c) => (p ? `${p}, ${c.username}` : c.username), '');
+        if (XenoLib.DiscordAPI.guild) return XenoLib.DiscordAPI.guild.name;
+        if (!XenoLib.DiscordAPI.channelId) return '';
+        const { recipients, name } = XenoLib.DiscordAPI.channel;
+        if (recipients.length === 1) {
+          const user = UserStore.getUser(recipients[0]);
+          if (user) return user.username;
+        }
+        if (name) return name;
+        return recipients.reduce((acc, id) => {
+          const user = UserStore.getUser(id);
+          if (user) acc.push(user.username);
+          return acc;
+        }, []).join(', ');
       }
 
       formatFilename(name, options = {}) {
@@ -1025,7 +1033,7 @@ module.exports = (() => {
             ret = PathModule.basename(ret);
         }
         if (onlyDir) return null;
-        if (this.settings.saveOptions.fileNameType !== 4) if (this.settings.saveOptions.appendCurrentName && (DiscordAPI.currentGuild || DiscordAPI.currentChannel)) {
+        if (this.settings.saveOptions.fileNameType !== 4) if (this.settings.saveOptions.appendCurrentName && (XenoLib.DiscordAPI.guild || XenoLib.DiscordAPI.channel)) {
           const name = this.getLocationName();
           if (name) ret += `-${name}`;
         }
@@ -1548,7 +1556,7 @@ module.exports = (() => {
         );
         for (const folderIDX in this.folders) folderSubMenus.push(folderSubMenu(this.folders[folderIDX], folderIDX));
         if (extraData.userId && !extraData.onlyItems) {
-          const currGuildId = DiscordAPI.currentGuild && DiscordAPI.currentGuild.id;
+          const currGuildId = XenoLib.DiscordAPI.guildId;
           const user = UserStore.getUser(extraData.userId);
 
           extraData.bannerUrl = GuildBannerShit.getUserBannerURLForContext({
@@ -1673,40 +1681,50 @@ module.exports = (() => {
               }
             )
             : null,
-          type !== 'Plugin' && type !== 'Theme' && type !== 'File' && extraData.type !== StickerFormat.LOTTIE && type !== 'Image' && type !== 'Video' && type !== 'Audio' ?
-            XenoLib.createContextMenuItem(
-              `View ${type}`,
-              () => {
-                const notif = XenoLib.Notifications.info(`Loading ${type}...`, {
-                  timeout: 0,
-                  loading: true
-                });
-                const img = new Image();
-                img.onload = () => {
-                  XenoLib.Notifications.remove(notif);
-                  ModalStack.openModal(e => React.createElement(
-                    Modals.ModalRoot,
-                    { className: ImageModalClasses.modal, ...e, size: Modals.ModalSize.DYNAMIC },
-                    React.createElement(
-                      ImageModal,
-                      {
-                        src: formattedurl.url,
-                        placeholder: formattedurl.url,
-                        original: formattedurl.url,
-                        width: img.naturalWidth,
-                        height: img.naturalHeight,
-                        onClickUntrusted: e => e.openHref(),
-                        renderLinkComponent: props => React.createElement(MaskedLink, props),
-                        className: ImageModalClasses.image,
-                        shouldAnimate: true
-                      }
-                    )
-                  ));
-                };
-                img.src = formattedurl.url;
-              },
-              'view-file'
-            ) : null
+          ...(type !== 'Plugin' && type !== 'Theme' && type !== 'File' && extraData.type !== StickerFormat.LOTTIE && type !== 'Image' && type !== 'Video' && type !== 'Audio' ?
+            [
+              XenoLib.createContextMenuItem(
+                `View ${type}`,
+                () => {
+                  const notif = XenoLib.Notifications.info(`Loading ${type}...`, {
+                    timeout: 0,
+                    loading: true
+                  });
+                  const img = new Image();
+                  img.onload = () => {
+                    XenoLib.Notifications.remove(notif);
+                    ModalStack.openModal(e => React.createElement(
+                      Modals.ModalRoot,
+                      { className: ImageModalClasses.modal, ...e, size: Modals.ModalSize.DYNAMIC },
+                      React.createElement(
+                        ImageModal,
+                        {
+                          src: formattedurl.url,
+                          placeholder: formattedurl.url,
+                          original: formattedurl.url,
+                          width: img.naturalWidth,
+                          height: img.naturalHeight,
+                          onClickUntrusted: e => e.openHref(),
+                          renderLinkComponent: props => React.createElement(MaskedLink, props),
+                          className: ImageModalClasses.image,
+                          shouldAnimate: true
+                        }
+                      )
+                    ));
+                  };
+                  img.src = formattedurl.url;
+                },
+                'view-file'
+              ),
+              XenoLib.createContextMenuItem(
+                `Copy ${type} Link`,
+                () => {
+                  DiscordNative.clipboard.copy(formattedurl.url);
+                  BdApi.showToast('Copied link to clipboard!', { type: 'success' });
+                },
+                'copy-file-link'
+              )
+            ] : [])
         );
         if (extraData.onlyItems) return subItems;
         return [
@@ -1784,7 +1802,7 @@ module.exports = (() => {
       n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
       e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.0') && (XenoLibOutdated = !0);
+    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.2') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
