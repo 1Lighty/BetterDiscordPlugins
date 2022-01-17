@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.4
+ * @version 1.3.5
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.4',
+      version: '1.3.5',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -257,10 +257,10 @@ module.exports = (() => {
     ],
     changelog: [
       {
-        title: 'fixed',
+        title: 'HOTFIX',
         type: 'fixed',
         items: [
-          'Fixed not working on canary.'
+          'Removed use of deprecated API'
         ]
       }
     ]
@@ -268,7 +268,7 @@ module.exports = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, DiscordAPI, Logger, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
+    const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, Logger, PluginUpdater, PluginUtilities, DiscordClassModules } = Api;
     const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, GuildStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver, SelectedChannelStore, PrivateChannelActions } = DiscordModules;
 
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
@@ -703,11 +703,6 @@ module.exports = (() => {
       }
     }
 
-    const currentChannel = _ => {
-      const channel = ChannelStore.getChannel(SelectedChannelStore.getChannelId());
-      return channel ? Structs.Channel.from(channel) : null;
-    };
-
     const MessageRenderers = WebpackModules.getByProps('renderImageComponent');
     const ImageUtils = WebpackModules.getByProps('fit', 'getRatio');
 
@@ -1067,10 +1062,10 @@ module.exports = (() => {
       }
 
       shouldNotify(message, iChannel, iAuthor) {
-        if (!DiscordAPI.currentUser || !iChannel || !iAuthor) return RetTypes.SILENT;
+        if (!XenoLib.DiscordAPI.user || !iChannel || !iAuthor) return RetTypes.SILENT;
         if (!this.settings.showNoFocus && !WindowInfo.isFocused()) return RetTypes.SILENT;
-        const ciChannel = currentChannel();
-        const cUID = DiscordAPI.currentUser.id;
+        const ciChannel = XenoLib.DiscordAPI.channel;
+        const cUID = XenoLib.DiscordAPI.userId;
         if (ciChannel && ciChannel.id === iChannel.id) return RetTypes.SILENT; // ignore if channel is open
         const threadState = ciChannel && ThreadStateStore.getThreadSidebarState(ciChannel.id);
         if (threadState && threadState.channelId === iChannel.id) return RetTypes.SILENT; // ignore if thread is open
@@ -1475,7 +1470,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.0') && (XenoLibOutdated = !0);
+    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.2') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
