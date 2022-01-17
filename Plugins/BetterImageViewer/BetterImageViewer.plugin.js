@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.3
+ * @version 1.6.4
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,16 +44,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.3',
+      version: '1.6.4',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'Fixed',
+        title: 'HOTFIX',
         type: 'fixed',
-        items: ['Fixed not working on canary.']
+        items: ['Removed use of deprecated API.']
       }
     ],
     defaultConfig: [
@@ -239,7 +239,7 @@ module.exports = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { Utilities, WebpackModules, DiscordModules, ReactComponents, DiscordAPI, Logger, PluginUtilities, PluginUpdater, Structs } = Api;
+    const { Utilities, WebpackModules, DiscordModules, ReactComponents, Logger, PluginUtilities, PluginUpdater, Structs } = Api;
     const { React, ReactDOM, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, APIModule, NavigationUtils, SelectedChannelStore } = DiscordModules;
 
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
@@ -732,11 +732,6 @@ module.exports = (() => {
     // const SearchResultsWrap = XenoLib.getSingleClass('noResults searchResultsWrap') || 'ERRORCLASS';
     const SearchStore = WebpackModules.getByProps('getCurrentSearchId');
 
-    const currentChannel = _ => {
-      const channel = ChannelStore.getChannel(SelectedChannelStore.getChannelId());
-      return channel ? Structs.Channel.from(channel) : null;
-    };
-
     class RichImageModal extends (() => {
       if (ImageModal) return ImageModal;
       Logger.error('ImageModal is undefined! Plugin will not work!');
@@ -826,7 +821,7 @@ module.exports = (() => {
             }
             if (!this._forwardSearchCache) this._forwardSearchCache = ForwardSearchCache[channelId] = [];
             this._followNew = ChannelMessages[channelId]._after._wasAtEdge;
-            this._searchId = DiscordAPI.currentGuild ? DiscordAPI.currentGuild.id : channelId;
+            this._searchId = XenoLib.DiscordAPI.guildId || channelId;
           } else try {
             this._followNew = false;
             this._searchCache = [];
@@ -1191,7 +1186,7 @@ module.exports = (() => {
         imageComponent.type = LazyImage;
         imageComponent.props.id = message.id + currentImage;
         imageComponent.props.__BIV_original = this.props.original;
-        const iMember = DiscordAPI.currentGuild && GuildMemberStore.getMember(DiscordAPI.currentGuild.id, message.author.id);
+        const iMember = XenoLib.DiscordAPI.guildId && GuildMemberStore.getMember(XenoLib.DiscordAPI.guildId, message.author.id);
         ret.props.children.push(ReactDOM.createPortal(
           [
             this.props.__BIV_settings.ui.navButtons || this.props.__BIV_settings.behavior.debug
@@ -1272,7 +1267,7 @@ module.exports = (() => {
                             : null,
                       onClick: () => {
                         this.props.onClose();
-                        NavigationUtils.transitionTo(`/channels/${(DiscordAPI.currentGuild && DiscordAPI.currentGuild.id) || '@me'}/${message.channel_id}${message.id ? `/${ message.id}` : ''}`);
+                        NavigationUtils.transitionTo(`/channels/${(XenoLib.DiscordAPI.guildId) || '@me'}/${message.channel_id}${message.id ? `/${ message.id}` : ''}`);
                       }
                     },
                     (iMember && iMember.nick) || message.author.username
@@ -1976,14 +1971,14 @@ module.exports = (() => {
         Patcher.instead(LazyImage.prototype, 'handleSidebarChange', (_this, [forced]) => {
           if (!this.settings.chat.resize || !SectionStore) return;
           const { state } = _this;
-          if (!currentChannel()) {
+          if (!XenoLib.DiscordAPI.channelId) {
             state.__BIV_sidebarMultiplier = null;
             return;
           }
           const section = SectionStore.getSection();
           let newMultiplier;
           if (section === 'SEARCH') newMultiplier = SEARCH_SIDEBAR;
-          else if (section !== 'MEMBERS' || (!DiscordModules.SelectedGuildStore.getGuildId() && currentChannel().type !== 'GROUP_DM')) newMultiplier = NO_SIDEBAR;
+          else if (section !== 'MEMBERS' || (!DiscordModules.SelectedGuildStore.getGuildId() && XenoLib.DiscordAPI.channel.type !== 'GROUP_DM')) newMultiplier = NO_SIDEBAR;
           else newMultiplier = MEMBERS_SIDEBAR;
           if (!forced && newMultiplier !== state.__BIV_sidebarMultiplier) _this.setState({ __BIV_sidebarMultiplier: newMultiplier });
           else state.__BIV_sidebarMultiplier = newMultiplier;
@@ -2109,7 +2104,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.0') && (XenoLibOutdated = !0);
+    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.2') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
