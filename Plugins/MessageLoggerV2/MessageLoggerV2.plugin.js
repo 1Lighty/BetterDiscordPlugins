@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.10
+ * @version 1.8.9
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -38,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.10';
+    return '1.8.9';
   }
   getAuthor() {
     return 'Lighty';
