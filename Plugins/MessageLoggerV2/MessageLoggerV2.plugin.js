@@ -181,9 +181,9 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'Fixes',
+        title: 'HOTFIX',
         type: 'fixed',
-        items: ['Fixed deleted messages not appearing as so', 'Fixed menu being borked beyond repair', '<a:FA_FoxWork:742462902384197752>']
+        items: ['Removed use of deprecated API.', '<a:FA_FoxWork:742462902384197752>']
       }
     ];
   }
