@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.9
+ * @version 1.8.11
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -38,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.9';
+    return '1.8.11';
   }
   getAuthor() {
     return 'Lighty';
@@ -183,7 +183,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'HOTFIX',
         type: 'fixed',
-        items: ['Removed use of deprecated API.', '<a:FA_FoxWork:742462902384197752>']
+        items: ['Removed use of deprecated API.', 'Fixed update/stop/start crash bug.', '<a:FA_FoxWork:742462902384197752>']
       }
     ];
   }
@@ -3208,7 +3208,7 @@ module.exports = class MessageLoggerV2 {
     this.forceReloadMessages();
   }
   forceReloadMessages() {
-    const instance = ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(document.querySelector('.chat-3bRxxu .content-yTz4x3')), e => e && e.constructor && e.constructor.displayName === 'ChannelChat', { walkable: ['child', 'stateNode'] });
+    const instance = ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(document.querySelector('.chat-2ZfjoI .content-1jQy2l')), e => e && e.constructor && e.constructor.displayName === 'ChannelChat', { walkable: ['child', 'stateNode'] });
     if (!instance) return;
     const unpatch = this.Patcher.after(instance, 'render', (_this, _, ret) => {
       unpatch();
