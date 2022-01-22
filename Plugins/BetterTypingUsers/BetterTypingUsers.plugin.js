@@ -41,16 +41,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.3',
+      version: '1.0.4',
       description: 'Replaces "Several people are typing" with who is actually typing, plus "x others" if it can\'t fit. Number of shown people typing can be changed.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterTypingUsers/BetterTypingUsers.plugin.js'
     },
     changelog: [
       {
-        title: 'RIP BBD on Canary',
+        title: 'Goodbye',
         type: 'fixed',
-        items: ['Implemented fixes that allow patches to work properly on canary using Powercord.']
+        items: ['This plugin has been discontinued in favor of smart-typers on Powercord.']
       }
     ],
     defaultConfig: [
@@ -224,6 +224,7 @@ module.exports = (() => {
       }
       onStart() {
         if (window.Lightcord && window.XenoLib) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
+        return;
         this.promises = { state: { cancelled: false } };
         this.patchAll();
         PluginUtilities.addStyle(
@@ -239,6 +240,7 @@ module.exports = (() => {
       }
 
       onStop() {
+        return;
         this.promises.state.cancelled = true;
         Patcher.unpatchAll();
         PluginUtilities.removeStyle(this.short + '-CSS');
