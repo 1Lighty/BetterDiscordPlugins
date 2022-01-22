@@ -41,16 +41,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '0.2.9',
+      version: '0.2.10',
       description: 'Force Discord to show server icons of unavailable servers, instead of "1 server is unavailable" and enable interaction with the server (ability to leave the server, move it around, etc).',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterUnavailableGuilds/BetterUnavailableGuilds.plugin.js'
     },
     changelog: [
       {
-        title: 'fixed',
+        title: 'Goodbye',
         type: 'fixed',
-        items: ['Fixed not restoring the servers on startup.']
+        items: ['Plugin has been discontinued due to inactivity and inability for it to be applicable anywhere anymore.']
       }
     ],
     defaultConfig: [
@@ -196,6 +196,7 @@ module.exports = (() => {
         try {
           WebpackModules.getByProps('openModal', 'hasModalOpen').closeModal(`${this.name}_DEP_MODAL`);
         } catch (e) { }
+        return;
         this._dispatches = ['CONNECTION_OPEN'];
         _.bindAll(this, ['handleGuildStoreChange', 'verifyAllServersCachedInClient', ...this._dispatches]);
         // different timings for clients to avoid fighting over a damn config file
@@ -203,6 +204,7 @@ module.exports = (() => {
       }
       onStart() {
         if (window.Lightcord && window.XenoLib) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
+        return;
         this._guildRecord = loadData('data', { data: {} }).data;
         this.verifyAllServersCachedInClient();
         GuildStore.addChangeListener(this.handleGuildStoreChange);
@@ -222,6 +224,7 @@ module.exports = (() => {
         );
       }
       onStop() {
+        return;
         GuildStore.removeChangeListener(this.handleGuildStoreChange);
         Patcher.unpatchAll();
         Dispatcher._computeOrderedActionHandlers('GUILD_DELETE');
