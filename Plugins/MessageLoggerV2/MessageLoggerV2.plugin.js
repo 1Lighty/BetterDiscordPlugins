@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.11
+ * @version 1.8.12
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -38,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.11';
+    return '1.8.12';
   }
   getAuthor() {
     return 'Lighty';
@@ -183,7 +183,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'HOTFIX',
         type: 'fixed',
-        items: ['Removed use of deprecated API.', 'Fixed update/stop/start crash bug.', '<a:FA_FoxWork:742462902384197752>']
+        items: ['Not working hotfix.', '<a:FA_FoxWork:742462902384197752>']
       }
     ];
   }
@@ -993,7 +993,7 @@ module.exports = class MessageLoggerV2 {
       this.menu.filter = `channel:${this.selectedChannel.id}`;
       this.openWindow();
     });
-    new ZeresPluginLibrary.EmulatedTooltip(this.channelLogButton, 'Open Logs', { side: 'bottom' });
+    // new ZeresPluginLibrary.EmulatedTooltip(this.channelLogButton, 'Open Logs', { side: 'bottom' });
 
     if (this.settings.showOpenLogsButton) this.addOpenLogsButton();
 
@@ -3196,7 +3196,8 @@ module.exports = class MessageLoggerV2 {
           const oRef = ret.ref;
           ret.ref = e => {
             if (e && !e.__tooltip) {
-              new ZeresPluginLibrary.EmulatedTooltip(e, 'Deleted: ' + this.tools.createMomentObject(props.__MLV2_deleteTime).format('LLLL'), { side: 'left' });
+              // later
+              // new ZeresPluginLibrary.EmulatedTooltip(e, 'Deleted: ' + this.tools.createMomentObject(props.__MLV2_deleteTime).format('LLLL'), { side: 'left' });
               e.__tooltip = true;
             }
             if (typeof oRef === 'function') return oRef(e);
@@ -3525,7 +3526,7 @@ module.exports = class MessageLoggerV2 {
         this.refilterMessages(); // I don't like calling that, maybe figure out a way to animate it collapsing on itself smoothly
         this.saveData();
       });
-      new ZeresPluginLibrary.EmulatedTooltip(timestampEl, 'Sent at ' + this.tools.createMomentObject(message.timestamp).format('LLLL'), { side: 'top' });
+      // new ZeresPluginLibrary.EmulatedTooltip(timestampEl, 'Sent at ' + this.tools.createMomentObject(message.timestamp).format('LLLL'), { side: 'top' });
     }
     const messageContext = e => {
       let target = e.target;
@@ -3725,7 +3726,7 @@ module.exports = class MessageLoggerV2 {
             const hist = record.edit_history[ii];
             const editedMarkup = this.formatMarkup(hist.content, message.channel_id);
             editedMarkup.insertAdjacentHTML('beforeend', `<time class="${this.multiClasses.edited}">(edited)</time>`); // TODO, change this
-            new ZeresPluginLibrary.EmulatedTooltip(editedMarkup, 'Edited at ' + (typeof hist.time === 'string' ? hist.time : this.createTimeStamp(hist.time)), { side: 'left' });
+            // new ZeresPluginLibrary.EmulatedTooltip(editedMarkup, 'Edited at ' + (typeof hist.time === 'string' ? hist.time : this.createTimeStamp(hist.time)), { side: 'left' });
             editedMarkup.classList.add(this.style.edited);
             editedMarkup.edit = ii;
             markup.appendChild(editedMarkup);
@@ -4188,7 +4189,7 @@ module.exports = class MessageLoggerV2 {
         red: false
       });
     });
-    new ZeresPluginLibrary.EmulatedTooltip(helpButton, 'Help!', { side: 'top' });
+    // new ZeresPluginLibrary.EmulatedTooltip(helpButton, 'Help!', { side: 'top' });
     return textBox;
   }
   // >>-|| MENU MODAL CREATION ||-<<
