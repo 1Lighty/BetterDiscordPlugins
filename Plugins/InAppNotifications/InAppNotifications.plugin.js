@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.5
+ * @version 1.3.6
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.5',
+      version: '1.3.6',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -257,10 +257,10 @@ module.exports = (() => {
     ],
     changelog: [
       {
-        title: 'HOTFIX',
+        title: 'Fixed',
         type: 'fixed',
         items: [
-          'Removed use of deprecated API'
+          'Fixed not working'
         ]
       }
     ]
@@ -849,7 +849,7 @@ module.exports = (() => {
 
     const ThreadNotificationsStuff = WebpackModules.getByProps('computeThreadNotificationSetting');
     const ThreadConstants = WebpackModules.getByProps('ThreadMemberFlags');
-    const ThreadStateStore = WebpackModules.getByProps('getThreadSidebarState');
+    const ThreadStateStore = WebpackModules.getByProps('getThreadSidebarState') || WebpackModules.getByProps('getSidebarState');
     const MessageStore = WebpackModules.getByProps('getMessages', 'getMessage');
 
     return class InAppNotifications extends Plugin {
@@ -1067,7 +1067,7 @@ module.exports = (() => {
         const ciChannel = XenoLib.DiscordAPI.channel;
         const cUID = XenoLib.DiscordAPI.userId;
         if (ciChannel && ciChannel.id === iChannel.id) return RetTypes.SILENT; // ignore if channel is open
-        const threadState = ciChannel && ThreadStateStore.getThreadSidebarState(ciChannel.id);
+        const threadState = ciChannel && ThreadStateStore.getThreadSidebarState ? ThreadStateStore.getThreadSidebarState(ciChannel.id) : ThreadStateStore.getSidebarState(ciChannel.id);
         if (threadState && threadState.channelId === iChannel.id) return RetTypes.SILENT; // ignore if thread is open
         if (iChannel.isManaged()) return RetTypes.SILENT; // not sure what managed channels are.. System maybe?
         const guildId = iChannel.getGuildId();
@@ -1470,7 +1470,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.2') && (XenoLibOutdated = !0);
+    n(e, '2.0.0') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.3') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
