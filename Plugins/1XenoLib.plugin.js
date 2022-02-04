@@ -118,11 +118,6 @@ module.exports = (() => {
         title: 'Fixed',
         type: 'fixed',
         items: ['Fixed parser.', 'Fixed context menu stuffs not working as intended.']
-      },
-      {
-        title: 'Added',
-        type: 'added',
-        items: ['Added an anonymous user counter that will become active in 10 days (7 days hardcoded + 3 days for activation time) give or take. It is opt out and only becomes active 3 days after being enabled/first install. Depending on how this experiment goes, it\'ll either become public or it\'ll be scrapped.']
       }
     ],
     defaultConfig: [
