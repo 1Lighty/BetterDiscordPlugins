@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.2
+ * @version 1.4.3
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -93,6 +93,8 @@ function _parseNewMeta(code/* : string */)/* : BDPluginManifest */ {
 
 module.exports = (() => {
   const canUseAstraNotifAPI = !!(global.Astra && Astra.n11s && Astra.n11s.n11sApi);
+  // 3 day interval in milliseconds
+  const USER_COUNTER_INTERVAL = 1000 * 60 * 60 * 24 * 3;
   /* Setup */
   const config = {
     main: 'index.js',
@@ -106,16 +108,21 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.2',
+      version: '1.4.3',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
     },
     changelog: [
       {
-        title: 'HOTFIX',
+        title: 'Fixed',
         type: 'fixed',
-        items: ['Remove use of deprecated API']
+        items: ['Fixed parser.', 'Fixed context menu stuffs not working as intended.']
+      },
+      {
+        title: 'Added',
+        type: 'added',
+        items: ['Added an anonymous user counter that will become active in 10 days (7 days hardcoded + 3 days for activation time) give or take. It is opt out and only becomes active 3 days after being enabled/first install. Depending on how this experiment goes, it\'ll either become public or it\'ll be scrapped.']
       }
     ],
     defaultConfig: [
@@ -170,6 +177,40 @@ module.exports = (() => {
             value: true
           }
         ]
+      },
+      {
+        type: 'category',
+        id: 'userCounter',
+        name: 'User counter settings',
+        collapsible: true,
+        shown: false,
+        settings: [
+          {
+            name: 'Enable user counter',
+            id: 'enabled',
+            note: 'Only active after 3 days of enabling this setting',
+            type: 'switch',
+            value: true
+          },
+          {
+            id: 'enableTime',
+            type: 'timeStatus',
+            value: 0,
+            after: 'User counter will be active ',
+            active: 'User counter is currently active',
+            inactive: 'User counter is currently inactive',
+            time: USER_COUNTER_INTERVAL
+          },
+          {
+            id: 'lastSubmission',
+            type: 'timeStatus',
+            value: 0,
+            after: 'Next user counter submission will be ',
+            active: 'User counter submission will be submitted on next load',
+            inactive: 'User counter submissions are inactive',
+            time: USER_COUNTER_INTERVAL
+          }
+        ]
       }
     ]
   };
@@ -177,7 +218,7 @@ module.exports = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, Logger, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Titles, Changelog: ChangelogModal, SelectedChannelStore, SelectedGuildStore } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Titles, Changelog: ChangelogModal, SelectedChannelStore, SelectedGuildStore, Moment } = DiscordModules;
 
     if (window.__XL_waitingForWatcherTimeout) clearTimeout(window.__XL_waitingForWatcherTimeout);
 
@@ -305,6 +346,27 @@ module.exports = (() => {
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const LibrarySettings = XenoLib.loadData(config.info.name, 'settings', DefaultLibrarySettings);
+
+    try {
+      // 1 week before the API will be enabled.
+      if (LibrarySettings.userCounter.enabled && Date.now() - 1644577200000 > 0) {
+        const { enableTime } = LibrarySettings.userCounter;
+        let changed = false;
+        if (enableTime && Date.now() - enableTime > USER_COUNTER_INTERVAL) {
+          if (Date.now() - LibrarySettings.userCounter.lastSubmission > USER_COUNTER_INTERVAL) {
+            LibrarySettings.userCounter.lastSubmission = Date.now();
+            changed = true;
+            require('https').request('https://astranika.com/api/analytics/submit').on('error', () => {}).end();
+          }
+        } else {
+          LibrarySettings.userCounter.enableTime = Date.now();
+          changed = true;
+        }
+        if (changed) PluginUtilities.saveSettings(config.info.name, LibrarySettings);
+      }
+    } catch (err) {
+      Logger.stacktrace('Failed to load user counter', err);
+    }
 
     PluginUtilities.addStyle(
       'XenoLib-CSS',
@@ -474,6 +536,22 @@ module.exports = (() => {
         -webkit-box-align: center;
         -ms-flex-align: center;
         align-items: center;
+        font-size: 16px;
+        -webkit-box-sizing: border-box;
+        box-sizing: border-box;
+        width: 100%;
+        border-radius: 3px;
+        color: var(--text-normal);
+        background-color: var(--deprecated-text-input-bg);
+        border: 1px solid var(--deprecated-text-input-border);
+        -webkit-transition: border-color .2s ease-in-out;
+        transition: border-color .2s ease-in-out;
+      }
+      .xenoLib-multiInput.xenoLib-multiInput-focused {
+        border-color: var(--text-link);
+      }
+      .xenoLib-multiInput.xenoLib-multiInput-error {
+        border-color: hsl(359,calc(var(--saturation-factor, 1)*82.6%),59.4%);
       }
       .xenoLib-multiInputFirst {
         -webkit-box-flex: 1;
@@ -654,6 +732,8 @@ module.exports = (() => {
       return ret;
     }
 
+    XenoLib.fakeRenderHook = fakeRenderHook;
+
     const deprecateFunction = (name, advice, ret = undefined) => () => (Logger.warn(`XenoLib.${name} is deprecated! ${advice}`), ret);
 
     XenoLib.patchContext = deprecateFunction('patchContext', 'Do manual patching of context menus instead.');
@@ -702,13 +782,19 @@ module.exports = (() => {
             const ret = await olRenderLazy();
             if (typeof ret === 'function') try {
               const ctxEl = ret();
-              const { type } = ctxEl;
+              let { type } = ctxEl;
+              if (type.toString().includes('objectType')) fakeRenderHook(() => {
+                const ret = type();
+                if (ret.type.displayName !== 'AnalyticsContext') return;
+                ({ type } = ret.props.children);
+              });
+
               let changed = false;
               for (const { menuNameOrFilter, callback, multi, patchedModules } of [...XenoLib._lazyContextMenuListeners]) {
                 if (typeof menuNameOrFilter === 'string' && menuNameOrFilter !== type.displayName) continue;
                 if (typeof menuNameOrFilter === 'function' && !menuNameOrFilter(type)) continue;
                 if (multi && patchedModules.indexOf(type) !== -1) continue;
-                changed = callback() || changed;
+                changed = callback(ctxEl.type) || changed;
                 if (multi) {
                   patchedModules.push(type);
                   continue;
@@ -918,11 +1004,11 @@ module.exports = (() => {
     const TextElement = WebpackModules.getByDisplayName('Text');
 
     /* shared between FilePicker and ColorPicker */
-    const MultiInputClassname = XenoLib.joinClassNames(Utilities.getNestedProp(DiscordClasses, 'BasicInputs.input.value'), 'xenoLib-multiInput');
+    const MultiInputClassname = XenoLib.joinClassNames('xenoLib-multiInput');
     const MultiInputFirstClassname = 'xenoLib-multiInputFirst';
     const MultiInputFieldClassname = 'xenoLib-multiInputField';
     const ErrorMessageClassname = XenoLib.joinClassNames('xenoLib-error-text', XenoLib.getClass('errorMessage'), Utilities.getNestedProp(TextElement, 'Colors.ERROR'));
-    let ErrorClassname = XenoLib.getClass('input error');
+    let ErrorClassname = XenoLib.joinClassNames('xenoLib-multiInput-error', XenoLib.getClass('input error'));
 
     // sometimes we can't access it for some reason, works thru BBD beta's webpack tho /shrug
     if (isBBDBeta) setImmediate(() => {
@@ -979,7 +1065,7 @@ module.exports = (() => {
         }
         render() {
           const n = {};
-          n[DiscordClasses.BasicInputs.focused] = this.state.multiInputFocused;
+          n['xenoLib-multiInput-focused'] = this.state.multiInputFocused;
           n[ErrorClassname] = !!this.state.error;
           return React.createElement(
             'div',
@@ -1103,7 +1189,7 @@ module.exports = (() => {
       }
       render() {
         const n = {};
-        n[DiscordClasses.BasicInputs.focused] = this.state.multiInputFocused;
+        n['xenoLib-multiInput-focused'] = this.state.multiInputFocused;
         n[ErrorClassname] = !!this.state.error;
         return React.createElement(
           'div',
@@ -1238,7 +1324,7 @@ module.exports = (() => {
           return toString.indexOf('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(') !== -1 && toString.search(/\w\({},\w\[\w\],{},\w\[\w\]\)/) !== -1;
         });
         // SOOO much more extra code with zeres lib compared to Astra, maybe I just can't figure out how to use it effectively
-        const ReactParserRules = WebpackModules.find(m => typeof m === 'function' && (m = m.toString()) && (m.search(/^function\(\w\){return \w\({},\w,{(?:\n)?link:\(0,\w.default\)\(\w\),emoji:\(\w=\w,\w=\w\.emojiTooltipPosition,\w=void 0===\w?\w/) !== -1));
+        const ReactParserRules = WebpackModules.find(m => typeof m === 'function' && (m = m.toString()) && (m.toString().replace(/\n/g, '').search(/^function\(\w\){return \w\({},\w,{link:\(0,\w.default\)\(\w\),emoji:\(\w=\w,\w=\w\.emojiTooltipPosition,\w=void 0===\w?\w/) !== -1));
         const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES').RULES, ReactParserRules({}), { mention: WebpackModules.find(e => e.Z && e.Z.react).Z }]);
         const { defaultRules } = WebpackModules.getByProps('defaultParse');
         FANCY_PANTS_PARSER_RULES.image = defaultRules.image;
@@ -1276,7 +1362,7 @@ module.exports = (() => {
     })();
     const ComponentRenderers = WebpackModules.getByProps('renderVideoComponent') || {};
     /* MY CHANGELOG >:C */
-    XenoLib.showChangelog = (title, version, changelog, footer) => {
+    XenoLib.showChangelog = (title, version, changelog, footer, showDisclaimer) => {
       const ChangelogClasses = DiscordClasses.Changelog;
       const items = [];
       let isFistType = true;
@@ -1324,7 +1410,7 @@ module.exports = (() => {
             isFistType = false;
         }
       }
-      const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => Modals.showConfirmationModal('Please confirm', 'Are you sure you want to join my support server?', { confirmText: 'Yes', cancelText: 'Nope', onConfirm: () => (LayerManager.popLayer(), ModalStack.pop(), NewModalStack.closeAllModals(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }) }, 'Join my support server'), '! Or consider donating via ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://paypal.me/lighty13') }, 'Paypal'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://ko-fi.com/lighty_') }, 'Ko-fi'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://www.patreon.com/lightyp') }, 'Patreon'), '!'];
+      const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => Modals.showConfirmationModal('Please confirm', 'Are you sure you want to join my support server?', { confirmText: 'Yes', cancelText: 'Nope', onConfirm: () => (LayerManager.popLayer(), ModalStack.pop(), NewModalStack.closeAllModals(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }) }, 'Join my support server'), '! Or consider donating via ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://paypal.me/lighty13') }, 'Paypal'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://ko-fi.com/lighty_') }, 'Ko-fi'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://www.patreon.com/lightyp') }, 'Patreon'), '!', showDisclaimer ? '\nBy using these plugins, you agree to being part of the anonymous user counter, unless disabled in settings.' : ''];
       NewModalStack.openModal(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12 }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
     };
 
@@ -2081,6 +2167,40 @@ module.exports = (() => {
       }
     }
 
+    const Text = WebpackModules.getByDisplayName('Text');
+    class TimerWrapper extends React.PureComponent {
+      constructor(...args) {
+        super(...args);
+        this.moment = Moment(this.props.value + this.props.time);
+      }
+      componentDidUpdate() {
+        this.moment = Moment(this.props.value + this.props.time);
+      }
+      componentDidMount() {
+        const { moment } = this;
+        const vv = moment.clone().seconds(0).add(1, 'm').diff(moment);
+        this.timer = setInterval(() => {
+          clearInterval(this.timer);
+          this.timer = setInterval(() => this.forceUpdate(), 60 * 1000);
+          this.forceUpdate();
+        }, vv);
+      }
+      componentWillUnmount() {
+        if (this.timer) clearInterval(this.timer);
+      }
+      render() {
+        const { value, after, active, inactive, time } = this.props;
+        const future = (value + time);
+        return React.createElement(Text, {}, value ? Date.now() > future ? active : `${after}${this.moment.fromNow()}` : inactive);
+      }
+    }
+
+    class Timer extends Settings.SettingField {
+      constructor(name, note, value, onChange, after, active, inactive, time) {
+        super(name, note, onChange, TimerWrapper, { after, active, inactive, time, value });
+      }
+    }
+
     XenoLib.buildSetting = function buildSetting(data) {
       const { name, note, type, value, onChange, id } = data;
       let setting = null;
@@ -2218,6 +2338,10 @@ module.exports = (() => {
           const setting = new XenoLib.Settings.ColorPicker(data.name, data.note, data.value, data.onChange, data.options);
           if (data.id) setting.id = data.id;
           return setting;
+        } else if (data.type === 'timeStatus') {
+          const setting = new Timer(data.name, data.note, data.value, data.onChange, data.after, data.active, data.inactive, data.time);
+          if (data.id) setting.id = data.id;
+          return setting;
         }
         return XenoLib.buildSetting(data);
       }
@@ -2245,11 +2369,21 @@ module.exports = (() => {
         } else if (category === 'addons') if (setting === 'extra') {
           if (value && !patchAddonCardAnyway.patched) patchAddonCardAnyway(true);
           XenoLib.Notifications.warning('Reopen plugins section for immediate effect');
+        } else if (category === 'userCounter') if (setting === 'enabled') {
+          if (value) {
+            LibrarySettings.userCounter.enableTime = Date.now();
+            LibrarySettings.userCounter.lastSubmission = Date.now();
+          } else {
+            LibrarySettings.userCounter.enableTime = 0;
+            LibrarySettings.userCounter.lastSubmission = 0;
+          }
+          PluginUtilities.saveSettings(this.name, LibrarySettings);
         }
+
 
       }
       showChangelog(footer) {
-        XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog);
+        XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog, void 0, true);
       }
       get name() {
         return config.info.name;
@@ -2283,7 +2417,7 @@ module.exports = (() => {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]);
     let b = BdApi.Plugins.get('ZeresPluginLibrary');
     if (b && b.instance) b = b.instance;
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '1.2.33') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '2.0.0') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
