@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.2
+ * @version 2.4.3
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -50,21 +50,16 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.4.2',
+      version: '2.4.3',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
     },
     changelog: [
       {
-        title: 'HOTFIX',
+        title: 'Fixed',
         type: 'fixed',
-        items: ['Removed use of deprecated API']
-      },
-      {
-        title: 'Added',
-        type: 'added',
-        items: ['Added option to copy link of pfp, banners, etc.']
+        items: ['Fixed non working context menus.']
       }
     ],
     defaultConfig: [
@@ -643,39 +638,56 @@ module.exports = (() => {
 
       patchUserContextMenus() {
         const patchedMods = [];
-        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu(m => m.displayName && (m.displayName.endsWith('UserContextMenu') || m.displayName === 'GroupDMContextMenu'), () => {
-          const CTXs = WebpackModules.findAll(m => m.default && m.default.displayName && (m.default.displayName.endsWith('UserContextMenu') || m.default.displayName === 'GroupDMContextMenu') && !patchedMods.includes(m));
+        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu(m => m.displayName && (m.displayName.endsWith('UserContextMenu') || m.displayName === 'GroupDMContextMenu' || m.displayName === 'UserGenericContextMenu'), fmod => {
+          const CTXs = WebpackModules.findAll(m => (m.default === fmod || (m.default && m.default.__originalFunction === fmod)) && !patchedMods.includes(m));
           if (!CTXs) return false;
           patchedMods.push(...CTXs);
-          for (const CTX of CTXs) Patcher.after(CTX, 'default', (_, [props], ret) => {
-            const menu = Utilities.getNestedProp(
-              Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
-              'props.children'
-            );
-            if (!Array.isArray(menu)) return;
-            let saveType;
-            let url;
-            let customName;
-            const extraData = {};
-            if (props.user && props.user.getAvatarURL) {
-              saveType = 'Avatar';
-              url = props.user.getAvatarURL();
-              extraData.userId = props.user.id;
-              if (this.settings.saveOptions.saveByName) customName = props.user.username;
-            } else if (props.channel && props.channel.type === 3 /* group DM */) {
-              url = AvatarModule.getChannelIconURL(props.channel);
-              saveType = 'Icon';
-            } else return Logger.warn('Uknonwn context menu') /* hurr durr? */;
-            if (!url.indexOf('/assets/')) url = `https://discordapp.com${url}`;
-            url = useIdealExtensions(url);
+          const _this = this;
+          function PatchRunner(props) {
+            const ret = props.__STR_type(props);
             try {
-              const submenu = this.constructMenu(url.split('?')[0], saveType, customName, () => {}, null, null, extraData);
-              const group = XenoLib.createContextMenuGroup([submenu]);
-              if (this.settings.misc.contextMenuOnBottom) menu.push(group);
-              else menu.unshift(group);
-            } catch (e) {
-              Logger.warn('Failed to parse URL...', url, e);
+              const menu = Utilities.getNestedProp(
+                Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+                'props.children'
+              );
+              if (!Array.isArray(menu)) return;
+              let saveType;
+              let url;
+              let customName;
+              const extraData = {};
+              if (props.user && props.user.getAvatarURL) {
+                saveType = 'Avatar';
+                url = props.user.getAvatarURL();
+                extraData.userId = props.user.id;
+                if (_this.settings.saveOptions.saveByName) customName = props.user.username;
+              } else if (props.channel && props.channel.type === 3 /* group DM */) {
+                url = AvatarModule.getChannelIconURL(props.channel);
+                saveType = 'Icon';
+              } else return Logger.warn('Uknonwn context menu') /* hurr durr? */;
+              if (!url.indexOf('/assets/')) url = `https://discordapp.com${url}`;
+              url = useIdealExtensions(url);
+              try {
+                const submenu = _this.constructMenu(url.split('?')[0], saveType, customName, () => {}, null, null, extraData);
+                const group = XenoLib.createContextMenuGroup([submenu]);
+                if (_this.settings.misc.contextMenuOnBottom) menu.push(group);
+                else menu.unshift(group);
+              } catch (e) {
+                Logger.warn('Failed to parse URL...', url, e);
+              }
+            } catch (err) {
+              Logger.stacktrace('Failed patching user context menu', err);
             }
+            return ret;
+          }
+          const CTXMap = {};
+          for (const CTX of CTXs) Patcher.after(CTX, 'default', (_, __, ret) => {
+            const damnedmenu = ret.props.children;
+            const override = CTXMap[damnedmenu.type.displayName] || (CTXMap[damnedmenu.type.displayName] = function(props) {
+              return PatchRunner(props);
+            });
+            Object.assign(override, damnedmenu.type);
+            damnedmenu.props.__STR_type = damnedmenu.type;
+            damnedmenu.type = override;
           });
           return true;
         }, true));
@@ -1802,7 +1814,7 @@ module.exports = (() => {
       n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
       e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.2') && (XenoLibOutdated = !0);
+    n(e, '2.0.0') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.3') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
