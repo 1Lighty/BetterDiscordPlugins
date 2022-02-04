@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.6
+ * @version 1.3.7
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.6',
+      version: '1.3.7',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -260,7 +260,7 @@ module.exports = (() => {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed not working'
+          'Fixed not working, 2nd try now'
         ]
       }
     ]
@@ -1067,7 +1067,7 @@ module.exports = (() => {
         const ciChannel = XenoLib.DiscordAPI.channel;
         const cUID = XenoLib.DiscordAPI.userId;
         if (ciChannel && ciChannel.id === iChannel.id) return RetTypes.SILENT; // ignore if channel is open
-        const threadState = ciChannel && ThreadStateStore.getThreadSidebarState ? ThreadStateStore.getThreadSidebarState(ciChannel.id) : ThreadStateStore.getSidebarState(ciChannel.id);
+        const threadState = ciChannel && (ThreadStateStore.getThreadSidebarState ? ThreadStateStore.getThreadSidebarState(ciChannel.id) : ThreadStateStore.getSidebarState(ciChannel.id));
         if (threadState && threadState.channelId === iChannel.id) return RetTypes.SILENT; // ignore if thread is open
         if (iChannel.isManaged()) return RetTypes.SILENT; // not sure what managed channels are.. System maybe?
         const guildId = iChannel.getGuildId();
