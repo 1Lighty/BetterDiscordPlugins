@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.12
+ * @version 1.8.13
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -38,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.12';
+    return '1.8.13';
   }
   getAuthor() {
     return 'Lighty';
@@ -71,8 +71,8 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.2')) XenoLibOutdated = true;
-      if (isOutOfDate(iZeresPluginLibrary, '1.2.33')) ZeresPluginLibraryOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.3')) XenoLibOutdated = true;
+      if (isOutOfDate(iZeresPluginLibrary, '2.0.0')) ZeresPluginLibraryOutdated = true;
     }
 
     if (!global.XenoLib || !global.ZeresPluginLibrary || global.DiscordJS || XenoLibOutdated || ZeresPluginLibraryOutdated) {
@@ -181,9 +181,9 @@ module.exports = class MessageLoggerV2 {
   getChanges() {
     return [
       {
-        title: 'HOTFIX',
+        title: 'Fixed',
         type: 'fixed',
-        items: ['Not working hotfix.', '<a:FA_FoxWork:742462902384197752>']
+        items: ['Fixed context menus being brok.', 'Tooltips work again.', '<a:FA_FoxWork:742462902384197752>']
       }
     ];
   }
@@ -993,7 +993,7 @@ module.exports = class MessageLoggerV2 {
       this.menu.filter = `channel:${this.selectedChannel.id}`;
       this.openWindow();
     });
-    // new ZeresPluginLibrary.EmulatedTooltip(this.channelLogButton, 'Open Logs', { side: 'bottom' });
+    new ZeresPluginLibrary.Tooltip(this.channelLogButton, 'Open Logs', { side: 'bottom' });
 
     if (this.settings.showOpenLogsButton) this.addOpenLogsButton();
 
@@ -3197,7 +3197,7 @@ module.exports = class MessageLoggerV2 {
           ret.ref = e => {
             if (e && !e.__tooltip) {
               // later
-              // new ZeresPluginLibrary.EmulatedTooltip(e, 'Deleted: ' + this.tools.createMomentObject(props.__MLV2_deleteTime).format('LLLL'), { side: 'left' });
+              new ZeresPluginLibrary.Tooltip(e, 'Deleted: ' + this.tools.createMomentObject(props.__MLV2_deleteTime).format('LLLL'), { side: 'left' });
               e.__tooltip = true;
             }
             if (typeof oRef === 'function') return oRef(e);
@@ -3526,7 +3526,7 @@ module.exports = class MessageLoggerV2 {
         this.refilterMessages(); // I don't like calling that, maybe figure out a way to animate it collapsing on itself smoothly
         this.saveData();
       });
-      // new ZeresPluginLibrary.EmulatedTooltip(timestampEl, 'Sent at ' + this.tools.createMomentObject(message.timestamp).format('LLLL'), { side: 'top' });
+      new ZeresPluginLibrary.Tooltip(timestampEl, 'Sent at ' + this.tools.createMomentObject(message.timestamp).format('LLLL'), { side: 'top' });
     }
     const messageContext = e => {
       let target = e.target;
@@ -3726,7 +3726,7 @@ module.exports = class MessageLoggerV2 {
             const hist = record.edit_history[ii];
             const editedMarkup = this.formatMarkup(hist.content, message.channel_id);
             editedMarkup.insertAdjacentHTML('beforeend', `<time class="${this.multiClasses.edited}">(edited)</time>`); // TODO, change this
-            // new ZeresPluginLibrary.EmulatedTooltip(editedMarkup, 'Edited at ' + (typeof hist.time === 'string' ? hist.time : this.createTimeStamp(hist.time)), { side: 'left' });
+            new ZeresPluginLibrary.Tooltip(editedMarkup, 'Edited at ' + (typeof hist.time === 'string' ? hist.time : this.createTimeStamp(hist.time)), { side: 'left' });
             editedMarkup.classList.add(this.style.edited);
             editedMarkup.edit = ii;
             markup.appendChild(editedMarkup);
@@ -4189,7 +4189,7 @@ module.exports = class MessageLoggerV2 {
         red: false
       });
     });
-    // new ZeresPluginLibrary.EmulatedTooltip(helpButton, 'Help!', { side: 'top' });
+    new ZeresPluginLibrary.Tooltip(helpButton, 'Help!', { side: 'top' });
     return textBox;
   }
   // >>-|| MENU MODAL CREATION ||-<<
@@ -4732,35 +4732,60 @@ module.exports = class MessageLoggerV2 {
     };
 
     const loggerIdentifier = this.randomString();
-    const channelListTextChannelContextMenuPatch = () => {
-      const mods = WebpackModules.findAll(e => e.default && (e.__powercordOriginal_default || e.default).displayName === 'ChannelListTextChannelContextMenu' && (e[loggerIdentifier] === undefined && (e[loggerIdentifier] = true)));
+    const channelListTextChannelContextMenuPatch = (fmod) => {
+      const mods = WebpackModules.findAll(e => (e.default === fmod || (e.default && e.default.__originalFunction === fmod)) && (e[loggerIdentifier] === undefined && (e[loggerIdentifier] = true)));
       if (!mods) return;
+      const _this = this;
+      function ChannelListTextChannelContextMenu(props) {
+        const ret = props.__MLv2_type2(props);
+        try {
+          if (props.channel && props.channel.type === 4) return ret; // no lol, categories are unsupported
+          const newItems = [];
+          const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+            ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+            'props.children'
+          );
+          if (!Array.isArray(menu)) return ret;
+          const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
+          addElement('Open Logs', () => _this.openWindow(), _this.obfuscatedClass('open'));
+          addElement(
+            `Open Log For Channel`,
+            () => {
+              _this.menu.filter = `channel:${props.channel.id}`;
+              _this.openWindow();
+            },
+            _this.obfuscatedClass('open-channel')
+          );
+          handleWhiteBlackList(newItems, props.channel.id);
+          if (!newItems.length) return ret;
+          menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(_this.settings.contextmenuSubmenuName, newItems, _this.obfuscatedClass('mlv2'))]));
+        } catch (err) {
+          console.error('[MessageLoggerV2] Failed to patch Channel Context Menu', err);
+        }
+        return ret;
+      }
+      function NormalMenu(props) {
+        const ret = props.__MLv2_type(props);
+        try {
+          if (ret.type.displayName !== 'NormalMenu') return ret;
+          if (!ChannelListTextChannelContextMenu.displayName) Object.assign(ChannelListTextChannelContextMenu, ret.type);
+          ret.props.__MLv2_type2 = ret.type;
+          ret.type = ChannelListTextChannelContextMenu;
+        } catch (err) {
+          console.error('[MessageLoggerV2] Failed to patch Normal Menu', err);
+        }
+        return ret;
+      }
       mods.forEach(mod => {
         this.unpatches.push(
           this.Patcher.after(
             mod,
             'default',
-            (_, [props], ret) => {
-              if (props.channel && props.channel.type === 4) return; // no lol, categories are unsupported
-              const newItems = [];
-              const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-                ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
-                'props.children'
-              );
-              if (!Array.isArray(menu)) return;
-              const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
-              addElement('Open Logs', () => this.openWindow(), this.obfuscatedClass('open'));
-              addElement(
-                `Open Log For Channel`,
-                () => {
-                  this.menu.filter = `channel:${props.channel.id}`;
-                  this.openWindow();
-                },
-                this.obfuscatedClass('open-channel')
-              );
-              handleWhiteBlackList(newItems, props.channel.id);
-              if (!newItems.length) return;
-              menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(this.settings.contextmenuSubmenuName, newItems, this.obfuscatedClass('mlv2'))]));
+              (_, __, ret) => {
+              const damnedmenu = ret.props.children;
+              if (!NormalMenu.displayName) Object.assign(NormalMenu, damnedmenu.type);
+              damnedmenu.props.__MLv2_type = damnedmenu.type;
+              damnedmenu.type = NormalMenu;
             }
           )
         )
@@ -4809,38 +4834,51 @@ module.exports = class MessageLoggerV2 {
     }
     this.unpatches.push(XenoLib.listenLazyContextMenu('GuildContextMenu', guildContextMenu));
 
-    const guildChannelUserContextMenuPatch = () => {
-      const mod = WebpackModules.find(e => e.default && (e.__powercordOriginal_default || e.default).displayName === 'GuildChannelUserContextMenu');
+    const guildChannelUserContextMenuPatch = (fmod) => {
+      const mod = WebpackModules.find(e => (e.default === fmod || (e.default && e.default.__originalFunction === fmod)));
       if (!mod) return console.error('[MessageLoggerV2] GuildChannelUserContextMenu not found');
+      const _this = this;
+      function GuildChannelUserContextMenu(props) {
+        const ret = props.__MLv2_type(props);
+        try {
+          const newItems = [];
+          const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+            ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+            'props.children'
+          );
+          if (!Array.isArray(menu)) return;
+          const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
+          addElement(
+            'Open Logs',
+            () => {
+              _this.openWindow();
+            },
+            _this.obfuscatedClass('open')
+          );
+          addElement(
+            `Open Log For User`,
+            () => {
+              _this.menu.filter = `user:${props.user.id}`;
+              _this.openWindow();
+            },
+            _this.obfuscatedClass('open-user')
+          );
+          if (!newItems.length) return;
+          menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(_this.settings.contextmenuSubmenuName, newItems, _this.obfuscatedClass('mlv2'))]));
+        } catch (err) {
+          console.error(err);
+        }
+        return ret;
+      }
       this.unpatches.push(
         this.Patcher.after(
           mod,
           'default',
-          (_, [props], ret) => {
-            const newItems = [];
-            const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-              ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
-              'props.children'
-            );
-            if (!Array.isArray(menu)) return;
-            const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
-            addElement(
-              'Open Logs',
-              () => {
-                this.openWindow();
-              },
-              this.obfuscatedClass('open')
-            );
-            addElement(
-              `Open Log For User`,
-              () => {
-                this.menu.filter = `user:${props.user.id}`;
-                this.openWindow();
-              },
-              this.obfuscatedClass('open-user')
-            );
-            if (!newItems.length) return;
-            menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(this.settings.contextmenuSubmenuName, newItems, this.obfuscatedClass('mlv2'))]));
+          (_, __, ret) => {
+            const damnedmenu = ret.props.children;
+            if (!GuildChannelUserContextMenu.displayName) Object.assign(GuildChannelUserContextMenu, damnedmenu.type);
+            damnedmenu.props.__MLv2_type = damnedmenu.type;
+            damnedmenu.type = GuildChannelUserContextMenu;
           }
         )
       );
@@ -4848,47 +4886,60 @@ module.exports = class MessageLoggerV2 {
     }
     this.unpatches.push(XenoLib.listenLazyContextMenu('GuildChannelUserContextMenu', guildChannelUserContextMenuPatch));
 
-    const dmUserContextMenuPatch = () => {
-      const mod = WebpackModules.find(e => e.default && (e.__powercordOriginal_default || e.default).displayName === 'DMUserContextMenu');
+    const dmUserContextMenuPatch = (fmod) => {
+      const mod = WebpackModules.find(e => (e.default === fmod || (e.default && e.default.__originalFunction === fmod)));
       if (!mod) return console.error('[MessageLoggerV2] DMUserContextMenu not found');
+      const _this = this;
+      function DMUserContextMenu(props) {
+        const ret = props.__MLv2_type(props);
+        try {
+          const newItems = [];
+          const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+            ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+            'props.children'
+          );
+          if (!Array.isArray(menu)) return;
+          const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
+          addElement(
+            'Open Logs',
+            () => {
+              _this.openWindow();
+            },
+            _this.obfuscatedClass('open')
+          );
+          addElement(
+            `Open Log For User`,
+            () => {
+              _this.menu.filter = `user:${props.user.id}`;
+              _this.openWindow();
+            },
+            _this.obfuscatedClass('open-user')
+          );
+          addElement(
+            `Open Log For DM`,
+            () => {
+              _this.menu.filter = `channel:${props.channel.id}`;
+              _this.openWindow();
+            },
+            _this.obfuscatedClass('open-dm')
+          );
+          handleWhiteBlackList(newItems, props.channel.id);
+          if (!newItems.length) return;
+          menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(_this.settings.contextmenuSubmenuName, newItems, _this.obfuscatedClass('mlv2'))]));
+        } catch (err) {
+          console.error('[MessageLoggerV2] Error in DMUserContextMenu patch', err);
+        }
+        return ret;
+      }
       this.unpatches.push(
         this.Patcher.after(
           mod,
           'default',
-          (_, [props], ret) => {
-            const newItems = [];
-            const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-              ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
-              'props.children'
-            );
-            if (!Array.isArray(menu)) return;
-            const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
-            addElement(
-              'Open Logs',
-              () => {
-                this.openWindow();
-              },
-              this.obfuscatedClass('open')
-            );
-            addElement(
-              `Open Log For User`,
-              () => {
-                this.menu.filter = `user:${props.user.id}`;
-                this.openWindow();
-              },
-              this.obfuscatedClass('open-user')
-            );
-            addElement(
-              `Open Log For DM`,
-              () => {
-                this.menu.filter = `channel:${props.channel.id}`;
-                this.openWindow();
-              },
-              this.obfuscatedClass('open-dm')
-            );
-            handleWhiteBlackList(newItems, props.channel.id);
-            if (!newItems.length) return;
-            menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(this.settings.contextmenuSubmenuName, newItems, this.obfuscatedClass('mlv2'))]));
+          (_, __, ret) => {
+            const damnedmenu = ret.props.children;
+            if (!DMUserContextMenu.displayName) Object.assign(DMUserContextMenu, damnedmenu.type);
+            damnedmenu.props.__MLv2_type = damnedmenu.type;
+            damnedmenu.type = DMUserContextMenu;
           }
         )
       );
@@ -4896,33 +4947,46 @@ module.exports = class MessageLoggerV2 {
     }
     this.unpatches.push(XenoLib.listenLazyContextMenu('DMUserContextMenu', dmUserContextMenuPatch));
 
-    const groupDMUserContextMenuPatch = () => {
-      const mod = WebpackModules.find(e => e.default && (e.__powercordOriginal_default || e.default).displayName === 'GroupDMUserContextMenu');
+    const groupDMUserContextMenuPatch = (fmod) => {
+      const mod = WebpackModules.find(e => (e.default === fmod || (e.default && e.default.__originalFunction === fmod)));
       if (!mod) return console.error('[MessageLoggerV2] GroupDMUserContextMenu not found');
+      const _this = this;
+      function GroupDMUserContextMenu(props) {
+        const ret = props.__MLv2_type(props);
+        try {
+          const newItems = [];
+          const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+            ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+            'props.children'
+          );
+          if (!Array.isArray(menu)) return;
+          const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
+          addElement('Open Logs', () => _this.openWindow(), _this.obfuscatedClass('open'));
+          addElement(
+            `Open Log For Channel`,
+            () => {
+              _this.menu.filter = `channel:${props.channel.id}`;
+              _this.openWindow();
+            },
+            _this.obfuscatedClass('open-channel')
+          );
+          handleWhiteBlackList(newItems, props.channel.id);
+          if (!newItems.length) return;
+          menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(_this.settings.contextmenuSubmenuName, newItems, _this.obfuscatedClass('mlv2'))]));
+        } catch (err) {
+          console.error('[MessageLoggerV2] Error in GroupDMUserContextMenu patch', err);
+        }
+        return ret;
+      }
       this.unpatches.push(
         this.Patcher.after(
           mod,
           'default',
-          (_, [props], ret) => {
-            const newItems = [];
-            const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-              ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
-              'props.children'
-            );
-            if (!Array.isArray(menu)) return;
-            const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
-            addElement('Open Logs', () => this.openWindow(), this.obfuscatedClass('open'));
-            addElement(
-              `Open Log For Channel`,
-              () => {
-                this.menu.filter = `channel:${props.channel.id}`;
-                this.openWindow();
-              },
-              this.obfuscatedClass('open-channel')
-            );
-            handleWhiteBlackList(newItems, props.channel.id);
-            if (!newItems.length) return;
-            menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(this.settings.contextmenuSubmenuName, newItems, this.obfuscatedClass('mlv2'))]));
+          (_, __, ret) => {
+            const damnedmenu = ret.props.children;
+            if (!GroupDMUserContextMenu.displayName) Object.assign(GroupDMUserContextMenu, damnedmenu.type);
+            damnedmenu.props.__MLv2_type = damnedmenu.type;
+            damnedmenu.type = GroupDMUserContextMenu;
           }
         )
       );
