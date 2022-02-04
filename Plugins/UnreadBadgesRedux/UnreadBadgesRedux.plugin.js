@@ -1,6 +1,6 @@
 /**
  * @name UnreadBadgesRedux
- * @version 1.0.19
+ * @version 1.0.20
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux
@@ -46,7 +46,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.19',
+      version: '1.0.20',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -55,7 +55,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Hit it with a hammer a few times \'till it works.']
+        items: ['Fixed not showing on server icons.']
       }
     ],
     defaultConfig: [
@@ -289,7 +289,6 @@ module.exports = (() => {
         this.promises = { state: { cancelled: false } };
         this.patchedModules = [];
         this.patchAll();
-        this.forceUpdateGuildSidebars();
         PluginUtilities.addStyle(
           this.short + '-CSS',
           `
@@ -331,24 +330,6 @@ module.exports = (() => {
 
       forceUpdateAll() {
         this.patchedModules.forEach(e => e());
-        this.forceUpdateGuildSidebars();
-      }
-
-      forceUpdateGuildSidebars() {
-        const guildSidebars = [...document.querySelectorAll(`.${XenoLib.getSingleClass('sidebar guilds')}`)];
-        for (const guild of guildSidebars) {
-          const instance = ReactTools.getReactInstance(guild);
-          if (!instance) {
-            Logger.warn('Found guild sidebar but no instance');
-            continue;
-          }
-          const guildInstance = Utilities.findInTree(instance, e => e && e.type && e.type.displayName === 'Guilds', { walkable: ['return'] });
-          if (!guildInstance) {
-            Logger.warn('Found instance but no guild instance');
-            continue;
-          }
-          if (guildInstance.stateNode && guildInstance.stateNode.forceUpdate) guildInstance.stateNode.forceUpdate();
-        }
       }
 
       /* PATCHES */
@@ -357,7 +338,7 @@ module.exports = (() => {
         Utilities.suppressErrors(this.patchBlobMask.bind(this), 'BlobMask patch')(this.promises.state);
         Utilities.suppressErrors(this.patchChannelItem.bind(this), 'ChannelItem patch')(this.promises.state);
         Utilities.suppressErrors(this.patchThreadItem.bind(this), 'Thread item patch')(this.promises.state);
-        Utilities.suppressErrors(this.patchConnectedGuild.bind(this), 'ConnectedGuild patch')(this.promises.state);
+        Utilities.suppressErrors(this.patchGuildTooltip.bind(this), 'GuildTooltip patch')(this.promises.state);
         Utilities.suppressErrors(this.patchGuildFolder.bind(this), 'GuildFolder patch')(this.promises.state);
       }
 
@@ -488,74 +469,54 @@ module.exports = (() => {
         });
       }
 
-      patchConnectedGuild() {
-        const GuildIconNode = WebpackModules.find(e => e.default && ~e.default.toString().indexOf('.renderUnavailableBadge'));
-
+      patchGuildTooltip() {
         const settings = this.settings;
-        function PatchedGuildTooltip(e) {
-          if (!e) return null;
-          try {
-            const ret = e.__UBR_old_type(e);
-            const guildId = e.guild.id;
-            const unreadCount = StoresModule.useStateFromStores([UnreadStore, MuteModule], () => {
-              try {
-                return (!settings.misc.guilds || (!settings.misc.mutedGuilds && MuteModule.isMuted(guildId)) ? 0 : getUnreadCount(guildId, !settings.misc.noMutedInGuildCount));
-              } catch (err) {
-                Logger.stacktrace('Error in conneced guild patch', err);
-                return 0;
-              }
-            });
-            const blobMarkRef = React.useRef(null);
-            React.useLayoutEffect(() => {
-              try {
-                const bmi = blobMarkRef.current;
-                if (!bmi) return;
-                if (bmi.state.__UBR_unread_count === unreadCount) return;
-                bmi.props = unreadCount;
-                bmi.forceUpdate();
-              } catch (err) {
-                Logger.stacktrace('Error in guild hack');
-              }
-            }, [unreadCount]);
-            if (ret.type.displayName === 'Tooltip') {
-            ret.props.__UBR_unread_count = unreadCount;
-            const oChildren = ret.props.children;
-            ret.props.children = e => {
-              try {
-                const ret2 = oChildren(e);
-                const mask = Utilities.findInTree(ret2, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
-                if (!mask) return ret2;
-                mask.props.__UBR_unread_count = unreadCount;
-                mask.props.guildId = guildId;
-                mask.ref = blobMarkRef;
-                return ret2;
-              } catch (err) {
-                Logger.stacktrace('Failed running old of children in PatchedGuildTooltip!', err);
-                try {
-                  return oChildren(e);
-                } catch (err) {
-                  Logger.stacktrace('Failed running only old of children in PatchedGuildTooltip', err);
-                  return null;
-                }
-              }
-            };
-            }
-            return ret;
-          } catch (err) {
-            Logger.stacktrace('Failed running old of PatchedGuildTooltip', err);
+        const GuildTooltip = WebpackModules.find(e => e.default && e.default.displayName === 'GuildTooltip');
+        Patcher.after(GuildTooltip, 'default', (_, [props], ret) => {
+          const guildId = props.guild.id;
+          const unreadCount = StoresModule.useStateFromStores([UnreadStore, MuteModule], () => {
             try {
-              return e.__UBR_old_type(e);
+              return (!settings.misc.guilds || (!settings.misc.mutedGuilds && MuteModule.isMuted(guildId)) ? 0 : getUnreadCount(guildId, !settings.misc.noMutedInGuildCount));
             } catch (err) {
-              Logger.stacktrace('Failed running only old of PatchedGuildTooltip', err);
-              return null;
+              Logger.stacktrace('Error in conneced guild patch', err);
+              return 0;
             }
+          });
+          const blobMarkRef = React.useRef(null);
+          React.useLayoutEffect(() => {
+            try {
+              const bmi = blobMarkRef.current;
+              if (!bmi) return;
+              if (bmi.state.__UBR_unread_count === unreadCount) return;
+              bmi.props = unreadCount;
+              bmi.forceUpdate();
+            } catch (err) {
+              Logger.stacktrace('Error in guild hack');
+            }
+          }, [unreadCount]);
+          if (ret.type.displayName === 'Tooltip') {
+          ret.props.__UBR_unread_count = unreadCount;
+          const oChildren = ret.props.children;
+          ret.props.children = e => {
+            try {
+              const ret2 = oChildren(e);
+              const mask = Utilities.findInTree(ret2, e => e && e.type && e.type.displayName === 'BlobMask', { walkable: ['props', 'children'] });
+              if (!mask) return ret2;
+              mask.props.__UBR_unread_count = unreadCount;
+              mask.props.guildId = guildId;
+              mask.ref = blobMarkRef;
+              return ret2;
+            } catch (err) {
+              Logger.stacktrace('Failed running old of children in PatchedGuildTooltip!', err);
+              try {
+                return oChildren(e);
+              } catch (err) {
+                Logger.stacktrace('Failed running only old of children in PatchedGuildTooltip', err);
+                return null;
+              }
+            }
+          };
           }
-        }
-        Patcher.after(GuildIconNode, 'default', (_, __, ret) => {
-          const tooltip = Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'GuildTooltip');
-          if (!tooltip) return;
-          tooltip.props.__UBR_old_type = tooltip.type;
-          tooltip.type = PatchedGuildTooltip;
         });
       }
 
@@ -689,7 +650,7 @@ module.exports = (() => {
       d = BdApi.Plugins.get('XenoLib');
     if (c && c.exports && c.instance) c = c.instance; // BD specific fixes
     if (d && d.exports && d.instance) d = d.instance; // BD specific fixes
-    b(c, '1.2.33') && (ZeresPluginLibraryOutdated = !0), b(d, '1.3.43') && (XenoLibOutdated = !0);
+    b(c, '2.0.0') && (ZeresPluginLibraryOutdated = !0), b(d, '1.4.3') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }
