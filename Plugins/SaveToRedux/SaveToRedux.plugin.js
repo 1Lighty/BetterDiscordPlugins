@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.3
+ * @version 2.4.4
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -50,7 +50,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.4.3',
+      version: '2.4.4',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -59,7 +59,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed non working context menus.']
+        items: ['Fixed non working context menus.', 'Fixed not showing up if you right clicked someone that wasn\'t in the server']
       }
     ],
     defaultConfig: [
@@ -1578,7 +1578,7 @@ module.exports = (() => {
           });
           if (currGuildId) {
             const member = GuildMemberStore.getMember(currGuildId, extraData.userId);
-            if (member.banner) extraData.guildBannerUrl = GuildBannerShit.getUserBannerURLForContext({
+            if (member && member.banner) extraData.guildBannerUrl = GuildBannerShit.getUserBannerURLForContext({
               user,
               guildMember: member,
               size: 2048,
