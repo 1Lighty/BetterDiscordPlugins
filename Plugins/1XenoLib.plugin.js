@@ -347,8 +347,8 @@ module.exports = (() => {
       if (LibrarySettings.userCounter.enabled && Date.now() - 1644577200000 > 0) {
         const { enableTime } = LibrarySettings.userCounter;
         let changed = false;
-        if (enableTime && Date.now() - enableTime > USER_COUNTER_INTERVAL) {
-          if (Date.now() - LibrarySettings.userCounter.lastSubmission > USER_COUNTER_INTERVAL) {
+        if (enableTime) {
+          if ((Date.now() - enableTime > USER_COUNTER_INTERVAL) && (Date.now() - LibrarySettings.userCounter.lastSubmission > USER_COUNTER_INTERVAL)) {
             LibrarySettings.userCounter.lastSubmission = Date.now();
             changed = true;
             require('https').request('https://astranika.com/api/analytics/submit').on('error', () => {}).end();
