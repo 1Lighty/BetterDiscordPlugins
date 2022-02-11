@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.3
+ * @version 1.4.4
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -33,7 +33,7 @@
 
 @else@*/
 /*
- * Copyright © 2019-2021, _Lighty_
+ * Copyright © 2019-2022, _Lighty_
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
@@ -108,7 +108,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.3',
+      version: '1.4.4',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -117,7 +117,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed parser.', 'Fixed context menu stuffs not working as intended.']
+        items: ['Fixed parser.', 'Fixed context menu stuffs not working as intended.', 'Try fix plugins being disabled']
       }
     ],
     defaultConfig: [
@@ -2309,7 +2309,7 @@ module.exports = (() => {
                               isPluginEnabled = false;
                             } else BdApi.Plugins.reload(name);
                           }
-                          if (isPluginEnabled) BdApi.Plugins.enable(name);
+                          if (isPluginEnabled) setTimeout(() => BdApi.Plugins.enable(name), 3000);
                         } catch (e) { }
                       }, 1000);
                     } catch (e) { }
