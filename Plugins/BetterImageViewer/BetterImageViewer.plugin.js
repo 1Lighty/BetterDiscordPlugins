@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.4
+ * @version 1.6.5
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,16 +44,29 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.4',
+      version: '1.6.5',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
     },
     changelog: [
       {
-        title: 'HOTFIX',
+        title: 'Fixed',
         type: 'fixed',
-        items: ['Removed use of deprecated API.']
+        items: ['I fixed it!']
+      },
+      {
+        title: 'Added',
+        type: 'added',
+        items: ['Added hint to the bottom when zooming, indicating that you can hold shift while scrolling to change the lens size as it wasn\'t obvious how to do it before.']
+      },
+      {
+        type: 'description',
+        content: 'Fox!'
+      },
+      {
+        type: 'image',
+        src: 'https://i.imgur.com/mhXyYJk.jpeg'
       }
     ],
     defaultConfig: [
@@ -300,7 +313,7 @@ module.exports = (() => {
     function extractImages(message) {
       const images = [];
       if (Array.isArray(message.attachments)) message.attachments.forEach(({ filename, width, height, url: original, proxy_url: src }) => {
-        if (!DiscordConstants.IMAGE_RE.test(filename) || (width <= 1 && height <= 1)) return;
+        if (!/\.(png|jpe?g|webp|gif)$/i.test(filename) || (width <= 1 && height <= 1)) return;
         const max = ImageUtils.zoomFit(width, height);
         const placeholder = getPlaceholder(src, width, height, max.width, max.height);
         images.push({ width, height, src, original, placeholder });
@@ -592,7 +605,8 @@ module.exports = (() => {
                   panelX: this._controller.springs.panelX,
                   panelY: this._controller.springs.panelY,
                   panelWH: this._controller.springs.panelWH
-                })
+                }),
+                React.createElement(TextElement, { className: 'BIV-zoom-tip' }, 'Tip: Hold shift and scroll to change lens size')
               ]
             ),
             overlayDOMNode
@@ -1588,6 +1602,13 @@ module.exports = (() => {
           .theme-light .BIV-text-bold {
             color: white;
           }
+          .BIV-zoom-tip {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+          }
         `
         );
       }
@@ -2104,7 +2125,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '1.2.33') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.2') && (XenoLibOutdated = !0);
+    n(e, '2.0.0') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.4') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
