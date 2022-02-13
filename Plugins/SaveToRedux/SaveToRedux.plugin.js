@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.4
+ * @version 2.4.5
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -50,7 +50,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.4.4',
+      version: '2.4.5',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -59,7 +59,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed non working context menus.', 'Fixed not showing up if you right clicked someone that wasn\'t in the server']
+        items: ['Fixed crashing Discord if you rightclicked a member in the member list sometimes.']
       }
     ],
     defaultConfig: [
@@ -650,7 +650,7 @@ module.exports = (() => {
                 Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
                 'props.children'
               );
-              if (!Array.isArray(menu)) return;
+              if (!Array.isArray(menu)) return ret;
               let saveType;
               let url;
               let customName;
@@ -663,7 +663,7 @@ module.exports = (() => {
               } else if (props.channel && props.channel.type === 3 /* group DM */) {
                 url = AvatarModule.getChannelIconURL(props.channel);
                 saveType = 'Icon';
-              } else return Logger.warn('Uknonwn context menu') /* hurr durr? */;
+              } else return Logger.warn('Uknonwn context menu'), ret /* hurr durr? */;
               if (!url.indexOf('/assets/')) url = `https://discordapp.com${url}`;
               url = useIdealExtensions(url);
               try {
@@ -1814,7 +1814,7 @@ module.exports = (() => {
       n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
       e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '2.0.0') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.3') && (XenoLibOutdated = !0);
+    n(e, '2.0.0') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.4') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
