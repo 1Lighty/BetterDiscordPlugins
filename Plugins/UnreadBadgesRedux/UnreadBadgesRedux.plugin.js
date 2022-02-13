@@ -1,6 +1,6 @@
 /**
  * @name UnreadBadgesRedux
- * @version 1.0.20
+ * @version 1.0.21
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=UnreadBadgesRedux
@@ -46,7 +46,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.20',
+      version: '1.0.21',
       description: 'Adds a number badge to server icons and channels.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/UnreadBadgesRedux/UnreadBadgesRedux.plugin.js'
@@ -55,7 +55,7 @@ module.exports = (() => {
       {
         title: 'fixed',
         type: 'fixed',
-        items: ['Fixed not showing on server icons.']
+        items: ['Fixed not showing on channels. Due to ZeresLib being a bit too <:smoothbrain:891682693111238686>, it\'s best you reload first as your console *may* be getting spammed due to it.']
       }
     ],
     defaultConfig: [
@@ -343,7 +343,7 @@ module.exports = (() => {
       }
 
       async patchChannelItem(promiseState) {
-        const TextChannel = await ReactComponents.getComponentByName('TextChannel', `.${XenoLib.getSingleClass('mentionsBadge containerDefault')}`);
+        const TextChannel = await ReactComponents.getComponentByName('TextChannel', `.${XenoLib.getSingleClass('userLimit containerDefault')}`);
         if (promiseState.cancelled) return;
         const settings = this.settings;
         const MentionsBadgeClassname = XenoLib.getClass('iconVisibility mentionsBadge');
@@ -650,7 +650,7 @@ module.exports = (() => {
       d = BdApi.Plugins.get('XenoLib');
     if (c && c.exports && c.instance) c = c.instance; // BD specific fixes
     if (d && d.exports && d.instance) d = d.instance; // BD specific fixes
-    b(c, '2.0.0') && (ZeresPluginLibraryOutdated = !0), b(d, '1.4.3') && (XenoLibOutdated = !0);
+    b(c, '2.0.0') && (ZeresPluginLibraryOutdated = !0), b(d, '1.4.4') && (XenoLibOutdated = !0);
   } catch (a) {
     console.error('Error checking if libraries are out of date', a);
   }
