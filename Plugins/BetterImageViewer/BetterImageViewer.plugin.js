@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.5
+ * @version 1.6.6
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.5',
+      version: '1.6.6',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -1608,6 +1608,7 @@ module.exports = (() => {
             left: 0;
             right: 0;
             text-align: center;
+            z-index: -1;
           }
         `
         );
