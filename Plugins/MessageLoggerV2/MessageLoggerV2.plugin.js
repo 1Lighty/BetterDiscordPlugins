@@ -3656,6 +3656,15 @@ module.exports = class MessageLoggerV2 {
                 this.nodeModules.electron.clipboard.writeText(messageId); // todo: store electron or writeText somewhere?
                 this.showToast('Copied!', { type: 'success' });
               }
+            },
+            {
+              type: 'item',
+              label: 'Copy Author ID',
+              action: () => {
+                ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                this.nodeModules.electron.clipboard.writeText(message.author.id);
+                this.showToast('Copied!', { type: 'success' });
+              }
             }
           );
           ZeresPluginLibrary.DCM.openContextMenu(
