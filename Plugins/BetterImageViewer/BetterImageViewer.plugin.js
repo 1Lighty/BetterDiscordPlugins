@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.6
+ * @version 1.6.7
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.6',
+      version: '1.6.7',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -53,20 +53,16 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['I fixed it!']
-      },
-      {
-        title: 'Added',
-        type: 'added',
-        items: ['Added hint to the bottom when zooming, indicating that you can hold shift while scrolling to change the lens size as it wasn\'t obvious how to do it before.']
+        items: ['I fixed it! Part 2.', 'Fixed image zoom not working.']
       },
       {
         type: 'description',
-        content: 'Fox!'
+        content: 'Fox! But white this time.'
       },
       {
         type: 'image',
-        src: 'https://i.imgur.com/mhXyYJk.jpeg'
+        src: 'https://i.imgur.com/1PrnfdT.jpeg',
+        height: 300
       }
     ],
     defaultConfig: [
@@ -561,58 +557,64 @@ module.exports = (() => {
       render() {
         const ret = super.render();
         if (this.__BIV_crash) return ret;
-        for (const prop in ret.props) if (!prop.indexOf('__BIV')) delete ret.props[prop];
-        if (!this.props.__BIV_settings.enabled) return ret;
-        ret.props.onMouseDown = this.handleMouseDown;
-        ret.ref = this.setRef;
-        if (this.state.visible) ret.props.children.push(React.createElement(
-          XenoLib.ReactComponents.ErrorBoundary,
-          {
-            label: 'Image zoom',
-            onError: () => {
-              XenoLib.Notifications.error(`[**${config.info.name}**] Image zoom has encountered a rendering error and has been temporarily disabled to prevent Discord from crashing. More info in console.`, { timeout: 0 });
-            }
-          },
-          ReactDOM.createPortal(
-            React.createElement(
-              ReactSpring.Spring,
-              {
-                native: true,
-                from: { opacity: 0 },
-                to: { opacity: this.state.zooming ? 1 : 0 },
-                config: { duration: 100 },
-                onRest: () => {
-                  if (!this.state.zooming) this.setState({ visible: false });
-                }
-              },
-              ea => [
-                React.createElement(ReactSpring.animated.div, {
-                  style: {
-                    opacity: ea.opacity
-                  },
-                  className: 'BIV-zoom-backdrop',
-                  onMouseDown: this.handleMouseDown
-                }),
-                this.renderLens(ea, {
-                  imgContainerLeft: this._controller.springs.panelX,
-                  imgContainerTop: this._controller.springs.panelY,
-                  img: ReactSpring.to([this._zoomController.springs.zoom, this._controller.springs.offsetX, this._controller.springs.offsetY], (z, x, y) => ({
-                    x: this._bcr.left - ((this._bcr.width * z - this._bcr.width) / (this._bcr.width * z)) * x * z,
-                    y: this._bcr.top - ((this._bcr.height * z - this._bcr.height) / (this._bcr.height * z)) * y * z,
-                    w: z * this.props.width,
-                    h: z * this.props.height
-                  })),
-                  panelX: this._controller.springs.panelX,
-                  panelY: this._controller.springs.panelY,
-                  panelWH: this._controller.springs.panelWH
-                }),
-                React.createElement(TextElement, { className: 'BIV-zoom-tip' }, 'Tip: Hold shift and scroll to change lens size')
-              ]
-            ),
-            overlayDOMNode
-          )
-        ));
-
+        try {
+          const div = Utilities.findInReactTree(ret, e => e && e.type && e.type === 'div');
+          for (const prop in div.props) if (!prop.indexOf('__BIV')) delete div.props[prop];
+          if (!this.props.__BIV_settings.enabled) return ret;
+          div.props.onMouseDown = this.handleMouseDown;
+          div.ref = this.setRef;
+          if (this.state.visible) div.props.children.push(React.createElement(
+            XenoLib.ReactComponents.ErrorBoundary,
+            {
+              label: 'Image zoom',
+              onError: () => {
+                XenoLib.Notifications.error(`[**${config.info.name}**] Image zoom has encountered a rendering error and has been temporarily disabled to prevent Discord from crashing. More info in console.`, { timeout: 0 });
+              }
+            },
+            ReactDOM.createPortal(
+              React.createElement(
+                ReactSpring.Spring,
+                {
+                  native: true,
+                  from: { opacity: 0 },
+                  to: { opacity: this.state.zooming ? 1 : 0 },
+                  config: { duration: 100 },
+                  onRest: () => {
+                    if (!this.state.zooming) this.setState({ visible: false });
+                  }
+                },
+                ea => [
+                  React.createElement(ReactSpring.animated.div, {
+                    style: {
+                      opacity: ea.opacity
+                    },
+                    className: 'BIV-zoom-backdrop',
+                    onMouseDown: this.handleMouseDown
+                  }),
+                  this.renderLens(ea, {
+                    imgContainerLeft: this._controller.springs.panelX,
+                    imgContainerTop: this._controller.springs.panelY,
+                    img: ReactSpring.to([this._zoomController.springs.zoom, this._controller.springs.offsetX, this._controller.springs.offsetY], (z, x, y) => ({
+                      x: this._bcr.left - ((this._bcr.width * z - this._bcr.width) / (this._bcr.width * z)) * x * z,
+                      y: this._bcr.top - ((this._bcr.height * z - this._bcr.height) / (this._bcr.height * z)) * y * z,
+                      w: z * this.props.width,
+                      h: z * this.props.height
+                    })),
+                    panelX: this._controller.springs.panelX,
+                    panelY: this._controller.springs.panelY,
+                    panelWH: this._controller.springs.panelWH
+                  }),
+                  React.createElement(TextElement, { className: 'BIV-zoom-tip' }, 'Tip: Hold shift and scroll to change lens size')
+                ]
+              ),
+              overlayDOMNode
+            )
+          ));
+        } catch (e) {
+          Logger.stacktrace('Image zoom', 'Render', e);
+          XenoLib.Notifications.error(`[**${config.info.name}**] Image zoom has encountered an error.`);
+          this.__BIV_crash = true;
+        }
         return ret;
       }
     }
@@ -1901,8 +1903,9 @@ module.exports = (() => {
               originalImageSize: null
             });
             else _this.setState({ imageSize: null, originalImageSize: null });
-            if (_this._headerRequest1) _this._headerRequest1.abort();
-            if (_this._headerRequest2) _this._headerRequest2.abort();
+            // curse you Ducko for not implementing abort
+            if (_this._headerRequest1 && _this._headerRequest1.abort) _this._headerRequest1.abort();
+            if (_this._headerRequest2 && _this._headerRequest2.abort) _this._headerRequest2.abort();
             if (settings.infoSize) requestImageInfo(props, finalRatio === 1);
           };
           _this.requestImageInfo();
@@ -2050,13 +2053,12 @@ module.exports = (() => {
           ret.props.height = ret.props.height * scale;
           if (_this.state.readyState !== 'READY') return;
           if (_this.props.onZoom) return;
-          if (_this.props.animated && ret.props.children)
-            /* dirty */
-            try {
-              ret.props.__BIV_src = ret.props.children({ size: {} }).props.src;
-            } catch (e) {
-              return;
-            }
+          /* dirty */
+          if (_this.props.animated && ret.props.children) try {
+            ret.props.__BIV_src = ret.props.children({ size: {} }).props.src;
+          } catch (e) {
+            return;
+          }
 
           ret.type = Image;
           ret.props.__BIV_settings = this.settings.zoom;
@@ -2126,7 +2128,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '2.0.0') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.4') && (XenoLibOutdated = !0);
+    n(e, '2.0.2') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.4') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
