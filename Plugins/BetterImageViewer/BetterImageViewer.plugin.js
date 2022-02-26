@@ -1927,8 +1927,8 @@ module.exports = (() => {
         });
         Patcher.after(ImageModal.prototype, 'componentWillUnmount', _this => {
           if (!_this.state || _this.state.internalError) return;
-          if (_this._headerRequest1) _this._headerRequest1.abort();
-          if (_this._headerRequest2) _this._headerRequest2.abort();
+          if (_this._headerRequest1 && _this._headerRequest1.abort) _this._headerRequest1.abort();
+          if (_this._headerRequest2 && _this._headerRequest2.abort) _this._headerRequest2.abort();
           if (!_this._controlsVisibleTimeout) {
             /* since the BdApi is like a child on cocaine, I'll just wrap it in a try catch */
             let reloadFailed = false;
