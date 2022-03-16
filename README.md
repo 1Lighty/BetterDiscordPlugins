@@ -24,6 +24,8 @@ In the event that your Discord crashes, the plugin enables you to get Discord ba
 Show a notification in Discord when someone sends a message, just like on mobile.
 
 ##  [MessageLoggerV2](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/MessageLoggerV2 "MessageLoggerV2")
+WARNING: Use of this plugin increases your chance of an account termination, as it violates Discord's [Developer Terms of Service](https://discord.com/developers/docs/legal#discord-developer-terms-of-service) and [Developer Policy](https://discord.com/developers/docs/policy#discord-developer-policy).
+
 Saves all deleted and purged messages, as well as all edit history and ghost pings. With highly configurable ignore options, and even restoring deleted messages after restarting Discord.
 
 ##  [MultiUploads](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/MultiUploads "MultiUploads")
@@ -31,5 +33,6 @@ Multiple uploads send in a single message, like on mobile. Hold shift while pres
 
 ## [SaveToRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/SaveToRedux "SaveToRedux")
 Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.
+
 ## [UnreadBadgesRedux](https://github.com/1Lighty/BetterDiscordPlugins/tree/master/Plugins/UnreadBadgesRedux "UnreadBadgesRedux")
 Shows an unread badge on folders, server icons and channels, all toggleable with the count adjustable.
