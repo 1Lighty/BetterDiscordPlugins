@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'Lighty';
   }
   getDescription() {
-    return 'Saves all deleted and purged messages, as well as all edit history and ghost pings. With highly configurable ignore options, and even restoring deleted messages after restarting Discord.';
+    return 'WARNING: Use of this plugin increases your chance of account termination. Saves all deleted and purged messages, as well as all edit history and ghost pings. With highly configurable ignore options, and even restoring deleted messages after restarting Discord.';
   }
   load() { }
   start() {
