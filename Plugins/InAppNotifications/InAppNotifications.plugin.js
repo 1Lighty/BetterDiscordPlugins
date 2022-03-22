@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.7
+ * @version 1.3.8
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.7',
+      version: '1.3.8',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -260,7 +260,9 @@ module.exports = (() => {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed not working, 2nd try now'
+          'Fixed showing `ConsentStore` for username.',
+          'Fixed not showing notifications from a DM if you went to friends list right after.',
+          'Fixed not being styled correctly anymore.'
         ]
       }
     ]
@@ -269,18 +271,19 @@ module.exports = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, Logger, PluginUpdater, PluginUtilities, DiscordClassModules } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, GuildStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, UserNameResolver, SelectedChannelStore, PrivateChannelActions } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, GuildStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, SwitchRow, EmojiUtils, RadioGroup, Permissions, FlexChild, PopoutOpener, Textbox, RelationshipStore, WindowInfo, UserSettingsStore, NavigationUtils, SelectedChannelStore, PrivateChannelActions } = DiscordModules;
 
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
     const ChannelStore = WebpackModules.getByProps('getChannel', 'getDMFromUserId');
     const UserStore = WebpackModules.getByProps('getCurrentUser', 'getUser');
+    const UserNameResolver = WebpackModules.getByProps('getName', 'getNickname');
 
     const LurkerStore = WebpackModules.getByProps('isLurking');
     const MuteStore = WebpackModules.getByProps('allowNoMessages');
     const isMentionedUtils = WebpackModules.getByProps('isRawMessageMentioned');
     const ParserModule = WebpackModules.getByProps('astParserFor', 'parse');
-    const MessageClasses = WebpackModules.getByProps('username', 'messageContent');
+    const MessageClasses = WebpackModules.getByProps('username', 'messageContent', 'usernameContainer');
     const MarkupClassname = XenoLib.getClass('markup');
     const { Messages } = WebpackModules.getByProps('Messages') || {};
     const SysMessageUtils = WebpackModules.getByProps('getSystemMessageUserJoin', 'stringify');
@@ -1066,7 +1069,7 @@ module.exports = (() => {
         if (!this.settings.showNoFocus && !WindowInfo.isFocused()) return RetTypes.SILENT;
         const ciChannel = XenoLib.DiscordAPI.channel;
         const cUID = XenoLib.DiscordAPI.userId;
-        if (ciChannel && ciChannel.id === iChannel.id) return RetTypes.SILENT; // ignore if channel is open
+        if (ciChannel && ciChannel.id === iChannel.id && !location.href.endsWith('.com/channels/@me')) return RetTypes.SILENT; // ignore if channel is open
         const threadState = ciChannel && (ThreadStateStore.getThreadSidebarState ? ThreadStateStore.getThreadSidebarState(ciChannel.id) : ThreadStateStore.getSidebarState(ciChannel.id));
         if (threadState && threadState.channelId === iChannel.id) return RetTypes.SILENT; // ignore if thread is open
         if (iChannel.isManaged()) return RetTypes.SILENT; // not sure what managed channels are.. System maybe?
