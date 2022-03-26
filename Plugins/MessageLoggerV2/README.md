@@ -10,11 +10,11 @@
 <img src="https://img.shields.io/badge/Version-2-blue?style=for-the-badge">
 -->
 
-<h1><p align="center">About MessageLoggerV2</p></h1>
-<p align="center">
+<h1><p align="center">About MessageLoggerV2</p><p align="center">
 <img src="https://img.shields.io/github/stars/1Lighty/BetterDiscordPlugins?color=yellow&style=for-the-badge">
 <img src="https://img.shields.io/github/forks/1Lighty/BetterDiscordPlugins?color=blue&style=for-the-badge">
-</p>
+</p></h1>
+
 
 Saves all deleted and purged messages, as well as all edit history and ghost pings. With highly configurable options, and even restoring deleted messages after restarting Discord.
 
