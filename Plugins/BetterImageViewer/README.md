@@ -100,7 +100,7 @@ Move between images in the entire channel with arrow keys, image zoom enabled by
 
 - Click here to download the latest version of `BetterImageViewer`.
 
-<a href="https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2&dl=1" target="_blank"><img src="https://img.shields.io/badge/Download Here-1C1E23?style=for-the-badge&logo="></a>
+<a href="https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer&dl=1" target="_blank"><img src="https://img.shields.io/badge/Download Here-1C1E23?style=for-the-badge&logo="></a>
 
 # <!--used as a divider -->
 
