@@ -1,4 +1,4 @@
-[![download](https://i.imgur.com/NZdacqV.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2&dl=1 "MessageLoggerV2-Logo")
+[![download](https://i.imgur.com/TATMUpm.png)](https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2&dl=1 "MessageLoggerV2-Logo")
 
 <p align="center">
 <!-- 
