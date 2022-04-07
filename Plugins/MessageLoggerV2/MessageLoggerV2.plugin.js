@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.13
+ * @version 1.8.14
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -38,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.13';
+    return '1.8.14';
   }
   getAuthor() {
     return 'Lighty';
@@ -183,7 +183,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed context menus being brok.', 'Tooltips work again.', '<a:FA_FoxWork:742462902384197752>']
+        items: ['Fixed not working on canary at all.', '<a:FA_FoxWork:742462902384197752>']
       }
     ];
   }
@@ -518,13 +518,13 @@ module.exports = class MessageLoggerV2 {
       isBlocked: ZeresPluginLibrary.WebpackModules.getByProps('isBlocked').isBlocked,
       createMomentObject: ZeresPluginLibrary.WebpackModules.getByProps('createFromInputFallback'),
       isMentioned: (e, id) =>
-        mentionedModule.isMentioned(
-          id,
-          e.channel_id,
-          e.mentionEveryone || e.mention_everyone,
-          e.mentions.map(e => e.id || e),
-          e.mentionRoles || e.mention_roles
-        ),
+      (mentionedModule.isMentioned.length === 1 ? mentionedModule.isMentioned({ userId: id, channelId: e.channel_id, mentionEveryone: e.mentionEveryone || e.mention_everyone, mentionUsers: e.mentions.map(e => e.id || e), mentionRoles: e.mentionRoles || e.mention_roles }) : mentionedModule.isMentioned(
+        id,
+        e.channel_id,
+        e.mentionEveryone || e.mention_everyone,
+        e.mentions.map(e => e.id || e),
+        e.mentionRoles || e.mention_roles
+      )),
       DiscordUtils: ZeresPluginLibrary.WebpackModules.getByProps('bindAll', 'debounce')
     };
 
