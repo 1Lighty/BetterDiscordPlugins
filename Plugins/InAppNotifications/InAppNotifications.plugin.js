@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.8
+ * @version 1.3.9
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.8',
+      version: '1.3.9',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -260,9 +260,7 @@ module.exports = (() => {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed showing `ConsentStore` for username.',
-          'Fixed not showing notifications from a DM if you went to friends list right after.',
-          'Fixed not being styled correctly anymore.'
+          'Fixed not working on canary anymore.'
         ]
       }
     ]
@@ -1064,6 +1062,16 @@ module.exports = (() => {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
       }
 
+      isRawMessageMentioned(message, userId, suppressEveryone, suppressRoles) {
+        if (isMentionedUtils.isRawMessageMentioned.length === 1) return isMentionedUtils.isRawMessageMentioned({
+          rawMessage: message,
+          userId,
+          suppressEveryone,
+          suppressRoles
+        });
+        return isMentionedUtils.isRawMessageMentioned(message, userId, suppressEveryone, suppressRoles);
+      }
+
       shouldNotify(message, iChannel, iAuthor) {
         if (!XenoLib.DiscordAPI.user || !iChannel || !iAuthor) return RetTypes.SILENT;
         if (!this.settings.showNoFocus && !WindowInfo.isFocused()) return RetTypes.SILENT;
@@ -1097,9 +1105,9 @@ module.exports = (() => {
         if (!isThread && MuteStore.allowAllMessages(iChannel)) return ret === RetTypes.REPLY ? RetTypes.REPLY_NORMAL : ret === RetTypes.KEYWORD ? RetTypes.KEYWORD_NORMAL : RetTypes.NORMAL;// channel has notif settings set to all messages
         if (isThread) {
           const notifSetting = ThreadNotificationsStuff.computeThreadNotificationSetting(iChannel);
-          if (notifSetting !== ThreadConstants.ThreadMemberFlags.NO_MESSAGES && (notifSetting === ThreadConstants.ThreadMemberFlags.ALL_MESSAGES || isMentionedUtils.isRawMessageMentioned(message, cUID, false, false))) return true;
+          if (notifSetting !== ThreadConstants.ThreadMemberFlags.NO_MESSAGES && (notifSetting === ThreadConstants.ThreadMemberFlags.ALL_MESSAGES || this.isRawMessageMentioned(message, cUID, false, false))) return true;
         }
-        const isMentioned = isMentionedUtils.isRawMessageMentioned(message, cUID, MuteStore.isSuppressEveryoneEnabled(guildId), MuteStore.isSuppressRolesEnabled(iChannel.guild_id));
+        const isMentioned = this.isRawMessageMentioned(message, cUID, MuteStore.isSuppressEveryoneEnabled(guildId), MuteStore.isSuppressRolesEnabled(iChannel.guild_id));
         if (!isMentioned) return ret;
         return ret === RetTypes.REPLY ? RetTypes.REPLY_NORMAL : ret === RetTypes.KEYWORD ? RetTypes.KEYWORD_NORMAL : RetTypes.NORMAL;
       }
