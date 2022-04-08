@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.7
+ * @version 1.6.8
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.7',
+      version: '1.6.8',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -53,16 +53,16 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['I fixed it! Part 2.', 'Fixed image zoom not working.']
+        items: ['I fixed it! Part 3.', 'Fixed not properly resizing images anymore.']
       },
       {
         type: 'description',
-        content: 'Fox! But white this time.'
+        content: 'White foxes are cute.'
       },
       {
         type: 'image',
-        src: 'https://i.imgur.com/1PrnfdT.jpeg',
-        height: 300
+        src: 'https://i.redd.it/p17iztrh8as81.jpg',
+        height: 256
       }
     ],
     defaultConfig: [
@@ -277,15 +277,40 @@ module.exports = (() => {
     const TextElement = WebpackModules.getByDisplayName('Text');
 
     const _ImageUtils = WebpackModules.getByProps('getImageSrc');
-    const ImageUtils = { ...WebpackModules.getByProps('getImageSrc') || {}, ...WebpackModules.getByProps('getRatio') || {}, zoomFit: (e, t) => ImageUtils.fit(e, t, Math.ceil(Math.round(0.86 * window.innerWidth * devicePixelRatio)), Math.ceil(Math.round(0.8 * window.innerHeight * devicePixelRatio))),
+    const ImageUtils = { ...WebpackModules.getByProps('getImageSrc') || {}, ...WebpackModules.getByProps('getRatio') || {},
+      zoomFit: (e, t) => {
+        const maxWidth = Math.ceil(Math.round(0.86 * window.innerWidth * devicePixelRatio));
+        const maxHeight = Math.ceil(Math.round(0.8 * window.innerHeight * devicePixelRatio));
+        return ImageUtils.fit.length === 1 ? ImageUtils.fit({
+          width: e,
+          height: t,
+          maxWidth,
+          maxHeight
+        }) : ImageUtils.fit(e, t, maxWidth, maxHeight);
+      },
       getImageSrc: (e, t, n, r = 1, a = null) => {
+        if (typeof e === 'object') {
+          a = e.format || null;
+          r = e.ratio || 1;
+          n = e.height;
+          t = e.width;
+          e = e.src;
+        }
         let o = t;
         let i = n;
         if (r < 1) {
           o = Math.round(t * r);
           i = Math.round(n * r);
         }
-        return ImageUtils.getSrcWithWidthAndHeight(e, t, n, o, i, a);
+        return ImageUtils.getSrcWithWidthAndHeight.length === 1 ? ImageUtils.getSrcWithWidthAndHeight({
+          src: e,
+          sourceWidth: t,
+          sourceHeight: n,
+          targetWidth: o,
+          targetHeight: i,
+          format: a
+        })
+          : ImageUtils.getSrcWithWidthAndHeight(e, t, n, o, i, a);
       },
       getSizedImageSrc: (e, t, n, r) => _ImageUtils.getSizedImageSrc(e, t, n, r) };
 
@@ -303,7 +328,7 @@ module.exports = (() => {
       }
     })();
 
-    const getRatio = (width, height, minW = 400, minH = 300) => ImageUtils.getRatio(width, height, minW, minH);
+    const getRatio = (width, height, minW = 400, minH = 300) => (ImageUtils.getRatio.length === 1 ? ImageUtils.getRatio({ width, height, maxWidth: minW, maxHeight: minH }) : ImageUtils.getRatio(width, height, minW, minH));
     const getPlaceholder = (src, width, height, minW = 400, minH = 300) => ImageUtils.getImageSrc(src, width, height, getRatio(width, height, minW, minH), null);
 
     function extractImages(message) {
