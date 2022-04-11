@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.9
+ * @version 1.3.10
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.9',
+      version: '1.3.10',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -260,7 +260,9 @@ module.exports = (() => {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed not working on canary anymore.'
+          'Fixed not showing images and videos.',
+          'Fixed not showing any text when a friend request comes.',
+          'Fixed not respecting spoiler settings.'
         ]
       }
     ]
@@ -283,7 +285,7 @@ module.exports = (() => {
     const ParserModule = WebpackModules.getByProps('astParserFor', 'parse');
     const MessageClasses = WebpackModules.getByProps('username', 'messageContent', 'usernameContainer');
     const MarkupClassname = XenoLib.getClass('markup');
-    const { Messages } = WebpackModules.getByProps('Messages') || {};
+    const { Messages } = WebpackModules.find(e => e._languages && e._languages.find(e => e && (e.name === 'English, US'))) || {};
     const SysMessageUtils = WebpackModules.getByProps('getSystemMessageUserJoin', 'stringify');
     const MessageParseUtils = (WebpackModules.getByProps('parseAndRebuild', 'default') || {}).default;
     const CUser = WebpackModules.getByPrototypes('getAvatarSource', 'isLocalBot');
@@ -303,7 +305,7 @@ module.exports = (() => {
     const UnreadStore = WebpackModules.getByProps('hasUnread', 'getMentionCount');
     const { SpoilerDisplayContext } = WebpackModules.getByProps('SpoilerDisplayContext') || {};
     const PermissionsStore = WebpackModules.getByProps('can', 'canManageUser');
-    const shouldRenderSpoilers = WebpackModules.getByString('SpoilerRenderSetting.ON_CLICK');
+    const shouldRenderSpoilers = WebpackModules.find(e => !e.displayName && typeof e === 'function' && e.length === 2 && ~e.toString().indexOf('SpoilerRenderSetting.ON_CLICK'));
 
 
     function PlusAlt(props) {
@@ -719,14 +721,24 @@ module.exports = (() => {
         this.setContainerRef = this.setContainerRef.bind(this);
       }
       renderImageComponent(props) {
-        const { width, height } = ImageUtils.fit(props.width, props.height, this.state.__IAN_maxWidth || 290, props.height);
+        const { width, height } = ImageUtils.fit({
+          width: props.width,
+          height: props.height,
+          maxWidth: this.state.__IAN_maxWidth || 290,
+          maxHeight: props.height
+        });
         props.width = width;
         props.height = height;
         props.__BIV_embed = true;
         return MessageRenderers.renderImageComponent(props);
       }
       renderVideoComponent(props) {
-        const { width, height } = ImageUtils.fit(props.width, props.height, this.state.__IAN_maxWidth || 290, props.height);
+        const { width, height } = ImageUtils.fit({
+          width: props.width,
+          height: props.height,
+          maxWidth: this.state.__IAN_maxWidth || 290,
+          maxHeight: props.height
+        });
         props.width = width;
         props.height = height;
         props.__BIV_embed = true;
@@ -852,6 +864,7 @@ module.exports = (() => {
     const ThreadConstants = WebpackModules.getByProps('ThreadMemberFlags');
     const ThreadStateStore = WebpackModules.getByProps('getThreadSidebarState') || WebpackModules.getByProps('getSidebarState');
     const MessageStore = WebpackModules.getByProps('getMessages', 'getMessage');
+    const UserSettings = WebpackModules.getByProps('RenderSpoilers');
 
     return class InAppNotifications extends Plugin {
       constructor() {
@@ -1370,7 +1383,7 @@ module.exports = (() => {
               title
             ),
             React.createElement(props => {
-              const renderSpoilers = iChannel ? shouldRenderSpoilers(UserSettingsStore.renderSpoilers, PermissionsStore.can(DiscordConstants.Permissions.MANAGE_MESSAGES, iChannel)) : true;
+              const renderSpoilers = iChannel ? shouldRenderSpoilers(UserSettings.RenderSpoilers.getSetting(), PermissionsStore.can(DiscordConstants.Permissions.MANAGE_MESSAGES, iChannel)) : true;
               return [
                 React.createElement(SpoilerDisplayContext.Provider, {
                   value: renderSpoilers
