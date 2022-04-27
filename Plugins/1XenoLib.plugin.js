@@ -237,6 +237,7 @@ module.exports = (() => {
       global.XenoLib.shutdown();
       XenoLib._lazyContextMenuListeners = global.XenoLib._lazyContextMenuListeners || [];
     } catch (e) { }
+    if (!XenoLib._lazyContextMenuListeners) XenoLib._lazyContextMenuListeners = [];
     XenoLib.shutdown = () => {
       try {
         Patcher.unpatchAll();
@@ -871,6 +872,7 @@ module.exports = (() => {
       }
       XenoLib.listenLazyContextMenu = (menuNameOrFilter, callback, multi) => {
         XenoLib._lazyContextMenuListeners = XenoLib._lazyContextMenuListeners || [];
+        if (!Array.isArray(XenoLib._lazyContextMenuListeners)) XenoLib._lazyContextMenuListeners = [];
         XenoLib._lazyContextMenuListeners.push({ menuNameOrFilter, callback, multi, patchedModules: [] });
         return () => {
           XenoLib._lazyContextMenuListeners = XenoLib._lazyContextMenuListeners.filter(l => l.callback !== callback);
