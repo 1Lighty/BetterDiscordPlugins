@@ -157,7 +157,7 @@ module.exports = (() => {
     const TextComponent = WebpackModules.getByDisplayName('Text');
     const getEmojiURL = Utilities.getNestedProp(WebpackModules.getByProps('getEmojiURL'), 'getEmojiURL');
     const showAlertModal = Utilities.getNestedProp(
-      WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/)),
+      WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/) > 0),
       'show'
     );
 
@@ -169,7 +169,7 @@ module.exports = (() => {
     const PathModule = require('path');
     const MimeTypesModule = require('mime-types');
     const FormItem = WebpackModules.getByDisplayName('FormItem');
-    const Messages = Utilities.getNestedProp(WebpackModules.getByProps('Messages'), 'Messages');
+    const Messages = WebpackModules.find(m => m.HOLD_UP && m.MASKED_LINK_TRUST_THIS_DOMAIN);
     const TextInput = WebpackModules.getByDisplayName('TextInput');
     const AvatarModule = WebpackModules.getByProps('getChannelIconURL');
     const MessageShit = WebpackModules.find(m => m.default && m.getMessage);
