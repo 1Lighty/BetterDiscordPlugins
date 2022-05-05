@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.14
+ * @version 1.8.15
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -38,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.14';
+    return '1.8.15';
   }
   getAuthor() {
     return 'Lighty';
@@ -127,7 +127,7 @@ module.exports = class MessageLoggerV2 {
           }, BdApi.React.createElement(i, Object.assign({
             header: f,
             children: BdApi.React.createElement(h, {
-              size: h.Sizes?.SIZE_16, 
+              size: h.Sizes?.SIZE_16,
               variant: 'text-md/normal',
               children: [`${g} Please click Download Now to download ${e ? "them" : "it"}.`]
             }),
@@ -184,7 +184,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed not working on canary at all.', '<a:FA_FoxWork:742462902384197752>']
+        items: ['Fixed Clear Log button being non functional.', '<a:FA_FoxWork:742462902384197752>']
       }
     ];
   }
@@ -4223,7 +4223,7 @@ module.exports = class MessageLoggerV2 {
       this.refilterMessages();
     };
 
-    const Text = ZeresPluginLibrary.WebpackModules.getByDisplayName('Text');
+    const Text = ZeresPluginLibrary.WebpackModules.getByDisplayName('Text') || ZeresPluginLibrary.WebpackModules.getByDisplayName('LegacyText');
     const onClearLog = e => {
       if (!Text) return;
       if (document.getElementById(this.style.filter).parentElement.parentElement.className.indexOf(this.createTextBox.classes.focused[0]) != -1) return;
