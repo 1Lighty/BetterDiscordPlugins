@@ -1492,22 +1492,6 @@ module.exports = (() => {
         const folderSubMenu = (folder, idx) => XenoLib.createContextMenuSubMenu(
           folder.name,
           [
-            extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
-              'Remove Folder',
-              () => {
-                this.folders.splice(idx, 1);
-                this.saveFolders();
-                BdApi.showToast('Removed!', { type: 'success' });
-              },
-              'remove-folder'
-            ),
-            extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
-              'Open Folder',
-              () => {
-                openPath(folder.path);
-              },
-              'open-folder'
-            ),
             XenoLib.createContextMenuItem(
               'Save',
               () => {
@@ -1528,7 +1512,14 @@ module.exports = (() => {
               'save-and-open'
             ),
             extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
-              'Edit',
+              'Open Folder',
+              () => {
+                openPath(folder.path);
+              },
+              'open-folder'
+            ),
+            extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
+              'Edit Folder',
               () => {
                 let __name = folder.name.slice(0);
                 let __path = folder.path.slice(0);
@@ -1555,6 +1546,15 @@ module.exports = (() => {
                 );
               },
               'edit'
+            ),
+            extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
+              'Remove Folder',
+              () => {
+                this.folders.splice(idx, 1);
+                this.saveFolders();
+                BdApi.showToast('Removed!', { type: 'success' });
+              },
+              'remove-folder'
             )
           ],
           idx,
