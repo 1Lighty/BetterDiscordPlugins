@@ -92,7 +92,7 @@ module.exports = class MessageLoggerV2 {
           let a = `The ${e ? "libraries" : "library"} `;
           return c || XenoLibOutdated ? (a += "XenoLib ", (d || ZeresPluginLibraryOutdated) && (a += "and ZeresPluginLibrary ")) : (d || ZeresPluginLibraryOutdated) && (a += "ZeresPluginLibrary "), a += `required for ${this.getName()} ${e ? "are" : "is"} ${c || d ? "missing" : ""}${XenoLibOutdated || ZeresPluginLibraryOutdated ? c || d ? " and/or outdated" : "outdated" : ""}.`, a
         })(),
-        h = BdApi.findModuleByDisplayName("Text"),
+        h = BdApi.findModuleByDisplayName("Text") || BdApi.findModule(e => e.Text?.displayName === 'Text')?.Text,
         i = BdApi.findModuleByDisplayName("ConfirmModal"),
         j = () => BdApi.alert(f, BdApi.React.createElement("span", {
           style: {
@@ -127,7 +127,8 @@ module.exports = class MessageLoggerV2 {
           }, BdApi.React.createElement(i, Object.assign({
             header: f,
             children: BdApi.React.createElement(h, {
-              size: h.Sizes.SIZE_16,
+              size: h.Sizes?.SIZE_16, 
+              variant: 'text-md/normal',
               children: [`${g} Please click Download Now to download ${e ? "them" : "it"}.`]
             }),
             red: !1,
