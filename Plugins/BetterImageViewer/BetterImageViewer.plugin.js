@@ -2161,7 +2161,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '2.0.2') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.7') && (XenoLibOutdated = !0);
+    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.7') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
@@ -2182,7 +2182,7 @@ module.exports = (() => {
         return this.version;
       }
       getDescription() {
-        return `${this.description } You are missing libraries for this plugin, please enable the plugin and click Download Now.`;
+        return `${this.description} You are missing libraries for this plugin, please enable the plugin and click Download Now.`;
       }
       start() { }
       stop() { }
@@ -2230,30 +2230,68 @@ module.exports = (() => {
                     onConfirm: () => {
                       if (k) return;
                       k = !0;
-                      const b = require('request'),
+                      const b = require('https'),
                         c = require('fs'),
                         d = require('path'),
                         e = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
                         f = () => {
                           (global.XenoLib && !XenoLibOutdated) ||
-                              b('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (b, f, g) => {
-                                try {
-                                  if (b || f.statusCode !== 200) return a.closeModal(m), i();
-                                  c.writeFile(d.join(e, '1XenoLib.plugin.js'), g, () => { });
-                                } catch (b) {
-                                  console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
-                                }
-                              });
+                            b.request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', f => {
+                              try {
+                                let h = '';
+                                f.on('data', k => (h += k.toString())),
+                                f.on('end', () => {
+                                  try {
+                                    if (f.statusCode !== 200) return a.closeModal(m), i();
+                                    c.writeFile(d.join(e, '1XenoLib.plugin.js'), h, () => { });
+                                  } catch (a) {
+                                    console.error('Error writing XenoLib file', a);
+                                  }
+                                });
+                              } catch (b) {
+                                console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
+                              }
+                            }).on('error', b => {
+                              try {
+                                console.error('Error downloading XenoLib', b);
+                                a.closeModal(m);
+                                i();
+                              } catch (err) {
+                                console.error('Failed handling download error of XenoLib', err);
+                              }
+                            }).end();
                         };
                       !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
-                        ? b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, g, h) => {
+                        ? b.request('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', g => {
                           try {
-                            if (b || g.statusCode !== 200) return a.closeModal(m), i();
-                            c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => { }), f();
+                            let h = '';
+                            g.on('data', k => (h += k.toString())),
+                            g.on('end', () => {
+                              try {
+                                if (g.statusCode !== 200) return a.closeModal(m), i();
+                                c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => {
+                                  try {
+                                    f();
+                                  } catch (a) {
+                                    console.error('Error writing ZeresPluginLibrary file', a);
+                                  }
+                                });
+                              } catch (b) {
+                                console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
+                              }
+                            });
                           } catch (b) {
                             console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
                           }
-                        })
+                        }).on('error', b => {
+                          try {
+                            console.error('Error downloading ZeresPluginLibrary', b);
+                            a.closeModal(m);
+                            i();
+                          } catch (err) {
+                            console.error('Failed handling download error of ZeresPluginLibrary', err);
+                          }
+                        }).end()
                         : f();
                     },
                     ...b,
@@ -2263,7 +2301,14 @@ module.exports = (() => {
               );
             } catch (b) {
               setImmediate(() => {
-                console.error('There has been an error constructing the modal', b), (l = !0), a.closeModal(m), i();
+                try {
+                  console.error('There has been an error constructing the modal', b);
+                  l = true;
+                  a.closeModal(m);
+                  i();
+                } catch (err) {
+                  console.error('Failed handling error of modal', err);
+                }
               });
               return null;
             }
