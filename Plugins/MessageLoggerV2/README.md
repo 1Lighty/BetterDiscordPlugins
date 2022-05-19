@@ -1,20 +1,15 @@
 <!--
-<a href="https://mblais-portfolio.netlify.app/">
+<a>
 <p align="center">
   <img src="https://i.imgur.com/TATMUpm.png">
 </p>
 </a>
-
-
-<!-- 
-<img src="https://img.shields.io/badge/Version-2-blue?style=for-the-badge">
 -->
 
 <h1><p align="center">About MessageLoggerV2</p><p align="center">
 <img src="https://img.shields.io/github/stars/1Lighty/BetterDiscordPlugins?color=yellow&style=for-the-badge">
 <img src="https://img.shields.io/github/forks/1Lighty/BetterDiscordPlugins?color=blue&style=for-the-badge">
 </p></h1>
-
 
 Saves all deleted and purged messages, as well as all edit history and ghost pings. With highly configurable options, and even restoring deleted messages after restarting Discord.
 
@@ -48,4 +43,5 @@ Saves all deleted and purged messages, as well as all edit history and ghost pin
 
 ## Support
 If you like these plugins, consider donating!
+
 [![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L3L01A2WY)
