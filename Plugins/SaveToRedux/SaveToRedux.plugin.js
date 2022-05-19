@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.5
+ * @version 2.4.8
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -46,11 +46,11 @@ module.exports = (() => {
         {
           name: 'Lighty',
           discord_id: '239513071272329217',
-          github_username: 'LightyPon',
+          github_username: '1Lighty',
           twitter_username: ''
         }
       ],
-      version: '2.4.5',
+      version: '2.4.8',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -59,7 +59,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed crashing Discord if you rightclicked a member in the member list sometimes.']
+        items: ['Fixed crash whenever you had a conflicting file.']
       }
     ],
     defaultConfig: [
@@ -154,10 +154,10 @@ module.exports = (() => {
       ModalSizes: (WebpackModules.getByProps('ModalSize') || {}).ModalSize
     };
 
-    const TextComponent = WebpackModules.getByDisplayName('Text');
+    const TextComponent = WebpackModules.getByDisplayName('Text') || WebpackModules.find(e => e.Text?.displayName === 'Text')?.Text;
     const getEmojiURL = Utilities.getNestedProp(WebpackModules.getByProps('getEmojiURL'), 'getEmojiURL');
     const showAlertModal = Utilities.getNestedProp(
-      WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/)),
+      WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/) > 0),
       'show'
     );
 
@@ -169,7 +169,7 @@ module.exports = (() => {
     const PathModule = require('path');
     const MimeTypesModule = require('mime-types');
     const FormItem = WebpackModules.getByDisplayName('FormItem');
-    const Messages = Utilities.getNestedProp(WebpackModules.getByProps('Messages'), 'Messages');
+    const Messages = WebpackModules.find(m => m.HOLD_UP && m.MASKED_LINK_TRUST_THIS_DOMAIN);
     const TextInput = WebpackModules.getByDisplayName('TextInput');
     const AvatarModule = WebpackModules.getByProps('getChannelIconURL');
     const MessageShit = WebpackModules.find(m => m.default && m.getMessage);
@@ -1424,7 +1424,7 @@ module.exports = (() => {
                 'File conflict',
                 [
                   React.createElement(
-                    WebpackModules.getByDisplayName('Text'),
+                    TextComponent,
                     {
                       className: `${WebpackModules.getByProps('defaultColor').defaultColor} ${WebpackModules.getByProps('marginBottom20').marginBottom20}`
                     },
@@ -1492,22 +1492,6 @@ module.exports = (() => {
         const folderSubMenu = (folder, idx) => XenoLib.createContextMenuSubMenu(
           folder.name,
           [
-            extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
-              'Remove Folder',
-              () => {
-                this.folders.splice(idx, 1);
-                this.saveFolders();
-                BdApi.showToast('Removed!', { type: 'success' });
-              },
-              'remove-folder'
-            ),
-            extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
-              'Open Folder',
-              () => {
-                openPath(folder.path);
-              },
-              'open-folder'
-            ),
             XenoLib.createContextMenuItem(
               'Save',
               () => {
@@ -1528,7 +1512,14 @@ module.exports = (() => {
               'save-and-open'
             ),
             extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
-              'Edit',
+              'Open Folder',
+              () => {
+                openPath(folder.path);
+              },
+              'open-folder'
+            ),
+            extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
+              'Edit Folder',
               () => {
                 let __name = folder.name.slice(0);
                 let __path = folder.path.slice(0);
@@ -1555,6 +1546,15 @@ module.exports = (() => {
                 );
               },
               'edit'
+            ),
+            extraData.onlyFolderSave ? null : XenoLib.createContextMenuItem(
+              'Remove Folder',
+              () => {
+                this.folders.splice(idx, 1);
+                this.saveFolders();
+                BdApi.showToast('Removed!', { type: 'success' });
+              },
+              'remove-folder'
             )
           ],
           idx,
@@ -1811,14 +1811,15 @@ module.exports = (() => {
   let XenoLibOutdated = false;
   try {
     const i = (i, n) => ((i = i.split('.').map(i => parseInt(i))), (n = n.split('.').map(i => parseInt(i))), !!(n[0] > i[0]) || !!(n[0] == i[0] && n[1] > i[1]) || !!(n[0] == i[0] && n[1] == i[1] && n[2] > i[2])),
-      n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e),
-      e = BdApi.Plugins.get('ZeresPluginLibrary'),
+      n = (n, e) => n && n._config && n._config.info && n._config.info.version && i(n._config.info.version, e);
+    let e = BdApi.Plugins.get('ZeresPluginLibrary'),
       o = BdApi.Plugins.get('XenoLib');
-    n(e, '2.0.0') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.4') && (XenoLibOutdated = !0);
+    if (e && e.instance) e = e.instance;
+    if (o && o.instance) o = o.instance;
+    n(e, '2.0.2') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.7') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
-
   return !global.ZeresPluginLibrary || !global.XenoLib || ZeresPluginLibraryOutdated || XenoLibOutdated
     ? class {
       constructor() {
@@ -1853,7 +1854,7 @@ module.exports = (() => {
             let a = `The ${d ? 'libraries' : 'library'} `;
             return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
           })(),
-          g = BdApi.findModuleByDisplayName('Text'),
+          g = BdApi.findModuleByDisplayName('Text') || BdApi.findModule(e => e.Text?.displayName === 'Text')?.Text,
           h = BdApi.findModuleByDisplayName('ConfirmModal'),
           i = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), 'Due to a slight mishap however, you\'ll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.', c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
         if (!a || !h || !g) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (h ? '' : ' ConfirmationModalComponent') + (g ? '' : 'TextElement')}`), i();
@@ -1875,7 +1876,7 @@ module.exports = (() => {
                   h,
                   {
                     header: e,
-                    children: BdApi.React.createElement(g, { size: g.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] }),
+                    children: BdApi.React.createElement(g, { size: g.Sizes?.SIZE_16, variant: 'text-md/normal', children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] }),
                     red: !1,
                     confirmText: 'Download Now',
                     cancelText: 'Cancel',
@@ -1937,7 +1938,10 @@ module.exports = (() => {
                 )
               );
             } catch (b) {
-              return console.error('There has been an error constructing the modal', b), (l = !0), a.closeModal(m), i(), null;
+              setImmediate(() => {
+                console.error('There has been an error constructing the modal', b), (l = !0), a.closeModal(m), i();
+              });
+              return null;
             }
           },
           { modalKey: `${this.name}_DEP_MODAL` }

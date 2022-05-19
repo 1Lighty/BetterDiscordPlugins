@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.4
+ * @version 1.4.7
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -40,8 +40,6 @@
 
 // eslint-disable-next-line no-undef
 if (window.__XL_waitingForWatcherTimeout && !window.__XL_assumingZLibLoaded) clearTimeout(window.__XL_waitingForWatcherTimeout);
-
-const shouldPass = e => e && e.constructor && typeof e.constructor.name === 'string' && e.constructor.name.indexOf('HTML');
 
 function _extractMeta(code/* : string */)/* : BDPluginManifest */ {
   const [firstLine] = code.split('\n');
@@ -104,11 +102,11 @@ module.exports = (() => {
         {
           name: 'Lighty',
           discord_id: '239513071272329217',
-          github_username: 'LightyPon',
+          github_username: '1Lighty',
           twitter_username: ''
         }
       ],
-      version: '1.4.4',
+      version: '1.4.7',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -117,7 +115,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed parser.', 'Fixed context menu stuffs not working as intended.', 'Try fix plugins being disabled']
+        items: []
       }
     ],
     defaultConfig: [
@@ -212,8 +210,9 @@ module.exports = (() => {
 
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
-    const { ContextMenu, EmulatedTooltip, Toasts, Settings, Popouts, Modals, Utilities, WebpackModules, Filters, DiscordModules, ColorConverter, DOMTools, DiscordClasses, DiscordSelectors, ReactTools, ReactComponents, Logger, PluginUpdater, PluginUtilities, DiscordClassModules, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ContextMenuItem, ContextMenuItemsGroup, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, Dispatcher, GuildMemberStore, GuildActions, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Titles, Changelog: ChangelogModal, SelectedChannelStore, SelectedGuildStore, Moment } = DiscordModules;
+    const start = performance.now();
+    const { Settings, Modals, Utilities, WebpackModules, DiscordModules, ColorConverter, DiscordClasses, ReactTools, ReactComponents, Logger, PluginUpdater, PluginUtilities, Structs } = Api;
+    const { React, ModalStack, ContextMenuActions, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Titles, Changelog: ChangelogModal, SelectedChannelStore, SelectedGuildStore, Moment } = DiscordModules;
 
     if (window.__XL_waitingForWatcherTimeout) clearTimeout(window.__XL_waitingForWatcherTimeout);
 
@@ -224,14 +223,13 @@ module.exports = (() => {
 
     for (let s = 0; s < config.defaultConfig.length; s++) {
       const current = config.defaultConfig[s];
-      if (current.type !== 'category') DefaultLibrarySettings[current.id] = current.value;
-      else {
+      if (current.type === 'category') {
         DefaultLibrarySettings[current.id] = {};
         for (let s = 0; s < current.settings.length; s++) {
           const subCurrent = current.settings[s];
           DefaultLibrarySettings[current.id][subCurrent.id] = subCurrent.value;
         }
-      }
+      } else DefaultLibrarySettings[current.id] = current.value;
     }
     const XenoLib = {};
 
@@ -239,6 +237,7 @@ module.exports = (() => {
       global.XenoLib.shutdown();
       XenoLib._lazyContextMenuListeners = global.XenoLib._lazyContextMenuListeners || [];
     } catch (e) { }
+    if (!XenoLib._lazyContextMenuListeners) XenoLib._lazyContextMenuListeners = [];
     XenoLib.shutdown = () => {
       try {
         Patcher.unpatchAll();
@@ -258,7 +257,7 @@ module.exports = (() => {
       }
     };
 
-    XenoLib._ = XenoLib.DiscordUtils = WebpackModules.getByProps('bindAll', 'debounce');
+    XenoLib._ = XenoLib.DiscordUtils = window._ || WebpackModules.getByProps('bindAll', 'debounce');
 
     XenoLib.loadData = (name, key, defaultData, returnNull) => {
       try {
@@ -272,14 +271,37 @@ module.exports = (() => {
       }
     };
 
+    // replica of zeres deprecated DiscordAPI
+    XenoLib.DiscordAPI = {
+      get userId() {
+        const user = UserStore.getCurrentUser();
+        return user && user.id;
+      },
+      get channelId() {
+        return SelectedChannelStore.getChannelId();
+      },
+      get guildId() {
+        return SelectedGuildStore.getGuildId();
+      },
+      get user() {
+        return UserStore.getCurrentUser();
+      },
+      get channel() {
+        return ChannelStore.getChannel(this.channelId);
+      },
+      get guild() {
+        return GuildStore.getGuild(this.guildId);
+      }
+    };
+
     XenoLib.getClass = (arg, thrw) => {
       try {
         const args = arg.split(' ');
         return WebpackModules.getByProps(...args)[args[args.length - 1]];
       } catch (e) {
         if (thrw) throw e;
-        if (!XenoLib.getClass.__warns[arg] || Date.now() - XenoLib.getClass.__warns[arg] > 1000 * 60) {
-          Logger.stacktrace(`Failed to get class with props ${arg}`, e);
+        if (XenoLib.DiscordAPI.userId === '239513071272329217' && !XenoLib.getClass.__warns[arg] || Date.now() - XenoLib.getClass.__warns[arg] > 1000 * 60) {
+          Logger.warn(`Failed to get class with props ${arg}`, e);
           XenoLib.getClass.__warns[arg] = Date.now();
         }
         return '';
@@ -290,8 +312,8 @@ module.exports = (() => {
         return XenoLib.getClass(arg, thrw).split(' ')[0];
       } catch (e) {
         if (thrw) throw e;
-        if (!XenoLib.getSingleClass.__warns[arg] || Date.now() - XenoLib.getSingleClass.__warns[arg] > 1000 * 60) {
-          Logger.stacktrace(`Failed to get class with props ${arg}`, e);
+        if (XenoLib.DiscordAPI.userId === '239513071272329217' && !XenoLib.getSingleClass.__warns[arg] || Date.now() - XenoLib.getSingleClass.__warns[arg] > 1000 * 60) {
+          Logger.warn(`Failed to get class with props ${arg}`, e);
           XenoLib.getSingleClass.__warns[arg] = Date.now();
         }
         return '';
@@ -366,163 +388,223 @@ module.exports = (() => {
     PluginUtilities.addStyle(
       'XenoLib-CSS',
       `
-			.xenoLib-color-picker .xenoLib-button {
-				width: 34px;
-				min-height: 38px;
-			}
-			.xenoLib-color-picker .xenoLib-button:hover {
-				width: 128px;
-			}
-			.xenoLib-color-picker .xenoLib-button .${XenoLib.getSingleClass('recording text')} {
-				opacity: 0;
-				transform: translate3d(200%,0,0);
-			}
-			.xenoLib-color-picker .xenoLib-button:hover .${XenoLib.getSingleClass('recording text')} {
-				opacity: 1;
-				transform: translateZ(0);
-			}
-			.xenoLib-button-icon {
-				left: 50%;
-				top: 50%;
-				position: absolute;
-				margin-left: -12px;
-				margin-top: -8px;
-				width: 24px;
-				height: 24px;
-				opacity: 1;
-				transform: translateZ(0);
-				transition: opacity .2s ease-in-out,transform .2s ease-in-out,-webkit-transform .2s ease-in-out;
-			}
-			.xenoLib-button-icon.xenoLib-revert > svg {
-				width: 24px;
-				height: 24px;
-			}
-			.xenoLib-button-icon.xenoLib-revert {
-				margin-top: -12px;
-			}
-			.xenoLib-button:hover .xenoLib-button-icon {
-				opacity: 0;
-				transform: translate3d(-200%,0,0);
-			}
-			.xenoLib-notifications {
-				position: absolute;
-				color: white;
-				width: 100%;
-				min-height: 100%;
-				display: flex;
-				flex-direction: column;
-				z-index: 1000;
-				pointer-events: none;
-				font-size: 14px;
-			}
-			.xenoLib-notification {
-				min-width: 200px;
-				overflow: hidden;
-			}
-			.xenoLib-notification-content-wrapper {
-				padding: 22px 20px 0 20px;
-			}
-			.xenoLib-centering-bottomLeft .xenoLib-notification-content-wrapper:first-of-type, .xenoLib-centering-bottomMiddle .xenoLib-notification-content-wrapper:first-of-type, .xenoLib-centering-bottomRight .xenoLib-notification-content-wrapper:first-of-type {
-				padding: 0 20px 20px 20px;
-			}
-			.xenoLib-notification-content {
-				padding: 12px;
-				overflow: hidden;
-				background: #474747;
-				pointer-events: all;
-				position: relative;
-				width: 20vw;
-				white-space: break-spaces;
-				min-width: 330px;
-			}
-			.xenoLib-notification-loadbar {
-				position: absolute;
-				bottom: 0;
-				left: 0px;
-				width: auto;
-				background-image: linear-gradient(130deg,var(--grad-one),var(--grad-two));
-				height: 5px;
-			}
-			.xenoLib-notification-loadbar-user {
-				animation: fade-loadbar-animation 1.5s ease-in-out infinite;
-			}
-			@keyframes fade-loadbar-animation {
-				0% {
-						filter: brightness(75%)
-				}
-				50% {
-						filter: brightness(100%)
-				}
-				to {
-						filter: brightness(75%)
-				}
-			}
-			.xenoLib-notification-loadbar-striped:before {
-				content: "";
-				position: absolute;
-				width: 100%;
-				height: 100%;
-				border-radius: 5px;
-				background: linear-gradient(
-					-20deg,
-					transparent 35%,
-					var(--bar-color) 35%,
-					var(--bar-color) 70%,
-					transparent 70%
-				);
-				animation: shift 1s linear infinite;
-				background-size: 60px 100%;
-				box-shadow: inset 0 0px 1px rgba(0, 0, 0, 0.2),
-					inset 0 -2px 1px rgba(0, 0, 0, 0.2);
-			}
-			@keyframes shift {
-				to {
-					background-position: 60px 100%;
-				}
-			}
-			.xenoLib-notification-close {
-				float: right;
-				padding: 0;
-				height: unset;
-				opacity: .7;
-			}
-			.xenLib-notification-counter {
-				float: right;
-				margin-top: 2px;
-			}
-			.topMiddle-xenoLib {
-				top: 0;
-				left: 0;
-				right: 0;
-				margin-left: auto;
-				margin-right: auto;
-			}
-			.bottomMiddle-xenoLib {
-				bottom: 0;
-				left: 0;
-				right: 0;
-				margin-left: auto;
-				margin-right: auto;
-			}
-			.xenoLib-centering-topLeft, .xenoLib-centering-bottomLeft {
-				align-items: flex-start;
-			}
-			.xenoLib-centering-topMiddle, .xenoLib-centering-bottomMiddle {
-				align-items: center;
-			}
-			.xenoLib-centering-topRight, .xenoLib-centering-bottomRight {
-				align-items: flex-end;
-			}
-			.xenoLib-centering-bottomLeft, .xenoLib-centering-bottomMiddle, .xenoLib-centering-bottomRight {
-				flex-direction: column-reverse;
-				bottom: 0;
-			}
-			.XL-chl-p img{
-				width: unset !important;
-			}
-			.xenoLib-error-text {
-				padding-top: 5px;
-			}
+      .xenoLib-color-picker .xenoLib-button {
+        min-height: 38px;
+        width: 34px;
+        white-space: nowrap;
+        position: relative;
+        transition: background-color .2s ease-in-out,color .2s ease-in-out,width .2s ease-in-out;
+        overflow: hidden;
+        margin: 4px 4px 4px 0;
+        padding: 2px 20px;
+        border-radius: 2px;
+      }
+
+      .xenoLib-color-picker .xenoLib-button:hover {
+        width: 128px;
+      }
+
+      .xenoLib-color-picker .xenoLib-button .xl-text-1SHFy0 {
+        opacity: 0;
+        transform: translate3d(200%,0,0);
+
+      }
+      .xenoLib-color-picker .xenoLib-button:hover .xl-text-1SHFy0 {
+        opacity: 1;
+        transform: translateZ(0);
+      }
+      .xenoLib-button-icon {
+        left: 50%;
+        top: 50%;
+        position: absolute;
+        margin-left: -12px;
+        margin-top: -8px;
+        width: 24px;
+        height: 24px;
+        opacity: 1;
+        transform: translateZ(0);
+        transition: opacity .2s ease-in-out,transform .2s ease-in-out,-webkit-transform .2s ease-in-out;
+      }
+      .xenoLib-button-icon.xenoLib-revert > svg {
+        width: 24px;
+        height: 24px;
+      }
+      .xenoLib-button-icon.xenoLib-revert {
+        margin-top: -12px;
+      }
+      .xenoLib-button:hover .xenoLib-button-icon {
+        opacity: 0;
+        transform: translate3d(-200%,0,0);
+      }
+      .xenoLib-notifications {
+        position: absolute;
+        color: white;
+        width: 100%;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+        pointer-events: none;
+        font-size: 14px;
+      }
+      .xenoLib-notification {
+        min-width: 200px;
+        overflow: hidden;
+      }
+      .xenoLib-notification-content-wrapper {
+        padding: 22px 20px 0 20px;
+      }
+      .xenoLib-centering-bottomLeft .xenoLib-notification-content-wrapper:first-of-type, .xenoLib-centering-bottomMiddle .xenoLib-notification-content-wrapper:first-of-type, .xenoLib-centering-bottomRight .xenoLib-notification-content-wrapper:first-of-type {
+        padding: 0 20px 20px 20px;
+      }
+      .xenoLib-notification-content {
+        padding: 12px;
+        overflow: hidden;
+        background: #474747;
+        pointer-events: all;
+        position: relative;
+        width: 20vw;
+        white-space: break-spaces;
+        min-width: 330px;
+      }
+      .xenoLib-notification-loadbar {
+        position: absolute;
+        bottom: 0;
+        left: 0px;
+        width: auto;
+        background-image: linear-gradient(130deg,var(--grad-one),var(--grad-two));
+        height: 5px;
+      }
+      .xenoLib-notification-loadbar-user {
+        animation: fade-loadbar-animation 1.5s ease-in-out infinite;
+      }
+      @keyframes fade-loadbar-animation {
+        0% {
+            filter: brightness(75%)
+        }
+        50% {
+            filter: brightness(100%)
+        }
+        to {
+            filter: brightness(75%)
+        }
+      }
+      .xenoLib-notification-loadbar-striped:before {
+        content: "";
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border-radius: 5px;
+        background: linear-gradient(
+          -20deg,
+          transparent 35%,
+          var(--bar-color) 35%,
+          var(--bar-color) 70%,
+          transparent 70%
+        );
+        animation: shift 1s linear infinite;
+        background-size: 60px 100%;
+        box-shadow: inset 0 0px 1px rgba(0, 0, 0, 0.2),
+          inset 0 -2px 1px rgba(0, 0, 0, 0.2);
+      }
+      @keyframes shift {
+        to {
+          background-position: 60px 100%;
+        }
+      }
+      .xenoLib-notification-close {
+        float: right;
+        padding: 0;
+        height: unset;
+        opacity: .7;
+      }
+      .xenLib-notification-counter {
+        float: right;
+        margin-top: 2px;
+      }
+      .option-xenoLib {
+        position: absolute;
+        width: 24%;
+        height: 24%;
+        margin: 6px;
+        border-radius: 3px;
+        opacity: .6;
+        background-color: #72767d;
+        cursor: pointer;
+        overflow: hidden;
+        text-indent: -999em;
+        font-size: 0;
+        line-height: 0;
+      }
+      .selected-xenoLib.option-xenoLib {
+        background-color: var(--brand-experiment);
+        border-color: var(--brand-experiment);
+        box-shadow: 0 2px 0 rgba(0,0,0,.3);
+        opacity: 1;
+      }
+      .topLeft-xenoLib {
+        top: 0;
+        left: 0;
+      }
+      .topRight-xenoLib {
+        top: 0;
+        right: 0;
+      }
+      .bottomLeft-xenoLib {
+        bottom: 0;
+        left: 0;
+      }
+      .bottomRight-xenoLib {
+        bottom: 0;
+        right: 0;
+      }
+      .topMiddle-xenoLib {
+        top: 0;
+        left: 0;
+        right: 0;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .bottomMiddle-xenoLib {
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .xenoLib-centering-topLeft, .xenoLib-centering-bottomLeft {
+        align-items: flex-start;
+      }
+      .xenoLib-centering-topMiddle, .xenoLib-centering-bottomMiddle {
+        align-items: center;
+      }
+      .xenoLib-centering-topRight, .xenoLib-centering-bottomRight {
+        align-items: flex-end;
+      }
+      .xenoLib-centering-bottomLeft, .xenoLib-centering-bottomMiddle, .xenoLib-centering-bottomRight {
+        flex-direction: column-reverse;
+        bottom: 0;
+      }
+      .xenoLib-position-wrapper {
+        box-sizing: border-box;
+        position: relative;
+        background-color: rgba(0,0,0,.1);
+        padding-bottom: 56.25%;
+        border-radius: 8px;
+        border: 2px solid var(--brand-experiment);
+      }
+      .xenoLib-position-hidden-input {
+        opacity: 0;
+        position: absolute;
+        top: 0;
+        cursor: pointer;
+      }
+      .XL-chl-p img{
+        width: unset !important;
+      }
+      .xenoLib-error-text {
+        padding-top: 5px;
+      }
 
       .xenoLib-multiInput {
         display: -webkit-box;
@@ -557,7 +639,7 @@ module.exports = (() => {
         border: none;
         background-color: transparent
       }
-			`
+      `
     );
 
     {
@@ -618,29 +700,6 @@ module.exports = (() => {
       render() {
         if (this.state.hasError) return null;
         return this.props.children;
-      }
-    };
-
-    // replica of zeres deprecated DiscordAPI
-    XenoLib.DiscordAPI = {
-      get userId() {
-        const user = UserStore.getCurrentUser();
-        return user && user.id;
-      },
-      get channelId() {
-        return SelectedChannelStore.getChannelId();
-      },
-      get guildId() {
-        return SelectedGuildStore.getGuildId();
-      },
-      get user() {
-        return UserStore.getCurrentUser();
-      },
-      get channel() {
-        return ChannelStore.getChannel(this.channelId);
-      },
-      get guild() {
-        return GuildStore.getGuild(this.guildId);
       }
     };
 
@@ -813,6 +872,7 @@ module.exports = (() => {
       }
       XenoLib.listenLazyContextMenu = (menuNameOrFilter, callback, multi) => {
         XenoLib._lazyContextMenuListeners = XenoLib._lazyContextMenuListeners || [];
+        if (!Array.isArray(XenoLib._lazyContextMenuListeners)) XenoLib._lazyContextMenuListeners = [];
         XenoLib._lazyContextMenuListeners.push({ menuNameOrFilter, callback, multi, patchedModules: [] });
         return () => {
           XenoLib._lazyContextMenuListeners = XenoLib._lazyContextMenuListeners.filter(l => l.callback !== callback);
@@ -996,20 +1056,14 @@ module.exports = (() => {
       XenoLib.ReactComponents.PluginFooter = DiscordConstants.NOOP_NULL;
     }
 
-    const TextElement = WebpackModules.getByDisplayName('Text');
+    const TextElement = WebpackModules.getByDisplayName('Text') || WebpackModules.find(e => e.Text?.displayName === 'Text')?.Text;
 
     /* shared between FilePicker and ColorPicker */
-    const MultiInputClassname = XenoLib.joinClassNames('xenoLib-multiInput');
+    const MultiInputClassname = 'xenoLib-multiInput';
     const MultiInputFirstClassname = 'xenoLib-multiInputFirst';
     const MultiInputFieldClassname = 'xenoLib-multiInputField';
     const ErrorMessageClassname = XenoLib.joinClassNames('xenoLib-error-text', XenoLib.getClass('errorMessage'), Utilities.getNestedProp(TextElement, 'Colors.ERROR'));
-    let ErrorClassname = XenoLib.joinClassNames('xenoLib-multiInput-error', XenoLib.getClass('input error'));
-
-    // sometimes we can't access it for some reason, works thru BBD beta's webpack tho /shrug
-    if (isBBDBeta) setImmediate(() => {
-      const inputClasses = require('webpack').getByProps('multiInputFirst');
-      ErrorClassname = inputClasses.error;
-    });
+    const ErrorClassname = XenoLib.joinClassNames('xenoLib-multiInput-error', XenoLib.getClass('input error'));
 
     try {
       const { DelayedCall } = WebpackModules.getByProps('DelayedCall');
@@ -1081,7 +1135,7 @@ module.exports = (() => {
               }),
               React.createElement(XenoLib.ReactComponents.Button, { onClick: this.handleOnBrowse, color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY, look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST, size: XenoLib.ReactComponents.Button.Sizes.MEDIUM }, 'Browse')
             ),
-            !!this.state.error && React.createElement('div', { className: ErrorMessageClassname }, 'Error: ', this.state.error)
+            !!this.state.error && React.createElement('div', { className: ErrorMessageClassname, style: { color: 'hsl(359,calc(var(--saturation-factor, 1)*82.6%),59.4%)' } }, 'Error: ', this.state.error)
           );
         }
       };
@@ -1100,8 +1154,6 @@ module.exports = (() => {
      * @author Zerebos, from his library ZLibrary
      */
     const FormItem = WebpackModules.getByDisplayName('FormItem');
-    const DeprecatedModal = WebpackModules.getByDisplayName('DeprecatedModal');
-
 
     const ColorPickerComponent = (_ => {
       try {
@@ -1154,8 +1206,8 @@ module.exports = (() => {
     }
     const NewModalStack = WebpackModules.getByProps('openModal', 'hasModalOpen');
 
-    const ExtraButtonClassname = XenoLib.joinClassNames('xenoLib-button', XenoLib.getClass('recording button'));
-    const TextClassname = XenoLib.getClass('recording text');
+    const ExtraButtonClassname = 'xenoLib-button';
+    const TextClassname = 'xl-text-1SHFy0';
     const DropperIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16' }, React.createElement('path', { d: 'M14.994 1.006C13.858-.257 11.904-.3 10.72.89L8.637 2.975l-.696-.697-1.387 1.388 5.557 5.557 1.387-1.388-.697-.697 1.964-1.964c1.13-1.13 1.3-2.985.23-4.168zm-13.25 10.25c-.225.224-.408.48-.55.764L.02 14.37l1.39 1.39 2.35-1.174c.283-.14.54-.33.765-.55l4.808-4.808-2.776-2.776-4.813 4.803z', fill: 'currentColor' }));
     const ClockReverseIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M13,3 C8.03,3 4,7.03 4,12 L1,12 L4.89,15.89 L4.96,16.03 L9,12 L6,12 C6,8.13 9.13,5 13,5 C16.87,5 20,8.13 20,12 C20,15.87 16.87,19 13,19 C11.07,19 9.32,18.21 8.06,16.94 L6.64,18.36 C8.27,19.99 10.51,21 13,21 C17.97,21 22,16.97 22,12 C22,7.03 17.97,3 13,3 L13,3 Z M12,8 L12,13 L16.28,15.54 L17,14.33 L13.5,12.25 L13.5,8 L12,8 L12,8 Z', fill: 'currentColor' }));
     class ColorPicker extends React.PureComponent {
@@ -1246,7 +1298,7 @@ module.exports = (() => {
               )
             )
           ),
-          !!this.state.error && React.createElement('div', { className: ErrorMessageClassname }, 'Error: ', this.state.error)
+          !!this.state.error && React.createElement('div', { className: ErrorMessageClassname, style: { color: 'hsl(359,calc(var(--saturation-factor, 1)*82.6%),59.4%)' } }, 'Error: ', this.state.error)
         );
       }
     }
@@ -1335,7 +1387,7 @@ module.exports = (() => {
         }
       }
     })();
-    if (shouldPass(window.Lightcord)) return;
+
     const AnchorClasses = WebpackModules.getByProps('anchor', 'anchorUnderlineOnHover') || {};
     const EmbedVideo = (() => {
       try {
@@ -1406,7 +1458,7 @@ module.exports = (() => {
         }
       }
       const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => Modals.showConfirmationModal('Please confirm', 'Are you sure you want to join my support server?', { confirmText: 'Yes', cancelText: 'Nope', onConfirm: () => (LayerManager.popLayer(), ModalStack.pop(), NewModalStack.closeAllModals(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }) }, 'Join my support server'), '! Or consider donating via ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://paypal.me/lighty13') }, 'Paypal'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://ko-fi.com/lighty_') }, 'Ko-fi'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://www.patreon.com/lightyp') }, 'Patreon'), '!', showDisclaimer ? '\nBy using these plugins, you agree to being part of the anonymous user counter, unless disabled in settings.' : ''];
-      NewModalStack.openModal(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12, className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement.Sizes.SIZE_12 }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
+      NewModalStack.openModal(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement, { size: TextElement?.Sizes?.SIZE_12, variant: 'text-xs/normal', className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement?.Sizes?.SIZE_12, variant: 'text-xs/normal' }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
     };
 
     /* https://github.com/react-spring/zustand
@@ -2024,10 +2076,17 @@ module.exports = (() => {
     global.XenoLib = XenoLib;
 
     const notifLocations = ['topLeft', 'topMiddle', 'topRight', 'bottomLeft', 'bottomMiddle', 'bottomRight'];
-    const notifLocationClasses = [`${XenoLib.getClass('selected topLeft')} ${XenoLib.getClass('topLeft option')}`, `topMiddle-xenoLib ${XenoLib.getClass('topLeft option')}`, `${XenoLib.getClass('selected topRight')} ${XenoLib.getClass('topLeft option')}`, `${XenoLib.getClass('selected bottomLeft')} ${XenoLib.getClass('topLeft option')}`, `bottomMiddle-xenoLib ${XenoLib.getClass('topLeft option')}`, `${XenoLib.getClass('selected bottomRight')} ${XenoLib.getClass('topLeft option')}`];
-    const PositionSelectorWrapperClassname = XenoLib.getClass('topLeft wrapper');
-    const PositionSelectorSelectedClassname = XenoLib.getClass('topLeft selected');
-    const PositionSelectorHiddenInputClassname = XenoLib.getClass('topLeft hiddenInput');
+    const notifLocationClasses = [
+      'topLeft-xenoLib option-xenoLib',
+      'topMiddle-xenoLib option-xenoLib',
+      'topRight-xenoLib option-xenoLib',
+      'bottomLeft-xenoLib option-xenoLib',
+      'bottomMiddle-xenoLib option-xenoLib',
+      'bottomRight-xenoLib option-xenoLib'
+    ];
+    const PositionSelectorWrapperClassname = 'xenoLib-position-wrapper';
+    const PositionSelectorSelectedClassname = 'selected-xenoLib';
+    const PositionSelectorHiddenInputClassname = 'xenoLib-position-hidden-input';
     const FormText = WebpackModules.getByDisplayName('FormText');
     class NotificationPosition extends React.PureComponent {
       constructor(props) {
@@ -2162,7 +2221,6 @@ module.exports = (() => {
       }
     }
 
-    const Text = WebpackModules.getByDisplayName('Text');
     class TimerWrapper extends React.PureComponent {
       constructor(...args) {
         super(...args);
@@ -2186,7 +2244,7 @@ module.exports = (() => {
       render() {
         const { value, after, active, inactive, time } = this.props;
         const future = (value + time);
-        return React.createElement(Text, {}, value ? Date.now() > future ? active : `${after}${this.moment.fromNow()}` : inactive);
+        return React.createElement(TextElement, {}, value ? Date.now() > future ? active : `${after}${this.moment.fromNow()}` : inactive);
       }
     }
 
@@ -2219,13 +2277,12 @@ module.exports = (() => {
         const theActualFileNameZere = _zerecantcode_path.join(__dirname, _zerecantcode_path.basename(__filename));
         XenoLib.changeName(theActualFileNameZere, '1XenoLib'); /* prevent user from changing libs filename */
         try {
-          WebpackModules.getByProps('openModal', 'hasModalOpen').closeModal(`${this.name}_DEP_MODAL`);
+          NewModalStack.closeModal(`${this.name}_DEP_MODAL`);
         } catch (e) { }
       }
       load() {
         super.load();
         try {
-          if (shouldPass(window.Lightcord)) return XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
           if (!BdApi.Plugins) return; /* well shit what now */
           if (!BdApi.isSettingEnabled) return;
           const list = BdApi.Plugins.getAll().filter(k => k._XL_PLUGIN || (k.instance && k.instance._XL_PLUGIN)).map(k => k.instance || k);
@@ -2238,7 +2295,6 @@ module.exports = (() => {
               Logger.error('Failed telling you about failing to reload a plugin', list[p], e);
             }
           }
-          if (shouldPass(window.Lightcord)) location.reload();
 
           const pluginsDir = (BdApi.Plugins && BdApi.Plugins.folder) || (window.ContentManager && window.ContentManager.pluginsFolder);
           const PLUGINS_LIST = ['BetterImageViewer', 'BetterTypingUsers', 'BetterUnavailableGuilds', 'CrashRecovery', 'InAppNotifications', 'MessageLoggerV2', 'MultiUploads', 'SaveToRedux', 'UnreadBadgesRedux'];
@@ -2323,6 +2379,8 @@ module.exports = (() => {
         } catch (err) {
           Logger.log('Failed to execute load', err);
         }
+        const end = performance.now();
+        Logger.log(`Loaded in ${Math.round(end - start)}ms`);
       }
       buildSetting(data) {
         if (data.type === 'position') {
@@ -2378,6 +2436,7 @@ module.exports = (() => {
 
       }
       showChangelog(footer) {
+        return;
         XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog, void 0, true);
       }
       get name() {
@@ -2412,7 +2471,7 @@ module.exports = (() => {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]);
     let b = BdApi.Plugins.get('ZeresPluginLibrary');
     if (b && b.instance) b = b.instance;
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '2.0.0') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '2.0.2') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }

@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.7
+ * @version 1.6.9
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.7',
+      version: '1.6.9',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -53,16 +53,12 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['I fixed it! Part 2.', 'Fixed image zoom not working.']
-      },
-      {
-        type: 'description',
-        content: 'Fox! But white this time.'
+        items: ['I fixed it! Part 4.']
       },
       {
         type: 'image',
-        src: 'https://i.imgur.com/1PrnfdT.jpeg',
-        height: 300
+        src: 'https://i.redd.it/hmlice84lhw81.jpg',
+        height: 265
       }
     ],
     defaultConfig: [
@@ -274,18 +270,43 @@ module.exports = (() => {
       }
     })();
     const Clickable = WebpackModules.getByDisplayName('Clickable');
-    const TextElement = WebpackModules.getByDisplayName('Text');
+    const TextElement = WebpackModules.getByDisplayName('Text') || WebpackModules.find(e => e.Text?.displayName === 'Text')?.Text;
 
     const _ImageUtils = WebpackModules.getByProps('getImageSrc');
-    const ImageUtils = { ...WebpackModules.getByProps('getImageSrc') || {}, ...WebpackModules.getByProps('getRatio') || {}, zoomFit: (e, t) => ImageUtils.fit(e, t, Math.ceil(Math.round(0.86 * window.innerWidth * devicePixelRatio)), Math.ceil(Math.round(0.8 * window.innerHeight * devicePixelRatio))),
+    const ImageUtils = { ...WebpackModules.getByProps('getImageSrc') || {}, ...WebpackModules.getByProps('getRatio') || {},
+      zoomFit: (e, t) => {
+        const maxWidth = Math.ceil(Math.round(0.86 * window.innerWidth * devicePixelRatio));
+        const maxHeight = Math.ceil(Math.round(0.8 * window.innerHeight * devicePixelRatio));
+        return ImageUtils.fit.length === 1 ? ImageUtils.fit({
+          width: e,
+          height: t,
+          maxWidth,
+          maxHeight
+        }) : ImageUtils.fit(e, t, maxWidth, maxHeight);
+      },
       getImageSrc: (e, t, n, r = 1, a = null) => {
+        if (typeof e === 'object') {
+          a = e.format || null;
+          r = e.ratio || 1;
+          n = e.height;
+          t = e.width;
+          e = e.src;
+        }
         let o = t;
         let i = n;
         if (r < 1) {
           o = Math.round(t * r);
           i = Math.round(n * r);
         }
-        return ImageUtils.getSrcWithWidthAndHeight(e, t, n, o, i, a);
+        return ImageUtils.getSrcWithWidthAndHeight.length === 1 ? ImageUtils.getSrcWithWidthAndHeight({
+          src: e,
+          sourceWidth: t,
+          sourceHeight: n,
+          targetWidth: o,
+          targetHeight: i,
+          format: a
+        })
+          : ImageUtils.getSrcWithWidthAndHeight(e, t, n, o, i, a);
       },
       getSizedImageSrc: (e, t, n, r) => _ImageUtils.getSizedImageSrc(e, t, n, r) };
 
@@ -303,7 +324,7 @@ module.exports = (() => {
       }
     })();
 
-    const getRatio = (width, height, minW = 400, minH = 300) => ImageUtils.getRatio(width, height, minW, minH);
+    const getRatio = (width, height, minW = 400, minH = 300) => (ImageUtils.getRatio.length === 1 ? ImageUtils.getRatio({ width, height, maxWidth: minW, maxHeight: minH }) : ImageUtils.getRatio(width, height, minW, minH));
     const getPlaceholder = (src, width, height, minW = 400, minH = 300) => ImageUtils.getImageSrc(src, width, height, getRatio(width, height, minW, minH), null);
 
     function extractImages(message) {
@@ -1295,7 +1316,8 @@ module.exports = (() => {
                     React.createElement(
                       'div',
                       {
-                        className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.ERROR)
+                        className: XenoLib.joinClassNames('BIV-requesting', TextElement?.Colors?.ERROR),
+                        style: { color: 'var(--text-danger)' }
                       },
                       React.createElement(
                         Tooltip,
@@ -1309,7 +1331,8 @@ module.exports = (() => {
                     React.createElement(
                       'div',
                       {
-                        className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.STATUS_YELLOW)
+                        className: XenoLib.joinClassNames('BIV-requesting', TextElement?.Colors?.STATUS_YELLOW),
+                        style: { color: 'var(--text-warning)' }
                       },
                       React.createElement(
                         Tooltip,
@@ -1351,7 +1374,8 @@ module.exports = (() => {
                     ? React.createElement(
                       'div',
                       {
-                        className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.ERROR)
+                        className: XenoLib.joinClassNames('BIV-requesting', TextElement?.Colors?.ERROR),
+                        style: { color: 'var(--text-danger)' }
                       },
                       React.createElement(
                         Tooltip,
@@ -1366,7 +1390,8 @@ module.exports = (() => {
                     React.createElement(
                       'div',
                       {
-                        className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.ERROR)
+                        className: XenoLib.joinClassNames('BIV-requesting', TextElement?.Colors?.ERROR),
+                        style: { color: 'var(--text-danger)' }
                       },
                       React.createElement(
                         Tooltip,
@@ -1380,7 +1405,8 @@ module.exports = (() => {
                     React.createElement(
                       'div',
                       {
-                        className: XenoLib.joinClassNames('BIV-requesting', TextElement.Colors.ERROR)
+                        className: XenoLib.joinClassNames('BIV-requesting', TextElement?.Colors?.ERROR),
+                        style: { color: 'var(--text-danger)' }
                       },
                       React.createElement(
                         Tooltip,
@@ -1691,7 +1717,11 @@ module.exports = (() => {
         const renderLinkComponent = props => React.createElement(MaskedLink, props);
         const Modals = WebpackModules.getByProps('ModalRoot');
         const ImageModalClasses = WebpackModules.find(m => typeof m.image === 'string' && typeof m.modal === 'string' && !m.content && !m.card) || WebpackModules.getByProps('modal', 'image');
-        Patcher.before(WebpackModules.getByDisplayName('LazyImageZoomable').prototype, 'render', (_this, _, ret) => {
+        const LazyImageZoomable = XenoLib.fakeRenderHook(() => {
+          const ConnectedLazyImageZoomable = WebpackModules.getByDisplayName('ConnectedLazyImageZoomable');
+          return ConnectedLazyImageZoomable({}).type;
+        }) || WebpackModules.getByDisplayName('LazyImageZoomable');
+        Patcher.before(LazyImageZoomable.prototype, 'render', (_this, _, ret) => {
           if (_this.onZoom.__BIV_patched !== patchKey) {
             _this.onZoom = (e, n) => {
               let isSearch = e.target;
@@ -1975,9 +2005,12 @@ module.exports = (() => {
               React.createElement(
                 'div',
                 {
-                  className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug }, TextElement.Colors.STANDARD)
+                  className: XenoLib.joinClassNames('BIV-info BIV-info-extra', { 'BIV-hidden': !_this.state.controlsVisible, 'BIV-inactive': _this.state.controlsInactive && !debug }, TextElement?.Colors?.STANDARD),
+                  style: {
+                    color: 'var(--text-normal)'
+                  }
                 },
-                React.createElement('table', {}, settings.infoFilename || debug ? React.createElement('tr', {}, React.createElement('td', { colspan: 2 }, this.fetchFilename(_this.props.src))) : null, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? TextElement.Colors.ERROR : undefined }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
+                React.createElement('table', {}, settings.infoFilename || debug ? React.createElement('tr', {}, React.createElement('td', { colspan: 2 }, this.fetchFilename(_this.props.src))) : null, settings.infoResolution || debug ? renderTableEntry(basicImageInfo ? React.createElement('span', { className: _this.state.showFullRes ? (TextElement?.Colors?.ERROR) : undefined, ...(_this.state.showFullRes ? { style: { color: 'var(--text-danger)' } } : {}) }, `${basicImageInfo.width}x${basicImageInfo.height}`) : 'NaNxNaN', `${_this.props.width}x${_this.props.height}`) : null, settings.infoSize || debug ? renderTableEntry(imageSize ? imageSize : 'NaN', originalImageSize ? (originalImageSize === imageSize ? '~' : originalImageSize) : 'NaN') : null, debug ? Object.keys(_this.state).map(key => (!XenoLib._.isObject(_this.state[key]) && key !== 'src' && key !== 'original' && key !== 'placeholder' ? renderTableEntry(key, String(_this.state[key])) : null)) : null)
               ),
               overlayDOMNode
             )
@@ -2128,7 +2161,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '2.0.2') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.4') && (XenoLibOutdated = !0);
+    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.7') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
@@ -2149,7 +2182,7 @@ module.exports = (() => {
         return this.version;
       }
       getDescription() {
-        return `${this.description } You are missing libraries for this plugin, please enable the plugin and click Download Now.`;
+        return `${this.description} You are missing libraries for this plugin, please enable the plugin and click Download Now.`;
       }
       start() { }
       stop() { }
@@ -2167,9 +2200,9 @@ module.exports = (() => {
             let a = `The ${d ? 'libraries' : 'library'} `;
             return b || XenoLibOutdated ? ((a += 'XenoLib '), (c || ZeresPluginLibraryOutdated) && (a += 'and ZeresPluginLibrary ')) : (c || ZeresPluginLibraryOutdated) && (a += 'ZeresPluginLibrary '), (a += `required for ${this.name} ${d ? 'are' : 'is'} ${b || c ? 'missing' : ''}${XenoLibOutdated || ZeresPluginLibraryOutdated ? (b || c ? ' and/or outdated' : 'outdated') : ''}.`), a;
           })(),
-          g = BdApi.findModuleByDisplayName('Text'),
+          g = BdApi.findModuleByDisplayName('Text') || BdApi.findModule(e => e.Text?.displayName === 'Text')?.Text,
           h = BdApi.findModuleByDisplayName('ConfirmModal'),
-          i = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), 'Due to a slight mishap however, you\'ll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.', c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
+          i = () => BdApi.alert(e, BdApi.React.createElement('span', { style: { color: 'var(--text-normal)' } }, BdApi.React.createElement('div', {}, f), 'Due to a slight mishap however, you\'ll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.', c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
         if (!a || !h || !g) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (h ? '' : ' ConfirmationModalComponent') + (g ? '' : 'TextElement')}`), i();
         class j extends BdApi.React.PureComponent {
           constructor(a) {
@@ -2189,7 +2222,7 @@ module.exports = (() => {
                   h,
                   {
                     header: e,
-                    children: BdApi.React.createElement(g, { size: g.Sizes.SIZE_16, children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] }),
+                    children: BdApi.React.createElement(g, { size: g.Sizes?.SIZE_16, variant: 'text-md/normal', children: [`${f} Please click Download Now to download ${d ? 'them' : 'it'}.`] }),
                     red: !1,
                     confirmText: 'Download Now',
                     cancelText: 'Cancel',
@@ -2197,30 +2230,68 @@ module.exports = (() => {
                     onConfirm: () => {
                       if (k) return;
                       k = !0;
-                      const b = require('request'),
+                      const b = require('https'),
                         c = require('fs'),
                         d = require('path'),
                         e = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
                         f = () => {
                           (global.XenoLib && !XenoLibOutdated) ||
-                              b('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', (b, f, g) => {
-                                try {
-                                  if (b || f.statusCode !== 200) return a.closeModal(m), i();
-                                  c.writeFile(d.join(e, '1XenoLib.plugin.js'), g, () => { });
-                                } catch (b) {
-                                  console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
-                                }
-                              });
+                            b.request('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js', f => {
+                              try {
+                                let h = '';
+                                f.on('data', k => (h += k.toString())),
+                                f.on('end', () => {
+                                  try {
+                                    if (f.statusCode !== 200) return a.closeModal(m), i();
+                                    c.writeFile(d.join(e, '1XenoLib.plugin.js'), h, () => { });
+                                  } catch (a) {
+                                    console.error('Error writing XenoLib file', a);
+                                  }
+                                });
+                              } catch (b) {
+                                console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
+                              }
+                            }).on('error', b => {
+                              try {
+                                console.error('Error downloading XenoLib', b);
+                                a.closeModal(m);
+                                i();
+                              } catch (err) {
+                                console.error('Failed handling download error of XenoLib', err);
+                              }
+                            }).end();
                         };
                       !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated
-                        ? b('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', (b, g, h) => {
+                        ? b.request('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', g => {
                           try {
-                            if (b || g.statusCode !== 200) return a.closeModal(m), i();
-                            c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => { }), f();
+                            let h = '';
+                            g.on('data', k => (h += k.toString())),
+                            g.on('end', () => {
+                              try {
+                                if (g.statusCode !== 200) return a.closeModal(m), i();
+                                c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => {
+                                  try {
+                                    f();
+                                  } catch (a) {
+                                    console.error('Error writing ZeresPluginLibrary file', a);
+                                  }
+                                });
+                              } catch (b) {
+                                console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
+                              }
+                            });
                           } catch (b) {
                             console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
                           }
-                        })
+                        }).on('error', b => {
+                          try {
+                            console.error('Error downloading ZeresPluginLibrary', b);
+                            a.closeModal(m);
+                            i();
+                          } catch (err) {
+                            console.error('Failed handling download error of ZeresPluginLibrary', err);
+                          }
+                        }).end()
                         : f();
                     },
                     ...b,
@@ -2229,7 +2300,17 @@ module.exports = (() => {
                 )
               );
             } catch (b) {
-              return console.error('There has been an error constructing the modal', b), (l = !0), a.closeModal(m), i(), null;
+              setImmediate(() => {
+                try {
+                  console.error('There has been an error constructing the modal', b);
+                  l = true;
+                  a.closeModal(m);
+                  i();
+                } catch (err) {
+                  console.error('Failed handling error of modal', err);
+                }
+              });
+              return null;
             }
           },
           { modalKey: `${this.name}_DEP_MODAL` }

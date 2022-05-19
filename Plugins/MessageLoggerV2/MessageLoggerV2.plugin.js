@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.13
+ * @version 1.8.15
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -38,7 +38,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.13';
+    return '1.8.15';
   }
   getAuthor() {
     return 'Lighty';
@@ -92,7 +92,7 @@ module.exports = class MessageLoggerV2 {
           let a = `The ${e ? "libraries" : "library"} `;
           return c || XenoLibOutdated ? (a += "XenoLib ", (d || ZeresPluginLibraryOutdated) && (a += "and ZeresPluginLibrary ")) : (d || ZeresPluginLibraryOutdated) && (a += "ZeresPluginLibrary "), a += `required for ${this.getName()} ${e ? "are" : "is"} ${c || d ? "missing" : ""}${XenoLibOutdated || ZeresPluginLibraryOutdated ? c || d ? " and/or outdated" : "outdated" : ""}.`, a
         })(),
-        h = BdApi.findModuleByDisplayName("Text"),
+        h = BdApi.findModuleByDisplayName("Text") || BdApi.findModule(e => e.Text?.displayName === 'Text')?.Text,
         i = BdApi.findModuleByDisplayName("ConfirmModal"),
         j = () => BdApi.alert(f, BdApi.React.createElement("span", {
           style: {
@@ -127,7 +127,8 @@ module.exports = class MessageLoggerV2 {
           }, BdApi.React.createElement(i, Object.assign({
             header: f,
             children: BdApi.React.createElement(h, {
-              size: h.Sizes.SIZE_16,
+              size: h.Sizes?.SIZE_16,
+              variant: 'text-md/normal',
               children: [`${g} Please click Download Now to download ${e ? "them" : "it"}.`]
             }),
             red: !1,
@@ -183,7 +184,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed context menus being brok.', 'Tooltips work again.', '<a:FA_FoxWork:742462902384197752>']
+        items: ['Fixed Clear Log button being non functional.', '<a:FA_FoxWork:742462902384197752>']
       }
     ];
   }
@@ -518,13 +519,13 @@ module.exports = class MessageLoggerV2 {
       isBlocked: ZeresPluginLibrary.WebpackModules.getByProps('isBlocked').isBlocked,
       createMomentObject: ZeresPluginLibrary.WebpackModules.getByProps('createFromInputFallback'),
       isMentioned: (e, id) =>
-        mentionedModule.isMentioned(
-          id,
-          e.channel_id,
-          e.mentionEveryone || e.mention_everyone,
-          e.mentions.map(e => e.id || e),
-          e.mentionRoles || e.mention_roles
-        ),
+      (mentionedModule.isMentioned.length === 1 ? mentionedModule.isMentioned({ userId: id, channelId: e.channel_id, mentionEveryone: e.mentionEveryone || e.mention_everyone, mentionUsers: e.mentions.map(e => e.id || e), mentionRoles: e.mentionRoles || e.mention_roles }) : mentionedModule.isMentioned(
+        id,
+        e.channel_id,
+        e.mentionEveryone || e.mention_everyone,
+        e.mentions.map(e => e.id || e),
+        e.mentionRoles || e.mention_roles
+      )),
       DiscordUtils: ZeresPluginLibrary.WebpackModules.getByProps('bindAll', 'debounce')
     };
 
@@ -4222,7 +4223,7 @@ module.exports = class MessageLoggerV2 {
       this.refilterMessages();
     };
 
-    const Text = ZeresPluginLibrary.WebpackModules.getByDisplayName('Text');
+    const Text = ZeresPluginLibrary.WebpackModules.getByDisplayName('Text') || ZeresPluginLibrary.WebpackModules.getByDisplayName('LegacyText');
     const onClearLog = e => {
       if (!Text) return;
       if (document.getElementById(this.style.filter).parentElement.parentElement.className.indexOf(this.createTextBox.classes.focused[0]) != -1) return;
