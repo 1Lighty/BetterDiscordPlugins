@@ -1,15 +1,3 @@
-<!--
-<a href="https://mblais-portfolio.netlify.app/">
-<p align="center">
-  <img src="https://i.imgur.com/TATMUpm.png">
-</p>
-</a>
-
-
-<!-- 
-<img src="https://img.shields.io/badge/Version-2-blue?style=for-the-badge">
--->
-
 <h1><p align="center">About BetterImageViewer</p><p align="center">
 <img src="https://img.shields.io/github/stars/1Lighty/BetterDiscordPlugins?color=yellow&style=for-the-badge">
 <img src="https://img.shields.io/github/forks/1Lighty/BetterDiscordPlugins?color=blue&style=for-the-badge">
