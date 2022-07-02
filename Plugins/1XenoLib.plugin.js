@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.8
+ * @version 1.4.9
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.8',
+      version: '1.4.9',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -837,19 +837,21 @@ module.exports = (() => {
             if (typeof ret === 'function') try {
               const ctxEl = ret();
               let { type } = ctxEl;
+              let typeOverriden = false;
               const analyticsWrapper = type.toString().includes('.CONTEXT_MENU).AnalyticsLocationProvider');
               if (type.toString().includes('objectType') || analyticsWrapper) fakeRenderHook(() => {
                 const ret = type();
                 if (ret.type.displayName !== 'AnalyticsContext' && !analyticsWrapper) return;
                 ({ type } = ret.props.children);
+                typeOverriden = true;
               }, {
                 useState: () => [[], () => {}]
               });
 
               let changed = false;
               for (const { menuNameOrFilter, callback, multi, patchedModules } of [...XenoLib._lazyContextMenuListeners]) {
-                if (typeof menuNameOrFilter === 'string' && menuNameOrFilter !== type.displayName) continue;
-                if (typeof menuNameOrFilter === 'function' && !menuNameOrFilter(type)) continue;
+                if (typeof menuNameOrFilter === 'string' && menuNameOrFilter !== type.displayName && (!typeOverriden || menuNameOrFilter !== ctxEl.type.displayName)) continue;
+                if (typeof menuNameOrFilter === 'function' && !menuNameOrFilter(type) && (!typeOverriden || !menuNameOrFilter(ctxEl.type))) continue;
                 if (multi && patchedModules.indexOf(type) !== -1) continue;
                 changed = callback(ctxEl.type) || changed;
                 if (multi) {
