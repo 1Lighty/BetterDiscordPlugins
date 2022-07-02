@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.9
+ * @version 2.4.10
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -50,7 +50,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.4.9',
+      version: '2.4.10',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -894,7 +894,7 @@ module.exports = (() => {
       }
 
       patchGuildContextMenu() {
-        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu('GuildContextMenu', () => {
+        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu('GuildContextMenuWrapper', () => {
           const mod = WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'GuildContextMenuWrapper');
           if (!mod) return Logger.warn('Could not find GuildContextMenu');
 
@@ -1850,7 +1850,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.8') && (XenoLibOutdated = !0);
+    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.9') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
