@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.8
+ * @version 2.4.9
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -50,7 +50,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.4.8',
+      version: '2.4.9',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -59,7 +59,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed crash whenever you had a conflicting file.']
+        items: ['Fixed not showing context menu.', 'Fixed viewing stickers only showing the low res version.']
       }
     ],
     defaultConfig: [
@@ -638,14 +638,26 @@ module.exports = (() => {
 
       patchUserContextMenus() {
         const patchedMods = [];
-        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu(m => m.displayName && (m.displayName.endsWith('UserContextMenu') || m.displayName === 'GroupDMContextMenu' || m.displayName === 'UserGenericContextMenu'), fmod => {
+        this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu(m => m.displayName && (m.displayName.endsWith('UserContextMenu') || m.displayName.endsWith('UserContextMenuWrapper') || m.displayName === 'GroupDMContextMenu' || m.displayName === 'UserGenericContextMenu'), fmod => {
           const CTXs = WebpackModules.findAll(m => (m.default === fmod || (m.default && m.default.__originalFunction === fmod)) && !patchedMods.includes(m));
           if (!CTXs) return false;
           patchedMods.push(...CTXs);
           const _this = this;
+          const CTXMap = {};
           function PatchRunner(props) {
-            const ret = props.__STR_type(props);
+            const ret = (props.__STR_type_2 || props.__STR_type)(props);
             try {
+              if (!props.__STR_type_2 && props.__STR_type?.displayName?.endsWith('ContextMenuWrapper')) {
+                const wanted = ret.props.children;
+                if (wanted.props.__STR_type_2) return ret;
+                const override = CTXMap[wanted.type.displayName] || (CTXMap[wanted.type.displayName] = function(props) {
+                  return PatchRunner(props);
+                });
+                Object.assign(override, wanted.type);
+                wanted.props.__STR_type_2 = wanted.type;
+                wanted.type = override;
+                return ret;
+              }
               const menu = Utilities.getNestedProp(
                 Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
                 'props.children'
@@ -679,9 +691,9 @@ module.exports = (() => {
             }
             return ret;
           }
-          const CTXMap = {};
           for (const CTX of CTXs) Patcher.after(CTX, 'default', (_, __, ret) => {
             const damnedmenu = ret.props.children;
+            if (damnedmenu.props.__STR_type) return;
             const override = CTXMap[damnedmenu.type.displayName] || (CTXMap[damnedmenu.type.displayName] = function(props) {
               return PatchRunner(props);
             });
@@ -883,31 +895,53 @@ module.exports = (() => {
 
       patchGuildContextMenu() {
         this.lazyContextMenuCancels.push(XenoLib.listenLazyContextMenu('GuildContextMenu', () => {
-          const mod = WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'GuildContextMenu');
+          const mod = WebpackModules.find(m => m.default && m.default.displayName && m.default.displayName === 'GuildContextMenuWrapper');
           if (!mod) return Logger.warn('Could not find GuildContextMenu');
-          Patcher.after(
-            mod,
-            'default',
-            (_, [props], ret) => {
+
+          const _this = this;
+          function GuildContextMenu(props) {
+            try {
+              const ret = props.__STR_type(props);
+
               const menu = Utilities.getNestedProp(
                 Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
                 'props.children'
               );
-              if (!Array.isArray(menu)) return;
+              if (!Array.isArray(menu)) return ret;
               let url = props.guild.getIconURL();
-              if (!url) return;
+              if (!url) return ret;
               let customName;
               const extraData = { guildId: props.guild.id };
-              if (this.settings.saveOptions.saveByName) customName = props.guild.name;
+              if (_this.settings.saveOptions.saveByName) customName = props.guild.name;
               url = useIdealExtensions(url);
               try {
-                const submenu = this.constructMenu(url.split('?')[0], 'Icon', customName, () => {}, null, null, extraData);
+                const submenu = _this.constructMenu(url.split('?')[0], 'Icon', customName, () => {}, null, null, extraData);
                 const group = XenoLib.createContextMenuGroup([submenu]);
-                if (this.settings.misc.contextMenuOnBottom) menu.push(group);
+                if (_this.settings.misc.contextMenuOnBottom) menu.push(group);
                 else menu.unshift(group);
               } catch (e) {
                 Logger.warn('Failed to parse URL...', url, e);
               }
+              return ret;
+            } catch (err) {
+              Logger.warn('Failed to run patch GuildContextMenu', err);
+              try {
+                const ret = props.__STR_type(props);
+                return ret;
+              } catch (err) {
+                Logger.error('Failed to original only GuildContextMenu', err);
+                return null;
+              }
+            }
+          }
+          GuildContextMenu.displayName = 'GuildContextMenu';
+
+          Patcher.after(
+            mod,
+            'default',
+            (_, __, { props: { children } }) => {
+              children.props.__STR_type = children.type;
+              children.type = GuildContextMenu;
             }
           );
           return true;
@@ -932,7 +966,7 @@ module.exports = (() => {
                 menu = [menu];
                 menuEl.props.children = menu;
               }
-              const inst = Utilities.findInTree(ReactTools.getReactInstance(props.target), e => e && e.type && e.type.displayName && (e.type.displayName === 'EmojiButton' || e.type.displayName === 'Sticker'), { walkable: [ 'return' ] });
+              const inst = Utilities.findInTree(ReactTools.getReactInstance(props.target), e => typeof e.pendingProps?.emoji !== 'undefined' || e.type?.displayName === 'Sticker', { walkable: [ 'return' ] });
               const { pendingProps } = inst || {};
               const { sticker, emoji } = pendingProps || {};
               if (!sticker && !emoji) return;
@@ -1094,7 +1128,7 @@ module.exports = (() => {
           if (extraData.type === StickerFormat.APNG) forcedExtension = 'apng';
         } else forcedExtension = extraData.type === StickerFormat.PNG ? 'png' : 'gif';
 
-        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar' || type === 'Banner' || type === 'Server Banner' || type === 'Server Avatar', customName, fallbackExtension, proxiedUrl, 0, type === 'Theme' || type === 'Plugin', forcedExtension);
+        const formattedurl = this.formatURL(url, type === 'Icon' || type === 'Avatar' || type === 'Banner' || type === 'Server Banner' || type === 'Server Avatar' || type === 'Sticker', customName, fallbackExtension, proxiedUrl, 0, type === 'Theme' || type === 'Plugin', forcedExtension);
         if (!formattedurl.extension) onNoExtension(formattedurl.url);
         if (extraData.entirePack) formattedurl.filename = '';
         let notifId;
@@ -1147,7 +1181,7 @@ module.exports = (() => {
               } else if (res.statusCode == 404) {
                 if (shouldDoMultiAttempts && downloadAttempts < 2) {
                   downloadAttempts++;
-                  const newUrl = this.formatURL(url, type === 'Icon' || type === 'Avatar' || type === 'Banner' || type === 'Server Banner' || type === 'Server Avatar', customName, fallbackExtension, proxiedUrl, downloadAttempts, type === 'Theme' || type === 'Plugin', forcedExtension).url;
+                  const newUrl = this.formatURL(url, type === 'Icon' || type === 'Avatar' || type === 'Banner' || type === 'Server Banner' || type === 'Server Avatar' || type === 'Sticker', customName, fallbackExtension, proxiedUrl, downloadAttempts, type === 'Theme' || type === 'Plugin', forcedExtension).url;
                   if (newUrl !== formattedurl.url) {
                     formattedurl.url = newUrl;
                     return downloadEx(path, openOnSave);
@@ -1816,7 +1850,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '2.0.2') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.7') && (XenoLibOutdated = !0);
+    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.8') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
@@ -1856,7 +1890,7 @@ module.exports = (() => {
           })(),
           g = BdApi.findModuleByDisplayName('Text') || BdApi.findModule(e => e.Text?.displayName === 'Text')?.Text,
           h = BdApi.findModuleByDisplayName('ConfirmModal'),
-          i = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), 'Due to a slight mishap however, you\'ll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.', c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
+          i = () => BdApi.alert(e, BdApi.React.createElement('span', {}, BdApi.React.createElement('div', {}, f), 'Due to a slight mishap however, you\'ll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.', c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.app/Download?id=9', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://astranika.com/bd/xenolib', target: '_blank' }, 'Click here to download XenoLib')) : null));
         if (!a || !h || !g) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (h ? '' : ' ConfirmationModalComponent') + (g ? '' : 'TextElement')}`), i();
         class j extends BdApi.React.PureComponent {
           constructor(a) {
