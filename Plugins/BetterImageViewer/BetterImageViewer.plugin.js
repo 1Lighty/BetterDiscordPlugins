@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.9
+ * @version 1.6.10
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.9',
+      version: '1.6.10',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -53,12 +53,12 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['I fixed it! Part 4.']
+        items: ['I fixed it! Part 5.']
       },
       {
-        type: 'image',
-        src: 'https://i.redd.it/hmlice84lhw81.jpg',
-        height: 265
+        type: 'video',
+        src: 'https://cdn.discordapp.com/attachments/389049952732446733/994636112326832158/vt34dz.mp4',
+        height: 254
       }
     ],
     defaultConfig: [
@@ -1713,7 +1713,7 @@ module.exports = (() => {
 
       patchLazyImageZoomable() {
         const patchKey = Math.random().toString(36).substring(2, 10).toUpperCase();
-        const MaskedLink = WebpackModules.getByDisplayName('MaskedLink');
+        const { default: MaskedLink } = WebpackModules.find(e => e?.default?.type?.toString()?.includes('default.MASKED_LINK'));
         const renderLinkComponent = props => React.createElement(MaskedLink, props);
         const Modals = WebpackModules.getByProps('ModalRoot');
         const ImageModalClasses = WebpackModules.find(m => typeof m.image === 'string' && typeof m.modal === 'string' && !m.content && !m.card) || WebpackModules.getByProps('modal', 'image');
@@ -2161,7 +2161,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.7') && (XenoLibOutdated = !0);
+    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.9') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
@@ -2202,7 +2202,7 @@ module.exports = (() => {
           })(),
           g = BdApi.findModuleByDisplayName('Text') || BdApi.findModule(e => e.Text?.displayName === 'Text')?.Text,
           h = BdApi.findModuleByDisplayName('ConfirmModal'),
-          i = () => BdApi.alert(e, BdApi.React.createElement('span', { style: { color: 'var(--text-normal)' } }, BdApi.React.createElement('div', {}, f), 'Due to a slight mishap however, you\'ll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.', c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=2252', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.net/ghdl?id=3169', target: '_blank' }, 'Click here to download XenoLib')) : null));
+          i = () => BdApi.alert(e, BdApi.React.createElement('span', { style: { color: 'var(--text-normal)' } }, BdApi.React.createElement('div', {}, f), 'Due to a slight mishap however, you\'ll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.', c || ZeresPluginLibraryOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://betterdiscord.app/Download?id=9', target: '_blank' }, 'Click here to download ZeresPluginLibrary')) : null, b || XenoLibOutdated ? BdApi.React.createElement('div', {}, BdApi.React.createElement('a', { href: 'https://astranika.com/bd/xenolib', target: '_blank' }, 'Click here to download XenoLib')) : null));
         if (!a || !h || !g) return console.error(`Missing components:${(a ? '' : ' ModalStack') + (h ? '' : ' ConfirmationModalComponent') + (g ? '' : 'TextElement')}`), i();
         class j extends BdApi.React.PureComponent {
           constructor(a) {
