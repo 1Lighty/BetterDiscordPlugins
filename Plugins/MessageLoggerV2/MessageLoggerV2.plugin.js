@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.16
+ * @version 1.8.17
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -33,12 +33,16 @@
 // modal for checking which servers/channels/users are blacklisted/whitelisted
 // option to show all hidden
 
+const MLV2_TYPE_L1 = Symbol('MLV2_TYPE_L1');
+const MLV2_TYPE_L2 = Symbol('MLV2_TYPE_L2');
+const MLV2_TYPE_L3 = Symbol('MLV2_TYPE_L3');
+
 module.exports = class MessageLoggerV2 {
   getName() {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.16';
+    return '1.8.17';
   }
   getAuthor() {
     return 'Lighty';
@@ -71,11 +75,11 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.9')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.10')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '2.0.3')) ZeresPluginLibraryOutdated = true;
     }
 
-    if (!global.XenoLib || !global.ZeresPluginLibrary || global.DiscordJS || XenoLibOutdated || ZeresPluginLibraryOutdated) {
+    if (!global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated) {
       this._XL_PLUGIN = true;
       if ("undefined" != typeof global.isTab) return;
       const a = !!window.powercord && "function" == typeof BdApi.__getPluginConfigPath,
@@ -105,7 +109,7 @@ module.exports = class MessageLoggerV2 {
           href: "https://astranika.com/bd/xenolib",
           target: "_blank"
         }, "Click here to download XenoLib")) : null));
-      if (global.XenoLib && global.ohgodohfuck) return;
+      if (global.XenoLib) return;
       if (!b || !i || !h) return console.error(`Missing components:${(b ? "" : " ModalStack") + (i ? "" : " ConfirmationModalComponent") + (h ? "" : "TextElement")}`), j();
       class k extends BdApi.React.PureComponent {
         constructor(a) {
@@ -184,7 +188,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed context menus']
+        items: ['Fixed context menus, again', 'Fixed images in logger menu causing a crash']
       }
     ];
   }
@@ -208,10 +212,7 @@ module.exports = class MessageLoggerV2 {
     if (window.PluginUpdates && window.PluginUpdates.plugins) delete PluginUpdates.plugins['https://gitlab.com/_Lighty_/bdstuff/raw/master/public/plugins/MessageLoggerV2.plugin.js'];
     if (BdApi.Plugins && BdApi.Plugins.get('NoDeleteMessages') && BdApi.Plugins.isEnabled('NoDeleteMessages')) XenoLib.Notifications.warning(`[**${this.getName()}**] Using **NoDeleteMessages** with **${this.getName()}** is completely unsupported and will cause issues. Please either disable **NoDeleteMessages** or delete it to avoid issues.`, { timeout: 0 });
     if (BdApi.Plugins && BdApi.Plugins.get('SuppressUserMentions') && BdApi.Plugins.isEnabled('SuppressUserMentions')) XenoLib.Notifications.warning(`[**${this.getName()}**] Using **SuppressUserMentions** with **${this.getName()}** is completely unsupported and will cause issues. Please either disable **SuppressUserMentions** or delete it to avoid issues.`, { timeout: 0 });
-    if (BdApi.Plugins && BdApi.Plugins.get('MessageLogger') && BdApi.Plugins.isEnabled('MessageLogger')) XenoLib.Notifications.warning(`[**${this.getName()}**] Using **MessageLogger** with **${this.getName()}** is completely unsupported and will cause issues. Please either disable **MessageLogger** or delete it to avoid issues.`, { timeout: 0 });
-    if (window.ED && !this.__isPowerCord) XenoLib.Notifications.warning(`[${this.getName()}] EnhancedDiscord is unsupported! Expect unintended issues and bugs.`, { timeout: 7500 });
     const shouldPass = e => e && e.constructor && typeof e.constructor.name === 'string' && e.constructor.name.indexOf('HTML');
-    if (shouldPass(window.Lightcord)) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
     let defaultSettings = {
       obfuscateCSSClasses: true,
       autoBackup: false,
@@ -607,7 +608,7 @@ module.exports = class MessageLoggerV2 {
 
     const ImageModal = ZeresPluginLibrary.WebpackModules.getByDisplayName('ImageModal');
 
-    const MaskedLink = ZeresPluginLibrary.WebpackModules.getByDisplayName('MaskedLink');
+    const { default: MaskedLink } = ZeresPluginLibrary.WebpackModules.find(e => e?.default?.type?.toString()?.includes('default.MASKED_LINK')) || {};
     const renderLinkComponent = props => ZeresPluginLibrary.DiscordModules.React.createElement(MaskedLink, props);
 
     const MLV2ImageModal = props =>
@@ -1892,7 +1893,7 @@ module.exports = class MessageLoggerV2 {
       channel_id: message.channel_id,
       reactions: (message.reactions || []).map(e => (!e.emoji.animated && delete e.emoji.animated, !e.me && delete e.me, e)),
       guild_id: message.guild_id || (this.ChannelStore.getChannel(message.channel_id) ? this.ChannelStore.getChannel(message.channel_id).guild_id : undefined),
-      content: global.ohgodohfuck ? '' : message.content,
+      content: message.content,
       type: message.type,
       embeds: message.embeds || [],
       author: this.cleanupUserObject(message.author),
@@ -3012,7 +3013,7 @@ module.exports = class MessageLoggerV2 {
         }
         this.saveData();
         return callDefault(...args);
-      } else if (dispatch.type == 'MESSAGE_CREATE' && dispatch.message && (dispatch.message.content.length || (dispatch.attachments && dispatch.attachments.length) || (dispatch.embeds && dispatch.embeds.length)) && !global.ohgodohfuck && dispatch.message.state != 'SENDING' && !dispatch.optimistic && (dispatch.message.type === 0 || dispatch.message.type === 19 || dispatch.message.type === 20)) {
+      } else if (dispatch.type == 'MESSAGE_CREATE' && dispatch.message && (dispatch.message.content.length || (dispatch.attachments && dispatch.attachments.length) || (dispatch.embeds && dispatch.embeds.length)) && dispatch.message.state != 'SENDING' && !dispatch.optimistic && (dispatch.message.type === 0 || dispatch.message.type === 19 || dispatch.message.type === 20)) {
         if (this.cachedMessageRecord.findIndex(m => m.id === dispatch.message.id) != -1) return callDefault(...args);
         this.cachedMessageRecord.push(dispatch.message);
 
@@ -4747,7 +4748,7 @@ module.exports = class MessageLoggerV2 {
       if (!mods) return;
       const _this = this;
       function ChannelListTextChannelContextMenu(props) {
-        const ret = props.__MLv2_type2(props);
+        const ret = props[MLV2_TYPE_L3](props);
         try {
           if (props.channel && props.channel.type === 4) return ret; // no lol, categories are unsupported
           const newItems = [];
@@ -4775,14 +4776,27 @@ module.exports = class MessageLoggerV2 {
         return ret;
       }
       function NormalMenu(props) {
-        const ret = props.__MLv2_type(props);
+        const ret = props[MLV2_TYPE_L2](props);
         try {
           if (ret.type.displayName !== 'NormalMenu') return ret;
           if (!ChannelListTextChannelContextMenu.displayName) Object.assign(ChannelListTextChannelContextMenu, ret.type);
-          ret.props.__MLv2_type2 = ret.type;
+          ret.props[MLV2_TYPE_L3] = ret.type;
+          ChannelListTextChannelContextMenu.__originalFunction = ret.type;
           ret.type = ChannelListTextChannelContextMenu;
         } catch (err) {
           console.error('[MessageLoggerV2] Failed to patch Normal Menu', err);
+        }
+        return ret;
+      }
+      function ChannelListTextChannelContextMenuWrapper(props) {
+        const ret = props[MLV2_TYPE_L1](props);
+        try {
+          if (!NormalMenu.displayName) Object.assign(NormalMenu, ret.props.children.type);
+          ret.props.children.props[MLV2_TYPE_L2] = ret.props.children.type;
+          NormalMenu.__originalFunction = ret.props.children.type;
+          ret.props.children.type = NormalMenu;
+        } catch (err) {
+          console.error('[MessageLoggerV2] Failed to patch ChannelListTextChannelContextMenuWrapper', err);
         }
         return ret;
       }
@@ -4793,10 +4807,11 @@ module.exports = class MessageLoggerV2 {
             'default',
               (_, __, ret) => {
               const damnedmenu = ret.props.children;
-              if (damnedmenu.props.__MLv2_type) return;
-              if (!NormalMenu.displayName) Object.assign(NormalMenu, damnedmenu.type);
-              damnedmenu.props.__MLv2_type = damnedmenu.type;
-              damnedmenu.type = NormalMenu;
+              if (damnedmenu.props[MLV2_TYPE_L1]) return;
+              if (!ChannelListTextChannelContextMenuWrapper.displayName) Object.assign(ChannelListTextChannelContextMenuWrapper, damnedmenu.type);
+              damnedmenu.props[MLV2_TYPE_L1] = damnedmenu.type;
+              ChannelListTextChannelContextMenuWrapper.__originalFunction = damnedmenu.type;
+              damnedmenu.type = ChannelListTextChannelContextMenuWrapper;
             }
           )
         )
@@ -4812,7 +4827,7 @@ module.exports = class MessageLoggerV2 {
       const _this = this;
       function GuildContextMenu(props) {
         try {
-          const ret = props.__MLV2_type(props);
+          const ret = props[MLV2_TYPE_L1](props);
 
           const newItems = [];
           const menu = ZeresPluginLibrary.Utilities.getNestedProp(
@@ -4843,7 +4858,7 @@ module.exports = class MessageLoggerV2 {
         } catch (err) {
           ZeresPluginLibrary.Logger.warn(_this.getName(), 'Failed to run patch GuildContextMenu', err);
           try {
-            const ret = props.__MLV2_type(props);
+            const ret = props[MLV2_TYPE_L1](props);
             return ret;
           } catch (err) {
             ZeresPluginLibrary.Logger.error(_this.getName(), 'Failed to original only GuildContextMenu', err);
@@ -4857,7 +4872,10 @@ module.exports = class MessageLoggerV2 {
           mod,
           'default',
           (_, __, { props: { children } }) => {
-            children.props.__MLV2_type = children.type;
+            if (children.props[MLV2_TYPE_L1]) return;
+            if (!GuildContextMenu.displayName) Object.assign(GuildContextMenu, children.type);
+            children.props[MLV2_TYPE_L1] = children.type;
+            GuildContextMenu.__originalFunction = children.type;
             children.type = GuildContextMenu;
           }
         )
@@ -4871,7 +4889,7 @@ module.exports = class MessageLoggerV2 {
       if (!mod) return console.error('[MessageLoggerV2] GuildChannelUserContextMenu not found');
       const _this = this;
       function GuildChannelUserContextMenu(props) {
-        const ret = props.__MLv2_type2(props);
+        const ret = props[MLV2_TYPE_L2](props);
         try {
           const newItems = [];
           const menu = ZeresPluginLibrary.Utilities.getNestedProp(
@@ -4903,10 +4921,12 @@ module.exports = class MessageLoggerV2 {
         return ret;
       }
       function GuildChannelUserContextMenuWrapper(props) {
-        const ret = props.__MLv2_type(props);
+        const ret = props[MLV2_TYPE_L1](props);
         try {
+          if (ret.props.children.props[MLV2_TYPE_L2]) return ret;
           if (!GuildChannelUserContextMenu.displayName) Object.assign(GuildChannelUserContextMenu, ret.props.children.type);
-          ret.props.children.props.__MLv2_type2 = ret.props.children.type;
+          ret.props.children.props[MLV2_TYPE_L2] = ret.props.children.type;
+          GuildChannelUserContextMenu.__originalFunction = ret.props.children.type;
           ret.props.children.type = GuildChannelUserContextMenu;
         } catch (err) {
           console.error('[MessageLoggerV2] Failed to patch GuildChannelUserContextMenuWrapper', err);
@@ -4919,29 +4939,31 @@ module.exports = class MessageLoggerV2 {
           'default',
           (_, __, ret) => {
             const damnedmenu = ret.props.children;
+            if (damnedmenu.props[MLV2_TYPE_L1]) return;
             if (!GuildChannelUserContextMenuWrapper.displayName) Object.assign(GuildChannelUserContextMenuWrapper, damnedmenu.type);
-            damnedmenu.props.__MLv2_type = damnedmenu.type;
+            damnedmenu.props[MLV2_TYPE_L1] = damnedmenu.type;
+            GuildChannelUserContextMenuWrapper.__originalFunction = damnedmenu.type;
             damnedmenu.type = GuildChannelUserContextMenuWrapper;
           }
         )
       );
       return true;
     }
-    this.unpatches.push(XenoLib.listenLazyContextMenu('GuildChannelUserContextMenuWrapper', guildChannelUserContextMenuPatch));
+    this.unpatches.push(XenoLib.listenLazyContextMenu('GuildChannelUserContextMenu', guildChannelUserContextMenuPatch));
 
     const dmUserContextMenuPatch = (fmod) => {
       const mod = WebpackModules.find(e => (e.default === fmod || (e.default && e.default.__originalFunction === fmod)));
       if (!mod) return console.error('[MessageLoggerV2] DMUserContextMenu not found');
       const _this = this;
       function DMUserContextMenu(props) {
-        const ret = props.__MLv2_type(props);
+        const ret = props[MLV2_TYPE_L2](props);
         try {
           const newItems = [];
           const menu = ZeresPluginLibrary.Utilities.getNestedProp(
             ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
             'props.children'
           );
-          if (!Array.isArray(menu)) return;
+          if (!Array.isArray(menu)) return ret;
           const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
           addElement(
             'Open Logs',
@@ -4974,16 +4996,29 @@ module.exports = class MessageLoggerV2 {
         }
         return ret;
       }
+      function DMUserContextMenuWrapper(props) {
+        const ret = props[MLV2_TYPE_L1](props);
+        try {
+          if (!DMUserContextMenu.displayName) Object.assign(DMUserContextMenu, ret.props.children.type);
+          ret.props.children.props[MLV2_TYPE_L2] = ret.props.children.type;
+          DMUserContextMenu.__originalFunction = ret.props.children.type;
+          ret.props.children.type = DMUserContextMenu;
+        } catch (err) {
+          console.error('[MessageLoggerV2] Failed to patch DMUserContextMenuWrapper', err);
+        }
+        return ret;
+      }
       this.unpatches.push(
         this.Patcher.after(
           mod,
           'default',
           (_, __, ret) => {
             const damnedmenu = ret.props.children;
-            if (damnedmenu.props.__MLv2_type) return;
-            if (!DMUserContextMenu.displayName) Object.assign(DMUserContextMenu, damnedmenu.type);
-            damnedmenu.props.__MLv2_type = damnedmenu.type;
-            damnedmenu.type = DMUserContextMenu;
+            if (damnedmenu.props[MLV2_TYPE_L1]) return;
+            if (!DMUserContextMenuWrapper.displayName) Object.assign(DMUserContextMenuWrapper, damnedmenu.type);
+            damnedmenu.props[MLV2_TYPE_L1] = damnedmenu.type;
+            DMUserContextMenuWrapper.__originalFunction = damnedmenu.type;
+            damnedmenu.type = DMUserContextMenuWrapper;
           }
         )
       );
@@ -4996,14 +5031,14 @@ module.exports = class MessageLoggerV2 {
       if (!mod) return console.error('[MessageLoggerV2] GroupDMUserContextMenu not found');
       const _this = this;
       function GroupDMUserContextMenu(props) {
-        const ret = props.__MLv2_type(props);
+        const ret = props[MLV2_TYPE_L2](props);
         try {
           const newItems = [];
           const menu = ZeresPluginLibrary.Utilities.getNestedProp(
             ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
             'props.children'
           );
-          if (!Array.isArray(menu)) return;
+          if (!Array.isArray(menu)) return ret;
           const addElement = (label, callback, id, options = {}) => newItems.push(XenoLib.createContextMenuItem(label, callback, id, options));
           addElement('Open Logs', () => _this.openWindow(), _this.obfuscatedClass('open'));
           addElement(
@@ -5015,10 +5050,22 @@ module.exports = class MessageLoggerV2 {
             _this.obfuscatedClass('open-channel')
           );
           handleWhiteBlackList(newItems, props.channel.id);
-          if (!newItems.length) return;
+          if (!newItems.length) return ret;
           menu.push(XenoLib.createContextMenuGroup([XenoLib.createContextMenuSubMenu(_this.settings.contextmenuSubmenuName, newItems, _this.obfuscatedClass('mlv2'))]));
         } catch (err) {
           console.error('[MessageLoggerV2] Error in GroupDMUserContextMenu patch', err);
+        }
+        return ret;
+      }
+      function GroupDMUserContextMenuWrapper(props) {
+        const ret = props[MLV2_TYPE_L1](props);
+        try {
+          if (!GroupDMUserContextMenu.displayName) Object.assign(GroupDMUserContextMenu, ret.props.children.type);
+          ret.props.children.props[MLV2_TYPE_L2] = ret.props.children.type;
+          GroupDMUserContextMenu.__originalFunction = ret.props.children.type;
+          ret.props.children.type = GroupDMUserContextMenu;
+        } catch (err) {
+          console.error('[MessageLoggerV2] Failed to patch GroupDMUserContextMenuWrapper', err);
         }
         return ret;
       }
@@ -5028,9 +5075,11 @@ module.exports = class MessageLoggerV2 {
           'default',
           (_, __, ret) => {
             const damnedmenu = ret.props.children;
-            if (!GroupDMUserContextMenu.displayName) Object.assign(GroupDMUserContextMenu, damnedmenu.type);
-            damnedmenu.props.__MLv2_type = damnedmenu.type;
-            damnedmenu.type = GroupDMUserContextMenu;
+            if (damnedmenu.props[MLV2_TYPE_L1]) return;
+            if (!GroupDMUserContextMenuWrapper.displayName) Object.assign(GroupDMUserContextMenuWrapper, damnedmenu.type);
+            damnedmenu.props[MLV2_TYPE_L1] = damnedmenu.type;
+            GroupDMUserContextMenuWrapper.__originalFunction = damnedmenu.type;
+            damnedmenu.type = GroupDMUserContextMenuWrapper;
           }
         )
       );
