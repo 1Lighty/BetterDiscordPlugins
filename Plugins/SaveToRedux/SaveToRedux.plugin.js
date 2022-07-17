@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.10
+ * @version 2.4.11
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -50,7 +50,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.4.10',
+      version: '2.4.11',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -59,7 +59,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed not showing context menu.', 'Fixed viewing stickers only showing the low res version.']
+        items: ['Fixed not showing context menu, again.', 'Fixed context menu jumping sometimes when people have per server banners or profile pictures.']
       }
     ],
     defaultConfig: [
@@ -372,7 +372,7 @@ module.exports = (() => {
 
     const StickerClasses = WebpackModules.getByProps('pngImage', 'lottieCanvas');
     const ImageModal = WebpackModules.getByDisplayName('ImageModal');
-    const MaskedLink = WebpackModules.getByDisplayName('MaskedLink');
+    const { default: MaskedLink } = WebpackModules.find(e => e?.default?.type?.toString()?.includes('default.MASKED_LINK')) || {};
     const ImageModalClasses = WebpackModules.find(m => typeof m.image === 'string' && typeof m.modal === 'string' && !m.content && !m.card) || WebpackModules.getByProps('modal', 'image');
 
     const cssPath = function(el) {
@@ -392,6 +392,9 @@ module.exports = (() => {
       }
       return path.join(' > ');
     };
+
+    const STR_PATCH_L1 = Symbol('STR_PATCH_L1');
+    const STR_PATCH_L2 = Symbol('STR_PATCH_L2');
 
     return class SaveToRedux extends Plugin {
       constructor() {
@@ -645,16 +648,17 @@ module.exports = (() => {
           const _this = this;
           const CTXMap = {};
           function PatchRunner(props) {
-            const ret = (props.__STR_type_2 || props.__STR_type)(props);
+            const ret = (props[STR_PATCH_L2] || props[STR_PATCH_L1])(props);
             try {
-              if (!props.__STR_type_2 && props.__STR_type?.displayName?.endsWith('ContextMenuWrapper')) {
+              if (!props[STR_PATCH_L2] && (!props[STR_PATCH_L1]?.displayName || props[STR_PATCH_L1].displayName.endsWith('ContextMenuWrapper'))) {
                 const wanted = ret.props.children;
-                if (wanted.props.__STR_type_2) return ret;
+                if (wanted.props[STR_PATCH_L2]) return ret;
                 const override = CTXMap[wanted.type.displayName] || (CTXMap[wanted.type.displayName] = function(props) {
                   return PatchRunner(props);
                 });
                 Object.assign(override, wanted.type);
-                wanted.props.__STR_type_2 = wanted.type;
+                wanted.props[STR_PATCH_L2] = wanted.type;
+                override.__originalFunction = wanted.type;
                 wanted.type = override;
                 return ret;
               }
@@ -663,6 +667,7 @@ module.exports = (() => {
                 'props.children'
               );
               if (!Array.isArray(menu)) return ret;
+              const countRef = React.useRef(0);
               let saveType;
               let url;
               let customName;
@@ -680,6 +685,15 @@ module.exports = (() => {
               url = useIdealExtensions(url);
               try {
                 const submenu = _this.constructMenu(url.split('?')[0], saveType, customName, () => {}, null, null, extraData);
+                const activeMenus = submenu.filter(e => e).length;
+                if (activeMenus !== countRef.current) {
+                  countRef.current = activeMenus;
+                  if (countRef.current !== 0) {
+                    requestAnimationFrame(() => {
+                      props.onHeightUpdate();
+                    });
+                  }
+                }
                 const group = XenoLib.createContextMenuGroup([submenu]);
                 if (_this.settings.misc.contextMenuOnBottom) menu.push(group);
                 else menu.unshift(group);
@@ -693,12 +707,13 @@ module.exports = (() => {
           }
           for (const CTX of CTXs) Patcher.after(CTX, 'default', (_, __, ret) => {
             const damnedmenu = ret.props.children;
-            if (damnedmenu.props.__STR_type) return;
-            const override = CTXMap[damnedmenu.type.displayName] || (CTXMap[damnedmenu.type.displayName] = function(props) {
+            if (damnedmenu.props[STR_PATCH_L1]) return;
+            const override = CTXMap[damnedmenu.type.displayName || 'Generic'] || (CTXMap[damnedmenu.type.displayName || 'Generic'] = function(props) {
               return PatchRunner(props);
             });
             Object.assign(override, damnedmenu.type);
-            damnedmenu.props.__STR_type = damnedmenu.type;
+            damnedmenu.props[STR_PATCH_L1] = damnedmenu.type;
+            override.__originalFunction = damnedmenu.type;
             damnedmenu.type = override;
           });
           return true;
@@ -901,7 +916,7 @@ module.exports = (() => {
           const _this = this;
           function GuildContextMenu(props) {
             try {
-              const ret = props.__STR_type(props);
+              const ret = props[STR_PATCH_L1](props);
 
               const menu = Utilities.getNestedProp(
                 Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
@@ -926,7 +941,7 @@ module.exports = (() => {
             } catch (err) {
               Logger.warn('Failed to run patch GuildContextMenu', err);
               try {
-                const ret = props.__STR_type(props);
+                const ret = props[STR_PATCH_L1](props);
                 return ret;
               } catch (err) {
                 Logger.error('Failed to original only GuildContextMenu', err);
@@ -940,7 +955,8 @@ module.exports = (() => {
             mod,
             'default',
             (_, __, { props: { children } }) => {
-              children.props.__STR_type = children.type;
+              children.props[STR_PATCH_L1] = children.type;
+              GuildContextMenu.__originalFunction = children.type;
               children.type = GuildContextMenu;
             }
           );
@@ -1850,7 +1866,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.9') && (XenoLibOutdated = !0);
+    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.10') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
