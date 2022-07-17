@@ -53,7 +53,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Disabled Discords crappy image coursel feature as this plugin does it waaaay better.']
+        items: ['Disabled Discords crappy image carousel feature as this plugin does it waaaay better.']
       },
       {
         type: 'image',
