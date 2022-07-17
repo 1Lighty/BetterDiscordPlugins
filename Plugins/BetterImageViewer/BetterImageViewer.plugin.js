@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.10
+ * @version 1.6.11
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.10',
+      version: '1.6.11',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -53,12 +53,12 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['I fixed it! Part 5.']
+        items: ['Disabled Discords crappy image coursel feature as this plugin does it waaaay better.']
       },
       {
-        type: 'video',
-        src: 'https://cdn.discordapp.com/attachments/389049952732446733/994636112326832158/vt34dz.mp4',
-        height: 254
+        type: 'image',
+        src: 'https://i.redd.it/37o4mmzsi6u71.jpg',
+        height: 301
       }
     ],
     defaultConfig: [
@@ -1851,6 +1851,7 @@ module.exports = (() => {
               e.__BIV_data = _this.__BIV_data;
               return oRenderImageComponent(e);
             };
+            delete props.onClick;
             attachment = null;
             props = null;
           }
@@ -2161,7 +2162,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.9') && (XenoLibOutdated = !0);
+    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.10') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
