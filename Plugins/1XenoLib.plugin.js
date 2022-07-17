@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.9
+ * @version 1.4.10
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.9',
+      version: '1.4.10',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -240,6 +240,7 @@ module.exports = (() => {
     if (!XenoLib._lazyContextMenuListeners) XenoLib._lazyContextMenuListeners = [];
     XenoLib.shutdown = () => {
       try {
+        Logger.log('Unpatching all');
         Patcher.unpatchAll();
       } catch (e) {
         Logger.stacktrace('Failed to unpatch all', e);
@@ -838,14 +839,20 @@ module.exports = (() => {
               const ctxEl = ret();
               let { type } = ctxEl;
               let typeOverriden = false;
-              const analyticsWrapper = type.toString().includes('.CONTEXT_MENU).AnalyticsLocationProvider');
+              const deepAnalyticsWrapper = type.toString().search(/\)\(\w\)\.AnalyticsLocationProvider,/) !== -1;
+              const analyticsWrapper = deepAnalyticsWrapper || type.toString().includes('.CONTEXT_MENU).AnalyticsLocationProvider');
               if (type.toString().includes('objectType') || analyticsWrapper) fakeRenderHook(() => {
-                const ret = type();
+                const ret = type(ctxEl.props);
                 if (ret.type.displayName !== 'AnalyticsContext' && !analyticsWrapper) return;
                 ({ type } = ret.props.children);
                 typeOverriden = true;
+                if (deepAnalyticsWrapper) {
+                  const deeperRet = type(ret.props.children.props);
+                  if (deeperRet?.props?.children?.type) ({ type } = deeperRet.props.children);
+                }
               }, {
-                useState: () => [[], () => {}]
+                useState: () => [[], () => {}],
+                useCallback: e => e
               });
 
               let changed = false;
@@ -1425,7 +1432,7 @@ module.exports = (() => {
             items.push(React.createElement('img', { alt: '', src: item.src, width: item.width || 451, height: item.height || 254 }));
             continue;
           case 'video':
-            items.push(React.createElement(VideoComponent, { src: item.src, poster: item.thumbnail, width: item.width || 451, height: item.height || 254, loop: !0, muted: !0, autoPlay: !0, className: ChangelogClasses.video }));
+            items.push(React.createElement(VideoComponent, { src: item.src, poster: item.thumbnail, width: item.width || 451, height: item.height || 254, loop: item.loop || !0, muted: item.muted || !0, autoPlay: item.autoplay || !0, className: ChangelogClasses.video }));
             continue;
           case 'youtube':
             items.push(React.createElement(EmbedVideo, { className: ChangelogClasses.video, allowFullScreen: !1, href: `https://youtu.be/${item.youtube_id}`, thumbnail: { url: `https://i.ytimg.com/vi/${item.youtube_id}/maxresdefault.jpg`, width: item.width || 451, height: item.height || 254 }, video: { url: `https://www.youtube.com/embed/${item.youtube_id}?vq=large&rel=0&controls=0&showinfo=0`, width: item.width || 451, height: item.height || 254 }, width: item.width || 451, height: item.height || 254, renderVideoComponent: ComponentRenderers.renderVideoComponent || DiscordConstants.NOOP_NULL, renderImageComponent: ComponentRenderers.renderImageComponent || DiscordConstants.NOOP_NULL, renderLinkComponent: ComponentRenderers.renderMaskedLinkComponent || DiscordConstants.NOOP_NULL }));
