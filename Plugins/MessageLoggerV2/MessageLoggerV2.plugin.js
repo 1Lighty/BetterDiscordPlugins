@@ -78,10 +78,8 @@ module.exports = class MessageLoggerV2 {
       if (isOutOfDate(iXenoLib, '1.4.10')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '2.0.3')) ZeresPluginLibraryOutdated = true;
     }
-
     if (!global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated) {
       this._XL_PLUGIN = true;
-      if ("undefined" != typeof global.isTab) return;
       const a = !!window.powercord && "function" == typeof BdApi.__getPluginConfigPath,
         b = BdApi.findModuleByProps("openModal", "hasModalOpen");
       if (b && b.hasModalOpen(`${this.getName()}_DEP_MODAL`)) return;
@@ -109,7 +107,6 @@ module.exports = class MessageLoggerV2 {
           href: "https://astranika.com/bd/xenolib",
           target: "_blank"
         }, "Click here to download XenoLib")) : null));
-      if (global.XenoLib) return;
       if (!b || !i || !h) return console.error(`Missing components:${(b ? "" : " ModalStack") + (i ? "" : " ConfirmationModalComponent") + (h ? "" : "TextElement")}`), j();
       class k extends BdApi.React.PureComponent {
         constructor(a) {
@@ -120,7 +117,7 @@ module.exports = class MessageLoggerV2 {
           }), "function" == typeof this.props.onError && this.props.onError(a)), this.render = () => this.state.hasError ? null : this.props.children
         }
       }
-      let l = !!global.DiscordJS,
+      let l = false,
         m = !1;
       const n = b.openModal(c => {
         if (m) return null;
