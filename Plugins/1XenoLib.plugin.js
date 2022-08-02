@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.10
+ * @version 1.4.11
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.10',
+      version: '1.4.11',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -216,7 +216,10 @@ module.exports = (() => {
 
     if (window.__XL_waitingForWatcherTimeout) clearTimeout(window.__XL_waitingForWatcherTimeout);
 
-    PluginUpdater.checkForUpdate(config.info.name, config.info.version, config.info.github_raw);
+    try {
+      PluginUpdater.checkForUpdate(config.info.name, config.info.version, config.info.github_raw);
+    } catch (err) {
+    }
 
     let CancelledAsync = false;
     const DefaultLibrarySettings = {};
@@ -2281,6 +2284,40 @@ module.exports = (() => {
       return setting;
     };
 
+    /*
+     * Function versionComparator from 0PluginLibrary as defaultComparator, required copyright notice:
+     *
+     * Copyright 2018 Zachary Rauen
+     *
+     * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+     *
+     * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+    */
+    XenoLib.versionComparator = (currentVersion, remoteVersion) => {
+      currentVersion = currentVersion.split(".").map((e) => {return parseInt(e);});
+      remoteVersion = remoteVersion.split(".").map((e) => {return parseInt(e);});
+
+      if (remoteVersion[0] > currentVersion[0]) return true;
+      else if (remoteVersion[0] == currentVersion[0] && remoteVersion[1] > currentVersion[1]) return true;
+      else if (remoteVersion[0] == currentVersion[0] && remoteVersion[1] == currentVersion[1] && remoteVersion[2] > currentVersion[2]) return true;
+      return false;
+    }
+
+    /*
+     * Function extractVersion from 0PluginLibrary as defaultVersioner, required copyright notice:
+     *
+     * Copyright 2018 Zachary Rauen
+     *
+     * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+     *
+     * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+    */
+    XenoLib.extractVersion = (content) => {
+      const remoteVersion = content.match(/['"][0-9]+\.[0-9]+\.[0-9]+['"]/i);
+      if (!remoteVersion) return "0.0.0";
+      return remoteVersion.toString().replace(/['"]/g, "");
+    }
+
     return class CXenoLib extends Plugin {
       constructor() {
         super();
@@ -2358,7 +2395,7 @@ module.exports = (() => {
                   res.on('end', () => {
                     try {
                       if (res.statusCode !== 200) return /* XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 }) */;
-                      if (plugin && (name === 'MessageLoggerV2' || Utilities.getNestedProp(plugin, '_config.info.version')) && !PluginUpdater.defaultComparator(name === 'MessageLoggerV2' ? plugin.getVersion() : plugin._config.info.version, PluginUpdater.defaultVersioner(body))) return;
+                      if (plugin && (name === 'MessageLoggerV2' || Utilities.getNestedProp(plugin, '_config.info.version')) && !XenoLib.versionComparator(name === 'MessageLoggerV2' ? plugin.getVersion() : plugin._config.info.version, XenoLib.extractVersion(body))) return;
                       const newFile = `${name}.plugin.js`;
                       fs.unlinkSync(path.join(pluginsDir, file));
                       // avoid BDs watcher being shit as per usual
