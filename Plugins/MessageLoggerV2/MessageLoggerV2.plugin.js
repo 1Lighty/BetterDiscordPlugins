@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.17
+ * @version 1.8.18
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -42,7 +42,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.17';
+    return '1.8.18';
   }
   getAuthor() {
     return 'Lighty';
@@ -75,7 +75,7 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.10')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.11')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '2.0.3')) ZeresPluginLibraryOutdated = true;
     }
     if (!global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated) {
@@ -185,7 +185,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed context menus, again', 'Fixed images in logger menu causing a crash']
+        items: ['Fixed updater for upcoming updates.']
       }
     ];
   }
@@ -205,7 +205,9 @@ module.exports = class MessageLoggerV2 {
       ZeresPluginLibrary.WebpackModules.getByProps('openModal', 'hasModalOpen').closeModal(`${this.getName()}_DEP_MODAL`);
     } catch (e) { }
     // force update
-    ZeresPluginLibrary.PluginUpdater.checkForUpdate(this.getName(), this.getVersion(), 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js');
+    try {
+      ZeresPluginLibrary.PluginUpdater.checkForUpdate(this.getName(), this.getVersion(), 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js');
+    } catch (err) {}
     if (window.PluginUpdates && window.PluginUpdates.plugins) delete PluginUpdates.plugins['https://gitlab.com/_Lighty_/bdstuff/raw/master/public/plugins/MessageLoggerV2.plugin.js'];
     if (BdApi.Plugins && BdApi.Plugins.get('NoDeleteMessages') && BdApi.Plugins.isEnabled('NoDeleteMessages')) XenoLib.Notifications.warning(`[**${this.getName()}**] Using **NoDeleteMessages** with **${this.getName()}** is completely unsupported and will cause issues. Please either disable **NoDeleteMessages** or delete it to avoid issues.`, { timeout: 0 });
     if (BdApi.Plugins && BdApi.Plugins.get('SuppressUserMentions') && BdApi.Plugins.isEnabled('SuppressUserMentions')) XenoLib.Notifications.warning(`[**${this.getName()}**] Using **SuppressUserMentions** with **${this.getName()}** is completely unsupported and will cause issues. Please either disable **SuppressUserMentions** or delete it to avoid issues.`, { timeout: 0 });
@@ -1101,7 +1103,7 @@ module.exports = class MessageLoggerV2 {
             updateFail();
             return;
           }
-          if (!ZeresPluginLibrary.PluginUpdater.defaultComparator(this.getVersion(), ZeresPluginLibrary.PluginUpdater.defaultVersioner(body))) return;
+          if (!XenoLib.versionComparator(this.getVersion(), XenoLib.extractVersion(body))) return;
           const fs = require('fs');
           /*
            * why are we letting Zere, the braindead American let control BD when he can't even
@@ -1653,7 +1655,9 @@ module.exports = class MessageLoggerV2 {
                 this.automaticallyUpdate();
               } else {
                 clearInterval(this._autoUpdateInterval);
-                ZeresPluginLibrary.PluginUpdater.checkForUpdate(this.getName(), this.getVersion(), 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js');
+                try {
+                  ZeresPluginLibrary.PluginUpdater.checkForUpdate(this.getName(), this.getVersion(), 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js');
+                } catch (err) {}
               }
             }
           },
