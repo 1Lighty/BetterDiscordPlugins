@@ -1,6 +1,6 @@
 /**
  * @name BetterImageViewer
- * @version 1.6.11
+ * @version 1.6.12
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=BetterImageViewer
@@ -44,7 +44,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.6.11',
+      version: '1.6.12',
       description: 'Move between images in the entire channel with arrow keys, image zoom enabled by clicking and holding, scroll wheel to zoom in and out, hold shift to change lens size. Image previews will look sharper no matter what scaling you have, and will take up as much space as possible.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/BetterImageViewer/BetterImageViewer.plugin.js'
@@ -53,12 +53,12 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Disabled Discords crappy image carousel feature as this plugin does it waaaay better.']
+        items: ['Fixed not working.']
       },
       {
-        type: 'image',
-        src: 'https://i.redd.it/37o4mmzsi6u71.jpg',
-        height: 301
+        type: 'video',
+        src: 'https://cdn.discordapp.com/attachments/389049952732446733/1004274384132902962/w50xg3.mp4',
+        height: 564
       }
     ],
     defaultConfig: [
@@ -245,7 +245,9 @@ module.exports = (() => {
   /* Build */
   const buildPlugin = ([Plugin, Api]) => {
     const { Utilities, WebpackModules, DiscordModules, ReactComponents, Logger, PluginUtilities, PluginUpdater, Structs } = Api;
-    const { React, ReactDOM, DiscordConstants, Dispatcher, GuildStore, GuildMemberStore, APIModule, NavigationUtils, SelectedChannelStore } = DiscordModules;
+    const { React, ReactDOM, DiscordConstants, GuildStore, GuildMemberStore, APIModule, NavigationUtils, SelectedChannelStore } = DiscordModules;
+
+    const Dispatcher = WebpackModules.getByProps('dispatch', 'subscribe');
 
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
@@ -440,13 +442,13 @@ module.exports = (() => {
         this._zoomController.update({ ...props, immediate: !this.props.__BIV_settings.smoothing || props.immediate, config: zoomConfig }).start();
       }
       _handleSaveLensWHChange() {
-        Dispatcher.dirtyDispatch({ type: 'BIV_LENS_WH_CHANGE', value: this.state.panelWH });
+        Dispatcher.dispatch({ type: 'BIV_LENS_WH_CHANGE', value: this.state.panelWH });
       }
       handleMouseDown(e) {
         if (!this.props.__BIV_settings.enabled) return;
         if (e.button !== DiscordConstants.MouseButtons.PRIMARY) return;
         if (e.ctrlKey) {
-          Dispatcher.dirtyDispatch({ type: 'BIV_LOAD_FULLRES' });
+          Dispatcher.dispatch({ type: 'BIV_LOAD_FULLRES' });
           return;
         }
         if (this.state.zooming) return this.setState({ zooming: false });
@@ -2162,7 +2164,7 @@ module.exports = (() => {
       o = BdApi.Plugins.get('XenoLib');
     if (e && e.instance) e = e.instance;
     if (o && o.instance) o = o.instance;
-    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.10') && (XenoLibOutdated = !0);
+    n(e, '2.0.3') && (ZeresPluginLibraryOutdated = !0), n(o, '1.4.11') && (XenoLibOutdated = !0);
   } catch (i) {
     console.error('Error checking if libraries are out of date', i);
   }
