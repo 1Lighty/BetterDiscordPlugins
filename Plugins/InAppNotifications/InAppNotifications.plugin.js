@@ -260,9 +260,7 @@ module.exports = (() => {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed not showing images and videos.',
-          'Fixed not showing any text when a friend request comes.',
-          'Fixed not respecting spoiler settings.'
+          'Fixed not working at all.'
         ]
       }
     ]
