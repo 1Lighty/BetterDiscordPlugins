@@ -1,6 +1,6 @@
 /**
  * @name SaveToRedux
- * @version 2.4.11
+ * @version 2.4.12
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=SaveToRedux
@@ -50,7 +50,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '2.4.11',
+      version: '2.4.12',
       description: 'Allows you to save images, videos, profile icons, server icons, reactions, emotes, custom status emotes and stickers to any folder quickly, as well as install plugins from direct links.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/SaveToRedux/SaveToRedux.plugin.js'
@@ -59,7 +59,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed not showing context menu, again.', 'Fixed context menu jumping sometimes when people have per server banners or profile pictures.']
+        items: ['Fixed plugin being in a broken state.']
       }
     ],
     defaultConfig: [
@@ -346,12 +346,12 @@ module.exports = (() => {
 
       return class fuck{};
     }) */
-    const GuildBannerShit = WebpackModules.getByProps('getUserBannerURLForContext');
+    const GuildProfileShit = WebpackModules.getByProps('getDisplayProfile');
     const GuildBannerShit2pointo = WebpackModules.getByProps('getGuildBannerURL');
 
     const faultyVars = [];
     {
-      const vars = { TextComponent, getEmojiURL, openPath, DelayedCall, FormItem, Messages, TextInput, AvatarModule, TrustStore, Buffer, UserStore, GuildMemberStore, GuildStore, GuildBannerShit, GuildBannerShit2pointo };
+      const vars = { TextComponent, getEmojiURL, openPath, DelayedCall, FormItem, Messages, TextInput, AvatarModule, TrustStore, Buffer, UserStore, GuildMemberStore, GuildStore, GuildBannerShit: GuildProfileShit, GuildBannerShit2pointo };
       for (const varName in vars) if (!vars[varName]) faultyVars.push(varName);
 
     }
@@ -1621,19 +1621,11 @@ module.exports = (() => {
           const currGuildId = XenoLib.DiscordAPI.guildId;
           const user = UserStore.getUser(extraData.userId);
 
-          extraData.bannerUrl = GuildBannerShit.getUserBannerURLForContext({
-            user,
-            size: 2048,
-            canAnimate: true
-          });
+          extraData.bannerUrl = GuildProfileShit.getDisplayProfile(user.id, '')?.getBannerURL({ canAnimate: true, size: 2048 });
           if (currGuildId) {
             const member = GuildMemberStore.getMember(currGuildId, extraData.userId);
-            if (member && member.banner) extraData.guildBannerUrl = GuildBannerShit.getUserBannerURLForContext({
-              user,
-              guildMember: member,
-              size: 2048,
-              canAnimate: true
-            });
+            const guildUserProfile = GuildProfileShit.getDisplayProfile(user.id, currGuildId);
+            if (guildUserProfile?.isUsingGuildMemberBanner()) extraData.guildBannerUrl = guildUserProfile.getBannerURL({ canAnimate: true, size: 2048 })
             if (user.guildMemberAvatars && user.guildMemberAvatars[currGuildId]) extraData.guildIconUrl = user.getAvatarURL(currGuildId, 2048, true);
           }
         }
