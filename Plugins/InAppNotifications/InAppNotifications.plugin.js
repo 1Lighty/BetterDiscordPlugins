@@ -3,7 +3,7 @@
  * @description Show a notification in Discord when someone sends a message, just like on mobile.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.3.11
+ * @version 1.3.12
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=InAppNotifications
@@ -53,7 +53,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.3.11',
+      version: '1.3.12',
       description: 'Show a notification in Discord when someone sends a message, just like on mobile.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/InAppNotifications/InAppNotifications.plugin.js'
@@ -260,7 +260,7 @@ module.exports = (() => {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed not working at all.'
+          'Fixed not working.',
         ]
       }
     ]
@@ -869,6 +869,7 @@ module.exports = (() => {
     const ThreadStateStore = WebpackModules.getByProps('getThreadSidebarState') || WebpackModules.getByProps('getSidebarState');
     const MessageStore = WebpackModules.getByProps('getMessages', 'getMessage');
     const UserSettings = WebpackModules.getByProps('RenderSpoilers');
+    const StatusStore = WebpackModules.getByProps('getStatus', 'isMobileOnline');
 
     return class InAppNotifications extends Plugin {
       constructor() {
@@ -946,18 +947,6 @@ module.exports = (() => {
         this.errorCount = 0;
         for (const event of this.events) Dispatcher.subscribe(event, this[event]);
         // UnreadStore.addChangeListener(this.handleUnreadsChanged);
-        const o = Error.captureStackTrace;
-        const ol = Error.stackTraceLimit;
-        Error.stackTraceLimit = 0;
-        try {
-          const check1 = a => a[0] === 'L' && a[3] === 'h' && a[7] === 'r';
-          const check2 = a => a.length === 13 && a[0] === 'B' && a[7] === 'i' && a[12] === 'd';
-          const mod = WebpackModules.find(e => Object.keys(e).findIndex(check1) !== -1) || {};
-          (Utilities.getNestedProp(mod, `${Object.keys(mod).find(check1)}.${Object.keys(Utilities.getNestedProp(mod, Object.keys(window).find(check1) || '') || {}).find(check2)}.Utils.removeDa`) || DiscordConstants.NOOP)({});
-        } finally {
-          Error.stackTraceLimit = ol;
-          Error.captureStackTrace = o;
-        }
         this.patchAll();
         PluginUtilities.addStyle(
           `${this.short }-CSS`,
@@ -1102,7 +1091,7 @@ module.exports = (() => {
         const guildId = iChannel.getGuildId();
         if (guildId && LurkerStore.isLurking(guildId)) return RetTypes.SILENT; // ignore servers you're lurking in
         if (iAuthor.id === cUID || RelationshipStore.isBlocked(iAuthor.id)) return RetTypes.SILENT; // ignore if from self or if it's a blocked user
-        if (!this.settings.dndIgnore && UserSettingsStore.status === DiscordConstants.StatusTypes.DND) return false; // ignore if in DND mode and settings allow
+        if (!this.settings.dndIgnore && StatusStore.getStatus(cUID) === DiscordConstants.StatusTypes.DND) return false; // ignore if in DND mode and settings allow
         if (this.settings.pings && Array.isArray(message.mentions) && ~message.mentions.map(e => (typeof e === 'string' ? e : e.id)).indexOf(cUID)) return RetTypes.PING; // if mentioned, always show notification
         let ret = RetTypes.SILENT; // default, if a keyword or reply, then it'll pin the notification, but if it'd be true anyway, don't pin
         if (this.settings.replies && message.referenced_message && message.referenced_message.author && message.referenced_message.author.id === cUID && !~message.referenced_message.mentions.map(e => (typeof e === 'string' ? e : e.id)).indexOf(cUID)) {
@@ -1435,7 +1424,7 @@ module.exports = (() => {
       }
 
       patchAttachment() {
-        const Attachment = WebpackModules.find(e => e.default && ~e.default.toString().indexOf('canRemoveAttachment'));
+        const Attachment = WebpackModules.find(e => e.default && e.default.displayName === 'MessageAttachment');
         Patcher.before(Attachment, 'default', (_, args) => {
           const [props] = args;
           if (!props.__IAN_spoilerAll) return;
