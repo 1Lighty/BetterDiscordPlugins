@@ -667,7 +667,7 @@ module.exports = (() => {
         this.getName = () => this.name.replace(/\s+/g, '');
         this.getAuthor = () => this.author;
         this.getVersion = () => this.version;
-        this.getDescription = () => this.description + (global.BetterDiscordConfig ? '' : ' You are missing libraries for this plugin, please enable the plugin and click Download Now.');
+        this.getDescription = () => this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
         this.start = this.load = this.handleMissingLib;
       }
       start() { }
