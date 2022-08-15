@@ -495,7 +495,7 @@ module.exports = (() => {
         this.getName = () => this.name.replace(/\s+/g, '');
         this.getAuthor = () => this.author;
         this.getVersion = () => this.version;
-        this.getDescription = () => this.description + global.BetterDiscordConfig ? '' : ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
+        this.getDescription = () => this.description + ' You are missing libraries for this plugin, please enable the plugin and click Download Now.';
         this.start = this.load = this.handleMissingLib;
       }
       start() { }
@@ -629,6 +629,29 @@ module.exports = (() => {
           },
           { modalKey: `${this.name}_DEP_MODAL` }
         );
+      }
+      get [Symbol.toStringTag]() {
+        return 'Plugin';
+      }
+      get name() {
+        return config.info.name;
+      }
+      get short() {
+        let string = '';
+        for (let i = 0, len = config.info.name.length; i < len; i++) {
+          const char = config.info.name[i];
+          if (char === char.toUpperCase()) string += char;
+        }
+        return string;
+      }
+      get author() {
+        return config.info.authors.map(author => author.name).join(', ');
+      }
+      get version() {
+        return config.info.version;
+      }
+      get description() {
+        return config.info.description;
       }
     }
     : buildPlugin(global.ZeresPluginLibrary.buildPlugin(config), BasePlugin);
