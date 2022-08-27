@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.20
+ * @version 1.8.21
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -42,7 +42,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.20';
+    return '1.8.21';
   }
   getAuthor() {
     return 'Lighty';
@@ -185,7 +185,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed causing issues.']
+        items: ['Fixed incompatibility with another plugin by Tharki.']
       }
     ];
   }
@@ -518,14 +518,7 @@ module.exports = class MessageLoggerV2 {
       getUserAsync: ZeresPluginLibrary.WebpackModules.getByProps('getUser', 'acceptAgreements').getUser,
       isBlocked: ZeresPluginLibrary.WebpackModules.getByProps('isBlocked').isBlocked,
       createMomentObject: ZeresPluginLibrary.WebpackModules.getByProps('createFromInputFallback'),
-      isMentioned: (e, id) =>
-      (mentionedModule.isMentioned.length === 1 ? mentionedModule.isMentioned({ userId: id, channelId: e.channel_id, mentionEveryone: e.mentionEveryone || e.mention_everyone, mentionUsers: e.mentions.map(e => e.id || e), mentionRoles: e.mentionRoles || e.mention_roles }) : mentionedModule.isMentioned(
-        id,
-        e.channel_id,
-        e.mentionEveryone || e.mention_everyone,
-        e.mentions.map(e => e.id || e),
-        e.mentionRoles || e.mention_roles
-      )),
+      isMentioned: (e, id) => mentionedModule.isMentioned({ userId: id, channelId: e.channel_id, mentionEveryone: e.mentionEveryone || e.mention_everyone, mentionUsers: e.mentions.map(e => e.id || e), mentionRoles: e.mentionRoles || e.mention_roles }),
       DiscordUtils: ZeresPluginLibrary.WebpackModules.getByProps('bindAll', 'debounce')
     };
 
