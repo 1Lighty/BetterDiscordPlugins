@@ -157,7 +157,7 @@ module.exports = (() => {
     const TextComponent = WebpackModules.getByDisplayName('Text') || WebpackModules.find(e => e.Text?.displayName === 'Text')?.Text;
     const getEmojiURL = Utilities.getNestedProp(WebpackModules.getByProps('getEmojiURL'), 'getEmojiURL');
     const showAlertModal = Utilities.getNestedProp(
-      WebpackModules.find(m => m.show && m.show.toString().search(/\w\.minorText,\w=\w\.onConfirmSecondary/) > 0),
+      WebpackModules.find(m => m.show && m.show.toString().search(/\w\.secondaryConfirmText,\w=\w\.onConfirmSecondary/) > 0),
       'show'
     );
 
