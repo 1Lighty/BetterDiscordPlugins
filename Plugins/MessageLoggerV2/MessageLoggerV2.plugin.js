@@ -68,7 +68,7 @@ module.exports = class MessageLoggerV2 {
     this.__isPowerCord = !!window.powercord && typeof BdApi.__getPluginConfigPath === 'function' || typeof global.isTab !== 'undefined';
     let XenoLibOutdated = false;
     let ZeresPluginLibraryOutdated = false;
-    if (global.BdApi && BdApi.Plugins && typeof BdApi.Plugins.get === 'function' /* you never know with those retarded client mods */) {
+    if (global.BdApi && BdApi.Plugins && typeof BdApi.Plugins.get === 'function' /* you never know with those fucking client mods */) {
       const versionChecker = (a, b) => ((a = a.split('.').map(a => parseInt(a))), (b = b.split('.').map(a => parseInt(a))), !!(b[0] > a[0])) || !!(b[0] == a[0] && b[1] > a[1]) || !!(b[0] == a[0] && b[1] == a[1] && b[2] > a[2]);
       const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion) || typeof global.isTab !== 'undefined';
       let iXenoLib = BdApi.Plugins.get('XenoLib');
@@ -3073,7 +3073,7 @@ module.exports = class MessageLoggerV2 {
     const Tooltip = ZeresPluginLibrary.WebpackModules.getByDisplayName('Tooltip');
     const TimeUtils = ZeresPluginLibrary.WebpackModules.getByProps('dateFormat');
     const i18n = ZLibrary.WebpackModules.find(e => e.Messages && e.Messages.HOME);
-    /* suck it you retarded asshole devilfuck */
+    /* suck it you asshole devilfuck */
     const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => ZeresPluginLibrary.DiscordModules.React.createElement(Tooltip, { text: e.timestamp ? TimeUtils.dateFormat(e.timestamp, 'LLLL') : null }, tt => ZeresPluginLibrary.DiscordModules.React.createElement('time', Object.assign({ dateTime: e.timestamp.toISOString(), className: this.multiClasses.edited, role: 'note' }, tt), `(${i18n.Messages.MESSAGE_EDITED})`)));
     SuffixEdited.displayName = 'SuffixEdited';
     const parseContent = ZeresPluginLibrary.WebpackModules.getByProps('renderMessageMarkupToAST').default;
