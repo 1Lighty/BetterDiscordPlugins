@@ -431,20 +431,26 @@ module.exports = class MessageLoggerV2 {
     if (!this._imageCacheServer) {
       class ImageCacheServer {
         constructor(imagePath, name) {
-          ZeresPluginLibrary.WebpackModules.getByProps('bindAll', 'debounce').bindAll(this, ['_requestHandler', '_errorHandler']);
-          this._server = require('http').createServer(this._requestHandler);
-          this._getMimetype = require('mime-types').lookup;
-          this._parseURL = require('url').parse;
-          this._fs = require('fs');
-          this._path = require('path');
-          this._imagePath = imagePath;
-          this._name = name;
+          try {
+            ZeresPluginLibrary.WebpackModules.getByProps('bindAll', 'debounce').bindAll(this, ['_requestHandler', '_errorHandler']);
+            this._server = require('http').createServer(this._requestHandler);
+            this._getMimetype = require('mime-types').lookup;
+            this._parseURL = require('url').parse;
+            this._fs = require('fs');
+            this._path = require('path');
+            this._imagePath = imagePath;
+            this._name = name;
+          } catch (err) {}
         }
         start() {
-          this._server.listen(7474, 'localhost', this._errorHandler);
+          try {
+            this._server.listen(7474, 'localhost', this._errorHandler);
+          } catch (err) {}
         }
         stop() {
-          this._server.close();
+          try {
+            this._server.close();
+          } catch (err) {}
         }
         _errorHandler(err) {
           if (err) return ZeresPluginLibrary.Logger.err(this._name, 'Error in ImageCacheServer', err);
@@ -503,7 +509,32 @@ module.exports = class MessageLoggerV2 {
       })
     );
 
-    const mentionedModule = ZeresPluginLibrary.WebpackModules.find(m => typeof m.isMentioned === 'function');
+    const isMentioned = (() => {
+      const olfilter = Array.prototype.filter
+      Array.prototype.filter = function (callbackFn, thisArg) {
+          return [];
+      }
+      try {
+        let key = null;
+        const mod = ZeresPluginLibrary.WebpackModules.getModule(e => {
+          const numOfGetters = olfilter.call(Object.values(Object.getOwnPropertyDescriptors(e)).map(e => e.get), e => e).length;
+          const numOfProps = Object.keys(e).length;
+          if (!numOfGetters || (numOfGetters !== numOfProps)) return false;
+          for (const prop in e) {
+              const item = e[prop];
+              if (typeof item !== 'function') continue;
+              const str = item.toString();
+              key = prop;
+              if (str.includes('mentionEveryone') && str.includes('roles.includes')) return true;
+          }
+          return false;
+        });
+        if (mod) return mod[key];
+        return null;
+      } finally {
+          Array.prototype.filter = olfilter;
+      }
+    })();
 
     this.tools = {
       openUserContextMenu: null /* NeatoLib.Modules.get('openUserContextMenu').openUserContextMenu */, // TODO: move here
@@ -511,14 +542,14 @@ module.exports = class MessageLoggerV2 {
       fetchMessages: ZeresPluginLibrary.DiscordModules.MessageActions.fetchMessages,
       transitionTo: null /* NeatoLib.Modules.get('transitionTo').transitionTo */,
       getChannel: this.ChannelStore.getChannel,
-      copyToClipboard: this.nodeModules.electron.clipboard.writeText,
-      getServer: ZeresPluginLibrary.DiscordModules.GuildStore.getGuild,
+      copyToClipboard: global.copy,
+      getServer: ZeresPluginLibrary.WebpackModules.getByProps('getGuild', 'getGuildCount').getGuild,
       getUser: this.UserStore.getUser,
       parse: ZeresPluginLibrary.WebpackModules.getByProps('parse', 'astParserFor').parse,
-      getUserAsync: ZeresPluginLibrary.WebpackModules.getByProps('getUser', 'acceptAgreements').getUser,
+      getUserAsync: /* ZeresPluginLibrary.WebpackModules.getByProps('getUser', 'acceptAgreements').getUser */ () => Promise.resolve(),
       isBlocked: ZeresPluginLibrary.WebpackModules.getByProps('isBlocked').isBlocked,
       createMomentObject: ZeresPluginLibrary.WebpackModules.getByProps('createFromInputFallback'),
-      isMentioned: (e, id) => mentionedModule.isMentioned({ userId: id, channelId: e.channel_id, mentionEveryone: e.mentionEveryone || e.mention_everyone, mentionUsers: e.mentions.map(e => e.id || e), mentionRoles: e.mentionRoles || e.mention_roles }),
+      isMentioned: (e, id) => isMentioned({ userId: id, channelId: e.channel_id, mentionEveryone: e.mentionEveryone || e.mention_everyone, mentionUsers: e.mentions.map(e => e.id || e), mentionRoles: e.mentionRoles || e.mention_roles }),
       DiscordUtils: ZeresPluginLibrary.WebpackModules.getByProps('bindAll', 'debounce')
     };
 
@@ -637,7 +668,7 @@ module.exports = class MessageLoggerV2 {
 
     this.autoBackupSaveInterupts = 0;
 
-    this.dispatcher = ZeresPluginLibrary.WebpackModules.find(e => e.dispatch && !e.getCurrentUser);
+    this.dispatcher = ZeresPluginLibrary.WebpackModules.find(e => e.dispatch && !e.emitter);
 
     this.unpatches.push(
       this.Patcher.instead(
@@ -926,7 +957,7 @@ module.exports = class MessageLoggerV2 {
     //     setTimeout(refreshKeykindListener, 1000);
     //   })
     // );
-
+/*
     this.unpatches.push(
       this.Patcher.instead(ZeresPluginLibrary.WebpackModules.getByDisplayName('TextAreaAutosize').prototype, 'focus', (thisObj, args, original) => {
         if (this.menu.open) return;
@@ -940,7 +971,7 @@ module.exports = class MessageLoggerV2 {
         if (thisObj && thisObj.props && thisObj.props.src && ((indx = thisObj.props.src.indexOf('?ML2=true')), indx !== -1)) return thisObj.props.src.substr(0, indx);
         return original(...args);
       })
-    );
+    ); */
 
     this.dataManagerInterval = setInterval(() => {
       this.handleMessagesCap();
@@ -1087,13 +1118,11 @@ module.exports = class MessageLoggerV2 {
     const updateFail = () => XenoLib.Notifications.warning(`[${this.getName()}] Unable to check for updates!`, { timeout: 7500 });
     new Promise(resolve => {
       const https = require('https');
-      const req = https.request(tryProxy ? 'https://cors-anywhere.herokuapp.com/https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js' : 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js', { headers: { 'origin': 'discord.com' } }, res => {
+      const req = https.get(tryProxy ? 'https://cors-anywhere.herokuapp.com/https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js' : 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js', { headers: { 'origin': 'discord.com' } }, res => {
         let body = '';
-        res.on('data', chunk => {
-          body += chunk;
-        });
-        res.on('end', () => {
-          if (res.statusCode !== 200) {
+        res.on('data', chunk => ((body += new TextDecoder("utf-8").decode(chunk)), void 0));
+        res.on('end', (rez) => {
+          if (rez.statusCode !== 200) {
             if (!tryProxy) return this.automaticallyUpdate(true);
             updateFail();
             return;
@@ -1118,7 +1147,7 @@ module.exports = class MessageLoggerV2 {
         if (!tryProxy) return this.automaticallyUpdate(true);
         updateFail();
       });
-      req.end();
+      //req.end();
     });
   }
   // title-3qD0b- da-title container-1r6BKw da-container themed-ANHk51 da-themed
@@ -2131,6 +2160,7 @@ module.exports = class MessageLoggerV2 {
     this.channelLogButton.remove();
   }
   showLoggerHelpModal(initial = false) {
+    return;
     this.createModal({
       confirmText: 'OK',
       header: 'Logger help',
@@ -3042,6 +3072,7 @@ module.exports = class MessageLoggerV2 {
     if (!this.processUserRequestQueue.queueIntervalTime) this.processUserRequestQueue.queueIntervalTime = 500;
     if (this.menu.queueInterval) return;
     const messageDataManager = () => {
+      return;
       if (!this.menu.userRequestQueue.length) {
         clearInterval(this.menu.queueInterval);
         this.menu.queueInterval = 0;
@@ -3069,16 +3100,137 @@ module.exports = class MessageLoggerV2 {
     };
     this.menu.queueInterval = setInterval(messageDataManager, this.processUserRequestQueue.queueIntervalTime);
   }
-  patchMessages() {
-    const Tooltip = ZeresPluginLibrary.WebpackModules.getByDisplayName('Tooltip');
-    const TimeUtils = ZeresPluginLibrary.WebpackModules.getByProps('dateFormat');
-    const i18n = ZLibrary.WebpackModules.find(e => e.Messages && e.Messages.HOME);
+  async patchMessages() {
+    const Tooltip = (() => {
+      const olfilter = Array.prototype.filter
+      Array.prototype.filter = function (callbackFn, thisArg) {
+          return [];
+      }
+      try {
+        let key = null;
+        const mod = ZeresPluginLibrary.WebpackModules.getModule(e => {
+          const numOfGetters = olfilter.call(Object.values(Object.getOwnPropertyDescriptors(e)).map(e => e.get), e => e).length;
+          const numOfProps = Object.keys(e).length;
+          if (!numOfGetters || (numOfGetters !== numOfProps)) return false;
+          for (const prop in e) {
+              const item = e[prop];
+              if (typeof item !== 'function') continue;
+              const str = item.toString();
+              key = prop;
+              if (str.includes('shouldShowTooltip') && str.includes('handleMouseEnter')) return true;
+          }
+          return false;
+        });
+        if (mod) return mod[key];
+        return null;
+      } finally {
+          Array.prototype.filter = olfilter;
+      }
+    })();
+    const dateFormat = (() => {
+      const olfilter = Array.prototype.filter
+      Array.prototype.filter = function (callbackFn, thisArg) {
+          return [];
+      }
+      try {
+        let key = null;
+        const mod = ZeresPluginLibrary.WebpackModules.getModule(e => {
+          const numOfGetters = olfilter.call(Object.values(Object.getOwnPropertyDescriptors(e)).map(e => e.get), e => e).length;
+          const numOfProps = Object.keys(e).length;
+          if (!numOfGetters || (numOfGetters !== numOfProps)) return false;
+          for (const prop in e) {
+              const item = e[prop];
+              if (typeof item !== 'function') continue;
+              const str = item.toString();
+              key = prop;
+              if (str.includes('sameDay')) return true;
+          }
+          return false;
+        });
+        if (mod) return mod[key];
+        return null;
+      } finally {
+          Array.prototype.filter = olfilter;
+      }
+    })();
+    const i18n = ZeresPluginLibrary.WebpackModules.find(e => e.Messages && e.Messages.HOME);
     /* suck it you retarded asshole devilfuck */
-    const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => ZeresPluginLibrary.DiscordModules.React.createElement(Tooltip, { text: e.timestamp ? TimeUtils.dateFormat(e.timestamp, 'LLLL') : null }, tt => ZeresPluginLibrary.DiscordModules.React.createElement('time', Object.assign({ dateTime: e.timestamp.toISOString(), className: this.multiClasses.edited, role: 'note' }, tt), `(${i18n.Messages.MESSAGE_EDITED})`)));
+    const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => ZeresPluginLibrary.DiscordModules.React.createElement(Tooltip, { text: e.timestamp ? dateFormat(e.timestamp, 'LLLL') : null }, tt => ZeresPluginLibrary.DiscordModules.React.createElement('time', Object.assign({ dateTime: e.timestamp.toISOString(), className: this.multiClasses.edited, role: 'note' }, tt), `(${i18n.Messages.MESSAGE_EDITED})`)));
     SuffixEdited.displayName = 'SuffixEdited';
-    const parseContent = ZeresPluginLibrary.WebpackModules.getByProps('renderMessageMarkupToAST').default;
-    const MessageContent = ZeresPluginLibrary.WebpackModules.find(m => m.type && m.type.displayName === 'MessageContent' || m.__powercordOriginal_type && m.__powercordOriginal_type.displayName === 'MessageContent');
-    const MemoMessage = ZeresPluginLibrary.WebpackModules.find(m => m.type && m.type.toString().indexOf('useContextMenuMessage') !== -1 || m.__powercordOriginal_type && m.__powercordOriginal_type.toString().indexOf('useContextMenuMessage') !== -1);
+    const parseContent = (() => {
+      const olfilter = Array.prototype.filter
+      Array.prototype.filter = function (callbackFn, thisArg) {
+          return [];
+      }
+      try {
+        let key = null;
+        const mod = ZeresPluginLibrary.WebpackModules.getModule(e => {
+          const numOfGetters = olfilter.call(Object.values(Object.getOwnPropertyDescriptors(e)).map(e => e.get), e => e).length;
+          const numOfProps = Object.keys(e).length;
+          if (!numOfGetters || (numOfGetters !== numOfProps)) return false;
+          for (const prop in e) {
+              const item = e[prop];
+              if (typeof item !== 'function') continue;
+              const str = item.toString();
+              key = prop;
+              if (str.includes('customRenderedContent') && str.includes('renderMediaEmbeds')) return true;
+          }
+          return false;
+        });
+        if (mod) {
+          const pc = mod[key];
+
+          return function parseContent() {
+            const ReactDispatcher = ZeresPluginLibrary.DiscordModules.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher.current;
+            const oUseMemo = ReactDispatcher.useMemo;
+            ReactDispatcher.useMemo = memo => memo();
+            try {
+              return pc(...arguments);
+            } finally {
+              ReactDispatcher.useMemo = oUseMemo;
+            }
+          }
+        }
+        return null;
+      } finally {
+          Array.prototype.filter = olfilter;
+      }
+    })();
+    const MessageContent = (() => {
+      const olfilter = Array.prototype.filter
+      Array.prototype.filter = function (callbackFn, thisArg) {
+          return [];
+      }
+      try {
+        let key = null;
+        const mod = ZeresPluginLibrary.WebpackModules.getModule(e => {
+          const numOfGetters = olfilter.call(Object.values(Object.getOwnPropertyDescriptors(e)).map(e => e.get), e => e).length;
+          const numOfProps = Object.keys(e).length;
+          if (!numOfGetters || (numOfGetters !== numOfProps)) return false;
+          for (const prop in e) {
+              const item = e[prop];
+              if (!item || typeof item !== 'object' || !item.type) continue;
+              const str = item.type.toString();
+              key = prop;
+              if (str.includes('Messages.MESSAGE_EDITED')) return true;
+          }
+          return false;
+        });
+        if (mod) return mod[key];
+        return null;
+      } finally {
+          Array.prototype.filter = olfilter;
+      }
+    })();
+    const MemoMessage = await (async () => {
+      var el = document.querySelector('.messageListItem-ZZ7v6g') || (await new Promise(res => {
+        var sub = ZeresPluginLibrary.DOMTools.observer.subscribeToQuerySelector(() => {
+            ZeresPluginLibrary.DOMTools.observer.unsubscribe(sub);
+            res(document.querySelector('.messageListItem-ZZ7v6g'));
+        }, '.messageListItem-ZZ7v6g', null, true)
+        }));
+      return ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(el), e => ((typeof e?.memoizedProps?.isHighlight) === 'boolean'), { walkable: ['return'] })?.elementType
+    })()
     if (!MessageContent || !MemoMessage) return XenoLib.Notifications.error('Failed to patch message components, edit history and deleted tint will not show!', { timeout: 0 });
     this.unpatches.push(
       this.Patcher.after(MessageContent, 'type', (_, [props], ret) => {
@@ -3120,7 +3272,7 @@ module.exports = class MessageLoggerV2 {
                     className: XenoLib.joinClassNames({ [this.style.editedCompact]: props.compact && !isSingular, [this.style.edited]: !isSingular }),
                     editNum
                   },
-                  parseContent({ channel_id: props.message.channel_id, mentionChannels: props.message.mentionChannels, content: edit.content, embeds: [] }).content,
+                  parseContent({ channel_id: props.message.channel_id, mentionChannels: props.message.mentionChannels, content: edit.content, embeds: [], isCommandType: () => false, hasFlag: () => false }, {}).content,
                   noSuffix
                     ? null
                     : ZeresPluginLibrary.DiscordModules.React.createElement(SuffixEdited, {
@@ -3157,7 +3309,27 @@ module.exports = class MessageLoggerV2 {
         ret.props.children = [edits, oContent];
       })
     );
-    const messageClass = XenoLib.getSingleClass('ephemeral message')
+
+    const messageClass = XenoLib.getSingleClass('ephemeral message');
+    const _self = this;
+    function Message(props, ...whatever) {
+      try {
+        const ret = props.__MLV2_type(props, ...whatever);
+        if (!props.__MLV2_deleteTime) return ret;
+        const oRef = ret.props.children.ref;
+        ret.props.children.ref = e => {
+          if (e && !e.__tooltip) {
+            // later
+            new ZeresPluginLibrary.Tooltip(e, 'Deleted: ' + _self.tools.createMomentObject(props.__MLV2_deleteTime).format('LLLL'), { side: 'left' });
+            e.__tooltip = true;
+          }
+          if (typeof oRef === 'function') return oRef(e);
+          else if (XenoLib._.isObject(oRef)) oRef.current = e;
+        };
+        return ret;
+      } catch (err) {}
+      return null;
+    }
     this.unpatches.push(
       this.Patcher.after(MemoMessage, 'type', (_, [props], ret) => {
         const forceUpdate = ZeresPluginLibrary.DiscordModules.React.useState()[1];
@@ -3176,40 +3348,18 @@ module.exports = class MessageLoggerV2 {
         const record = this.messageRecord[props.message.id];
         if (!record || !record.delete_data) return;
         if (this.noTintIds.indexOf(props.message.id) !== -1) return;
-        const messageProps = ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && typeof e.className === 'string' && ~e.className.indexOf(messageClass));
-        if (!messageProps) return;
-        messageProps.className += ' ' + (this.settings.useAlternativeDeletedStyle ? this.style.deletedAlt : this.style.deleted);
-        messageProps.__MLV2_deleteTime = record.delete_data.time;
+        const message = ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && typeof e?.props?.className === 'string' && ~e?.props?.className?.indexOf(messageClass));
+        if (!message) return;
+        message.props.className += ' ' + (this.settings.useAlternativeDeletedStyle ? this.style.deletedAlt : this.style.deleted);
+        message.props.__MLV2_deleteTime = record.delete_data.time;
+        message.props.__MLV2_type = message.type;
+        message.type = Message;
       })
     );
-    const Message = ZLibrary.WebpackModules.getModule(e => {
-      if (!e) return false;
-      const def = (e.__powercordOriginal_default || e.default);
-      if (!def) return false;
-      const str = def.toString();
-      return str.indexOf('childrenRepliedMessage') !== -1 && str.indexOf('childrenSystemMessage') !== -1;
-    });
-    if (Message) {
-      this.unpatches.push(
-        this.Patcher.after(Message, 'default', (_, [props], ret) => {
-          if (!props.__MLV2_deleteTime) return;
-          const oRef = ret.ref;
-          ret.ref = e => {
-            if (e && !e.__tooltip) {
-              // later
-              new ZeresPluginLibrary.Tooltip(e, 'Deleted: ' + this.tools.createMomentObject(props.__MLV2_deleteTime).format('LLLL'), { side: 'left' });
-              e.__tooltip = true;
-            }
-            if (typeof oRef === 'function') return oRef(e);
-            else if (XenoLib._.isObject(oRef)) oRef.current = e;
-          };
-        })
-      );
-    }
     this.forceReloadMessages();
   }
   forceReloadMessages() {
-    const instance = ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(document.querySelector('.chat-2ZfjoI .content-1jQy2l')), e => e && e.constructor && e.constructor.displayName === 'ChannelChat', { walkable: ['child', 'stateNode'] });
+    const instance = ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(document.querySelector('.chatContent-3KubbW')), e => ((typeof e?.memoizedProps?.showQuarantinedUserBanner) === 'boolean'), { walkable: ['return'] })?.stateNode;
     if (!instance) return;
     const unpatch = this.Patcher.after(instance, 'render', (_this, _, ret) => {
       unpatch();
@@ -3220,6 +3370,7 @@ module.exports = class MessageLoggerV2 {
     instance.forceUpdate();
   }
   patchModal() {
+    return;
     // REQUIRED not anymore I guess lol
     try {
       const confirmModal = ZeresPluginLibrary.WebpackModules.getByDisplayName('ConfirmModal');
@@ -4203,6 +4354,7 @@ module.exports = class MessageLoggerV2 {
   }
   // >>-|| MENU MODAL CREATION ||-<<
   openWindow(type) {
+    return;
     if (this.menu.open) {
       this.menu.scrollPosition = 0;
       if (type) this.openTab(type);
@@ -4310,6 +4462,7 @@ module.exports = class MessageLoggerV2 {
   /* ==================================================-|| END MENU ||-================================================== */
   /* ==================================================-|| START CONTEXT MENU ||-================================================== */
   patchContextMenus() {
+    return;
     const Patcher = XenoLib.createSmartPatcher({ before: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.before(this.getName(), moduleToPatch, functionName, callback, options), instead: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.instead(this.getName(), moduleToPatch, functionName, callback, options), after: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.after(this.getName(), moduleToPatch, functionName, callback, options), unpatchAll: () => ZeresPluginLibrary.Patcher.unpatchAll(this.getName()) });
     const WebpackModules = ZeresPluginLibrary.WebpackModules;
     const nativeImageContextMenuPatch = () => {
