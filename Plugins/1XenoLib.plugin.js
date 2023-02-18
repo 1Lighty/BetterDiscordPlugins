@@ -217,7 +217,7 @@ module.exports = (() => {
     if (window.__XL_waitingForWatcherTimeout) clearTimeout(window.__XL_waitingForWatcherTimeout);
 
     try {
-      PluginUpdater.checkForUpdate(config.info.name, config.info.version, config.info.github_raw);
+      //PluginUpdater.checkForUpdate(config.info.name, config.info.version, config.info.github_raw);
     } catch (err) {
     }
 
@@ -326,6 +326,9 @@ module.exports = (() => {
     XenoLib.getClass.__warns = {};
     XenoLib.getSingleClass.__warns = {};
 
+    const NOOP = () => {};
+    const NOOP_NULL = () => null;
+
     const originalFunctionClass = Function;
     XenoLib.createSmartPatcher = patcher => {
       const createPatcher = patcher => (moduleToPatch, functionName, callback, options = {}) => {
@@ -338,7 +341,7 @@ module.exports = (() => {
 
         const unpatches = [];
         try {
-          unpatches.push(patcher(moduleToPatch, functionName, callback, options) || DiscordConstants.NOOP);
+          unpatches.push(patcher(moduleToPatch, functionName, callback, options) || NOOP);
         } catch (err) {
           throw err;
         } finally {
@@ -377,7 +380,9 @@ module.exports = (() => {
           if ((Date.now() - enableTime > USER_COUNTER_INTERVAL) && (Date.now() - LibrarySettings.userCounter.lastSubmission > USER_COUNTER_INTERVAL)) {
             LibrarySettings.userCounter.lastSubmission = Date.now();
             changed = true;
-            require('https').request('https://astranika.com/api/analytics/submit').on('error', () => {}).end();
+            require('https').get('https://astranika.com/api/analytics/submit', res => {
+              res.on('error', () => {});
+            });
           }
         } else {
           LibrarySettings.userCounter.enableTime = Date.now();
@@ -677,7 +682,7 @@ module.exports = (() => {
     XenoLib.authorId = '239513071272329217';
     XenoLib.supportServerId = '389049952732446731';
 
-    try {
+/*     try {
       const getUserAsync = WebpackModules.getByProps('getUser', 'acceptAgreements').getUser;
       const requestUser = () =>
         getUserAsync(XenoLib.authorId)
@@ -687,7 +692,7 @@ module.exports = (() => {
       else requestUser();
     } catch (e) {
       Logger.stacktrace('Failed to grab author object', e);
-    }
+    } */
 
     XenoLib.ReactComponents = {};
 
@@ -899,8 +904,8 @@ module.exports = (() => {
 
 
     try {
-      XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('ButtonLink');
-      XenoLib.ReactComponents.Button = XenoLib.ReactComponents.ButtonOptions.default;
+      XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('BorderColors');
+      XenoLib.ReactComponents.Button = XenoLib.ReactComponents.ButtonOptions;
     } catch (e) {
       Logger.stacktrace('Error getting Button component', e);
     }
@@ -1068,7 +1073,7 @@ module.exports = (() => {
       };
     } catch (err) {
       Logger.stacktrace('Error creating plugin footer');
-      XenoLib.ReactComponents.PluginFooter = DiscordConstants.NOOP_NULL;
+      XenoLib.ReactComponents.PluginFooter = NOOP_NULL;
     }
 
     const TextElement = WebpackModules.getByDisplayName('Text') || WebpackModules.find(e => e.Text?.displayName === 'Text')?.Text;
@@ -1081,7 +1086,18 @@ module.exports = (() => {
     const ErrorClassname = XenoLib.joinClassNames('xenoLib-multiInput-error', XenoLib.getClass('input error'));
 
     try {
-      const { DelayedCall } = WebpackModules.getByProps('DelayedCall');
+      class DelayedCall {
+        constructor(delay, callback) {
+          this.delay = delay;
+          this.callback = callback;
+          this.timeout = null;
+        }
+
+        delay() {
+          clearTimeout(this.timeout);
+          this.timeout = setTimeout(this.callback, this.delay);
+        }
+      }
       const FsModule = require('fs');
       /**
        * @interface
@@ -1172,6 +1188,7 @@ module.exports = (() => {
 
     const ColorPickerComponent = (_ => {
       try {
+        return null;
         return fakeRenderHook(() => {
           const GSRED = WebpackModules.getByDisplayName('GuildSettingsRolesEditDisplay');
           const ret = GSRED({ role: { id: '' }, guild: { id: '' } });
@@ -1345,7 +1362,7 @@ module.exports = (() => {
 
     XenoLib.Settings.PluginFooter = class PluginFooterField extends Settings.SettingField {
       constructor(showChangelog) {
-        super('', '', DiscordConstants.NOOP, XenoLib.ReactComponents.PluginFooter, {
+        super('', '', NOOP, XenoLib.ReactComponents.PluginFooter, {
           showChangelog
         });
       }
@@ -1393,7 +1410,7 @@ module.exports = (() => {
         FANCY_PANTS_PARSER_RULES.link = defaultRules.link;
         return Markdown.reactParserFor(FANCY_PANTS_PARSER_RULES);
       } catch (e) {
-        Logger.stacktrace('Failed to create special parser', e);
+        //Logger.stacktrace('Failed to create special parser', e);
         try {
           return Markdown.parse;
         } catch (e) {
@@ -1405,26 +1422,29 @@ module.exports = (() => {
 
     const AnchorClasses = WebpackModules.getByProps('anchor', 'anchorUnderlineOnHover') || {};
     const EmbedVideo = (() => {
+      return NOOP_NULL;
       try {
         return WebpackModules.getByProps('EmbedVideo').EmbedVideo;
       } catch (e) {
         Logger.stacktrace('Failed to get EmbedVideo!', e);
-        return DiscordConstants.NOOP_NULL;
+        return NOOP_NULL;
       }
     })();
     const VideoComponent = (() => {
+      return NOOP_NULL;
       try {
         const ret = new (WebpackModules.getByDisplayName('MediaPlayer'))({}).render();
         const vc = Utilities.findInReactTree(ret, e => e && e.props && typeof e.props.className === 'string' && e.props.className.indexOf('video-2HW4jD') !== -1);
         return vc.type;
       } catch (e) {
         Logger.stacktrace('Failed to get the video component', e);
-        return DiscordConstants.NOOP_NULL;
+        return NOOP_NULL;
       }
     })();
     const ComponentRenderers = WebpackModules.getByProps('renderVideoComponent') || {};
     /* MY CHANGELOG >:C */
     XenoLib.showChangelog = (title, version, changelog, footer, showDisclaimer) => {
+      return;
       const ChangelogClasses = DiscordClasses.Changelog;
       const items = [];
       let isFistType = true;
@@ -1438,7 +1458,7 @@ module.exports = (() => {
             items.push(React.createElement(VideoComponent, { src: item.src, poster: item.thumbnail, width: item.width || 451, height: item.height || 254, loop: item.loop || !0, muted: item.muted || !0, autoPlay: item.autoplay || !0, className: ChangelogClasses.video }));
             continue;
           case 'youtube':
-            items.push(React.createElement(EmbedVideo, { className: ChangelogClasses.video, allowFullScreen: !1, href: `https://youtu.be/${item.youtube_id}`, thumbnail: { url: `https://i.ytimg.com/vi/${item.youtube_id}/maxresdefault.jpg`, width: item.width || 451, height: item.height || 254 }, video: { url: `https://www.youtube.com/embed/${item.youtube_id}?vq=large&rel=0&controls=0&showinfo=0`, width: item.width || 451, height: item.height || 254 }, width: item.width || 451, height: item.height || 254, renderVideoComponent: ComponentRenderers.renderVideoComponent || DiscordConstants.NOOP_NULL, renderImageComponent: ComponentRenderers.renderImageComponent || DiscordConstants.NOOP_NULL, renderLinkComponent: ComponentRenderers.renderMaskedLinkComponent || DiscordConstants.NOOP_NULL }));
+            items.push(React.createElement(EmbedVideo, { className: ChangelogClasses.video, allowFullScreen: !1, href: `https://youtu.be/${item.youtube_id}`, thumbnail: { url: `https://i.ytimg.com/vi/${item.youtube_id}/maxresdefault.jpg`, width: item.width || 451, height: item.height || 254 }, video: { url: `https://www.youtube.com/embed/${item.youtube_id}?vq=large&rel=0&controls=0&showinfo=0`, width: item.width || 451, height: item.height || 254 }, width: item.width || 451, height: item.height || 254, renderVideoComponent: ComponentRenderers.renderVideoComponent || NOOP_NULL, renderImageComponent: ComponentRenderers.renderImageComponent || NOOP_NULL, renderLinkComponent: ComponentRenderers.renderMaskedLinkComponent || NOOP_NULL }));
             continue;
           case 'description':
             items.push(React.createElement('p', {}, FancyParser(item.content)));
@@ -1578,7 +1598,7 @@ module.exports = (() => {
           channelId: undefined,
           timeout: 3500,
           color: '#2196f3',
-          onLeave: DiscordConstants.NOOP
+          onLeave: NOOP
         };
         const utils = {
           success(content, options = {}) {
@@ -1680,7 +1700,7 @@ module.exports = (() => {
           channelId: undefined,
           timeout: 3500,
           color: '#2196f3',
-          onLeave: DiscordConstants.NOOP
+          onLeave: NOOP
         };
         const utils = {
           success(content, options = {}) {
@@ -1756,7 +1776,29 @@ module.exports = (() => {
           }
         };
         XenoLib.Notifications = utils;
-        const ReactSpring = WebpackModules.getByProps('useTransition');
+        const ReactSpring = (() => {
+          const olfilter = Array.prototype.filter
+          Array.prototype.filter = function (callbackFn, thisArg) {
+              return [];
+          }
+          try {
+              return WebpackModules.getByProps('useTransition')
+          } finally {
+              Array.prototype.filter = olfilter;
+          }
+        })();
+
+        function hex2int(hex) {
+          return parseInt(hex, 16);
+        }
+
+        function int2rgba(int, alpha) {
+          const r = int >> 16 & 255;
+          const g = int >> 8 & 255;
+          const b = int & 255;
+          return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
         const BadgesModule = WebpackModules.getByProps('NumberBadge');
         const CloseButton = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M18.4 4L12 10.4L5.6 4L4 5.6L10.4 12L4 18.4L5.6 20L12 13.6L18.4 20L20 18.4L13.6 12L20 5.6L18.4 4Z', fill: 'currentColor' }));
         class Notification extends React.PureComponent {
@@ -1777,7 +1819,7 @@ module.exports = (() => {
             };
             this._contentRef = null;
             this._ref = null;
-            this._animationCancel = DiscordConstants.NOOP;
+            this._animationCancel = NOOP;
             this._oldOffsetHeight = 0;
             this._initialProgress = !this.props.timeout ? (this.state.loading && this.state.progress !== -1 ? this.state.progress : 100) : 0;
             XenoLib._.bindAll(this, ['closeNow', 'handleDispatch', '_setContentRef', 'onMouseEnter', 'onMouseLeave']);
@@ -2021,7 +2063,7 @@ module.exports = (() => {
                       className: 'xenoLib-notification-content',
                       style: {
                         backdropFilter: LibrarySettings.notifications.backdrop ? 'blur(5px)' : undefined,
-                        background: ColorConverter.int2rgba(ColorConverter.hex2int(LibrarySettings.notifications.backdropColor), LibrarySettings.notifications.backdrop ? 0.3 : 1.0),
+                        background: int2rgba(hex2int(LibrarySettings.notifications.backdropColor), LibrarySettings.notifications.backdrop ? 0.3 : 1.0),
                         border: LibrarySettings.notifications.backdrop ? 'none' : undefined
                       },
                       ref: e => {
@@ -2183,10 +2225,9 @@ module.exports = (() => {
       }
     }
 
-    const _radioGroup = WebpackModules.getByDisplayName('RadioGroup');
     class RadioGroupWrapper extends React.PureComponent {
       render() {
-        return React.createElement(_radioGroup, this.props);
+        return React.createElement(DiscordModules.RadioGroup, this.props);
       }
     }
 
@@ -2206,10 +2247,10 @@ module.exports = (() => {
       }
     }
 
-    const _switchItem = WebpackModules.getByDisplayName('SwitchItem');
+
     class SwitchItemWrapper extends React.PureComponent {
       render() {
-        return React.createElement(_switchItem, this.props);
+        return React.createElement(DiscordModules.SwitchRow, this.props);
       }
     }
 
@@ -2330,7 +2371,7 @@ module.exports = (() => {
         } catch (e) { }
       }
       load() {
-        super.load();
+        if (super.load) super.load();
         try {
           if (!BdApi.Plugins) return; /* well shit what now */
           if (!BdApi.isSettingEnabled) return;
@@ -2421,7 +2462,6 @@ module.exports = (() => {
                   });
                 });
                 req.on('error', _ => XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 }));
-                req.end();
               }
             } catch (e) { }
           }, 3000);
@@ -2519,8 +2559,7 @@ module.exports = (() => {
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]);
     let b = BdApi.Plugins.get('ZeresPluginLibrary');
-    if (b && b.instance) b = b.instance;
-    ((b, c) => b && b._config && b._config.info && b._config.info.version && a(b._config.info.version, c))(b, '2.0.3') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b.version && a(b.version, c))(b, '2.0.8') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
@@ -2598,13 +2637,13 @@ module.exports = (() => {
 
           const onFail = () => BdApi.showConfirmationModal('Well shit', 'Failed to download Zeres Plugin Library, join this server for further assistance:https://discord.gg/NYvWdN5');
 
-          const req = https.request('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', { headers: { origin: 'discord.com' } }, res => {
+          const req = https.get('https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js', { headers: { origin: 'discord.com' } }, res => {
             let body = '';
             // eslint-disable-next-line no-void
-            res.on('data', chunk => ((body += chunk), void 0));
-            res.on('end', () => {
+            res.on('data', chunk => ((body += new TextDecoder("utf-8").decode(chunk)), void 0));
+            res.on('end', (rez) => {
               try {
-                if (res.statusCode !== 200) return onFail();
+                if (rez.statusCode !== 200) return onFail();
                 fs.writeFileSync(zeresLibDir, body);
                 // eslint-disable-next-line no-undef
                 window.__XL_waitingForWatcherTimeout = setTimeout(() => {
@@ -2662,7 +2701,6 @@ module.exports = (() => {
           req.on('error', _ => {
             onFail();
           });
-          req.end();
         } catch (e) { }
       }
       stop() { }
