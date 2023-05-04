@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.22';
+    return '1.8.23';
   }
   getAuthor() {
     return 'Lighty';
