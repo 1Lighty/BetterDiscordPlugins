@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.22
+ * @version 1.8.23
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -606,9 +606,45 @@ module.exports = class MessageLoggerV2 {
     const Modals = ZeresPluginLibrary.WebpackModules.getByProps('ModalRoot');
     const ImageModalClasses = ZeresPluginLibrary.WebpackModules.getByProps('modal', 'image');
 
-    const ImageModal = ZeresPluginLibrary.WebpackModules.getByDisplayName('ImageModal');
+    const ImageModal = (() => {
+      let ret = null;
+      ZeresPluginLibrary.WebpackModules.getModule(e => {
+        for (const val of Object.values(e)) {
+          if (typeof val !== 'function') return false;
+          try {
+            const cont = val.toString();
+            if (!cont.includes('"renderLinkComponent","maxWidth"')) return false;
+          } catch (err) {
+            console.log(err, val);
+            return false;
+          }
+          ret = val;
+          return true;
+        }
+        return false;
+      });
+      return ret;
+    })();
 
-    const { default: MaskedLink } = ZeresPluginLibrary.WebpackModules.find(e => e?.default?.type?.toString()?.includes('default.MASKED_LINK')) || {};
+    const MaskedLink = (() => {
+      let ret = null;
+      ZeresPluginLibrary.WebpackModules.getModule(e => {
+        for (const val of Object.values(e)) {
+          if (!val.type || typeof val.type !== 'function') return false;
+          try {
+            const cont = val.type.toString();
+            if (!cont.includes('.sanitizeUrl(')) return false;
+          } catch (err) {
+            console.log(err, val);
+            return false;
+          }
+          ret = val;
+          return true;
+        }
+        return false;
+      });
+      return ret;
+    })();
     const renderLinkComponent = props => ZeresPluginLibrary.DiscordModules.React.createElement(MaskedLink, props);
 
     const MLV2ImageModal = props =>
@@ -771,6 +807,9 @@ module.exports = class MessageLoggerV2 {
                 }
                 .${this.style.menuRoot} .${this.style.questionMark} {
                   margin-left: 5px;
+                }
+                .${this.style.menuRoot} h1[data-text-variant^="heading"] {
+                  width: 100%;
                 }
                 .${this.style.menuRoot} {
                   width: 960px;
@@ -2137,7 +2176,6 @@ module.exports = class MessageLoggerV2 {
     this.channelLogButton.remove();
   }
   showLoggerHelpModal(initial = false) {
-    return;
     this.createModal({
       confirmText: 'OK',
       header: 'Logger help',
@@ -3276,10 +3314,8 @@ module.exports = class MessageLoggerV2 {
     instance.forceUpdate();
   }
   patchModal() {
-    return;
-    // REQUIRED not anymore I guess lol
     try {
-      const confirmModal = ZeresPluginLibrary.WebpackModules.getByDisplayName('ConfirmModal');
+      const confirmModal = ZeresPluginLibrary.DiscordModules.ConfirmationModal;
       this.createModal.confirmationModal = props => {
         try {
           const ret = confirmModal(props);
@@ -3391,7 +3427,7 @@ module.exports = class MessageLoggerV2 {
       classes.extra = [
         /* 0 */ XenoLib.joinClassNames(XenoLib.getClass('groupStart message'), XenoLib.getClass('groupStart cozyMessage'), XenoLib.getClass('systemMessage groupStart'), XenoLib.getClass('zalgo wrapper'), XenoLib.getClass('zalgo cozy'), XenoLib.getClass('cozy zalgo')),
         /* 1 */ XenoLib.joinClassNames(XenoLib.getClass('groupStart message'), XenoLib.getClass('groupStart cozyMessage'), XenoLib.getClass('zalgo wrapper'), XenoLib.getClass('zalgo cozy'), XenoLib.getClass('cozy zalgo')),
-        /* 2 */ XenoLib.getClass('username header'),
+        /* 2 */ XenoLib.getClass('isSending header'),
         /* 3 */ XenoLib.joinClassNames(XenoLib.getClass('edited avatar'), XenoLib.getClass('edited avatar clickable')),
         /* 4 */ XenoLib.joinClassNames(XenoLib.getClass('timestampTooltip username'), XenoLib.getClass('edited avatar clickable')),
         /* 5 */ XenoLib.joinClassNames(XenoLib.getClass('separator timestamp'), XenoLib.getClass('separator timestampInline')),
@@ -4260,7 +4296,6 @@ module.exports = class MessageLoggerV2 {
   }
   // >>-|| MENU MODAL CREATION ||-<<
   openWindow(type) {
-    return;
     if (this.menu.open) {
       this.menu.scrollPosition = 0;
       if (type) this.openTab(type);
@@ -4280,7 +4315,7 @@ module.exports = class MessageLoggerV2 {
       this.refilterMessages();
     };
 
-    const Text = ZeresPluginLibrary.WebpackModules.getByDisplayName('Text') || ZeresPluginLibrary.WebpackModules.getByDisplayName('LegacyText');
+    const Text = ZeresPluginLibrary.DiscordModules.TextElement;
     const onClearLog = e => {
       if (!Text) return;
       if (document.getElementById(this.style.filter).parentElement.parentElement.className.indexOf(this.createTextBox.classes.focused[0]) != -1) return;
@@ -4709,6 +4744,331 @@ module.exports = class MessageLoggerV2 {
         }
       );
       handleWhiteBlackList(newItems, props.channel.id);
+
+      menu.push(BdApi.ContextMenu.buildMenuChildren([{
+        type: 'group',
+        items: [{
+          type: 'submenu',
+          label: this.settings.contextmenuSubmenuName,
+          items: newItems
+        }]
+      }]));
+    }));
+
+    this.unpatches.push(BdApi.ContextMenu.patch('channel-context', (ret, props) => {
+      if (props.channel.type === 4) return; // categories
+      const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+        ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'channel-context'),
+        'children'
+      );
+      if (!Array.isArray(menu)) return;
+
+      const newItems = [];
+      const addElement = (label, action, options = {}) => newItems.push({ label, action, ...options });
+
+      addElement('Open Logs', () => this.openWindow());
+      addElement(
+        `Open Log For Channel`,
+        () => {
+          _this.menu.filter = `channel:${props.channel.id}`;
+          _this.openWindow();
+        }
+      );
+      handleWhiteBlackList(newItems, props.channel.id);
+
+      menu.push(BdApi.ContextMenu.buildMenuChildren([{
+        type: 'group',
+        items: [{
+          type: 'submenu',
+          label: this.settings.contextmenuSubmenuName,
+          items: newItems
+        }]
+      }]));
+    }));
+
+    this.unpatches.push(BdApi.ContextMenu.patch('guild-context', (ret, props) => {
+      const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+        ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'guild-context'),
+        'children'
+      );
+      if (!Array.isArray(menu)) return;
+
+      const newItems = [];
+      const addElement = (label, action, options = {}) => newItems.push({ label, action, ...options });
+
+      addElement('Open Logs', () => this.openWindow());
+
+      addElement(
+        `Open Log For Guild`,
+        () => {
+          _this.menu.filter = `guild:${props.guild.id}`;
+          _this.openWindow();
+        }
+      );
+      handleWhiteBlackList(newItems, props.guild.id);
+
+      menu.push(BdApi.ContextMenu.buildMenuChildren([{
+        type: 'group',
+        items: [{
+          type: 'submenu',
+          label: this.settings.contextmenuSubmenuName,
+          items: newItems
+        }]
+      }]));
+    }));
+
+    this.unpatches.push(BdApi.ContextMenu.patch('user-context', (ret, props) => {
+      const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+        ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'user-context'),
+        'children'
+      );
+      if (!Array.isArray(menu)) return;
+
+      const newItems = [];
+      const addElement = (label, action, options = {}) => newItems.push({ label, action, ...options });
+
+      addElement('Open Logs', () => this.openWindow());
+      addElement(
+        `Open Log For User`,
+        () => {
+          _this.menu.filter = `user:${props.user.id}`;
+          _this.openWindow();
+        }
+      );
+
+      if (props.channel?.isDM()) {
+        addElement(
+          `Open Log For DM`,
+          () => {
+            _this.menu.filter = `channel:${props.channel.id}`;
+            _this.openWindow();
+          }
+        );
+
+        handleWhiteBlackList(newItems, props.channel.id);
+      }
+
+      menu.push(BdApi.ContextMenu.buildMenuChildren([{
+        type: 'group',
+        items: [{
+          type: 'submenu',
+          label: this.settings.contextmenuSubmenuName,
+          items: newItems
+        }]
+      }]));
+    }));
+
+    this.unpatches.push(BdApi.ContextMenu.patch('gdm-context', (ret, props) => {
+      const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+        ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'gdm-context'),
+        'children'
+      );
+      if (!Array.isArray(menu)) return;
+
+      const newItems = [];
+      const addElement = (label, action, options = {}) => newItems.push({ label, action, ...options });
+
+      addElement('Open Logs', () => this.openWindow());
+      addElement(
+        `Open Log For Channel`,
+        () => {
+          _this.menu.filter = `channel:${props.channel.id}`;
+          _this.openWindow();
+        }
+      );
+      handleWhiteBlackList(newItems, props.channel.id);
+
+      menu.push(BdApi.ContextMenu.buildMenuChildren([{
+        type: 'group',
+        items: [{
+          type: 'submenu',
+          label: this.settings.contextmenuSubmenuName,
+          items: newItems
+        }]
+      }]));
+    }));
+
+
+
+    this.unpatches.push(BdApi.ContextMenu.patch('image-context', (ret, props) => {
+      const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+        ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'image-context'),
+        'children'
+      );
+      if (!Array.isArray(menu)) return;
+
+      const newItems = [];
+      const addElement = (label, action, options = {}) => newItems.push({ label, action, ...options });
+      let matched;
+      let isCached = false;
+      if (!props.src) return;
+      if (props.src.startsWith('data:image/png')) {
+        const cut = props.src.substr(0, 100);
+        matched = cut.match(/;(\d+);(\d+);/);
+        isCached = true;
+      } else {
+        matched = props.src.match(/.*ments\/(\d+)\/(\d+)\//);
+        if (!matched) matched = props.src.match(/r8q6.png#(\d+),(\d+)/);
+        if (!matched) {
+          matched = props.src.match(/localhost:7474.*#(\d+),(\d+)/);
+          isCached = true;
+        }
+      }
+      if (!matched) return;
+      const channelId = matched[1];
+      const attachmentId = matched[2];
+      const element = document.getElementById(attachmentId);
+      if (!element) return;
+      const attachmentIdx = element.idx;
+      const record = this.getSavedMessage(element.messageId);
+      if (!record) return;
+      addElement(
+        'Save to Folder',
+        () => {
+          const { dialog } = this.nodeModules.electron.remote;
+          dialog
+            .showSaveDialog({
+              defaultPath: record.message.attachments[attachmentIdx].filename
+            })
+            .then(({ filePath: dir }) => {
+              try {
+                if (!dir) return;
+                const attemptToUseCached = () => {
+                  const srcFile = `${this.settings.imageCacheDir}/${attachmentId}${record.message.attachments[attachmentIdx].filename.match(/\.[0-9a-z]+$/)[0]}`;
+                  if (!this.nodeModules.fs.existsSync(srcFile)) return this.showToast('Image does not exist locally!', { type: 'error', timeout: 5000 });
+                  this.nodeModules.fs.copyFileSync(srcFile, dir);
+                  this.showToast('Saved!', { type: 'success' });
+                };
+                if (isCached) {
+                  attemptToUseCached();
+                } else {
+                  const req = this.nodeModules.request(record.message.attachments[attachmentIdx].url);
+                  req.on('response', res => {
+                    if (res.statusCode == 200) {
+                      req
+                        .pipe(this.nodeModules.fs.createWriteStream(dir))
+                        .on('finish', () => this.showToast('Saved!', { type: 'success' }))
+                        .on('error', () => this.showToast('Failed to save! No permissions.', { type: 'error', timeout: 5000 }));
+                    } else if (res.statusCode == 404) {
+                      attemptToUseCached();
+                    } else {
+                      attemptToUseCached();
+                    }
+                  });
+                }
+              } catch (err) {
+                console.error('Failed saving', err.message);
+              }
+            });
+        },
+        this.obfuscatedClass('save-to')
+      );
+      addElement(
+        'Copy to Clipboard',
+        () => {
+          const { clipboard, nativeImage } = this.nodeModules.electron;
+          const attemptToUseCached = () => {
+            const srcFile = `${this.settings.imageCacheDir}/${attachmentId}${record.message.attachments[attachmentIdx].filename.match(/\.[0-9a-z]+$/)[0]}`;
+            if (!this.nodeModules.fs.existsSync(srcFile)) return this.showToast('Image does not exist locally!', { type: 'error', timeout: 5000 });
+            clipboard.write({ image: srcFile });
+            this.showToast('Copied!', { type: 'success' });
+          };
+          if (isCached) {
+            attemptToUseCached();
+          } else {
+            const path = this.nodeModules.path;
+            const process = require('process');
+            // ImageToClipboard by Zerebos
+            this.nodeModules.request({ url: record.message.attachments[attachmentIdx].url, encoding: null }, (error, response, buffer) => {
+              try {
+                if (error || response.statusCode != 200) {
+                  this.showToast('Failed to copy. Image may not exist. Attempting to use local image cache.', { type: 'error' });
+                  attemptToUseCached();
+                  return;
+                }
+                if (process.platform === 'win32' || process.platform === 'darwin') {
+                  clipboard.write({ image: nativeImage.createFromBuffer(buffer) });
+                } else {
+                  const file = path.join(process.env.HOME, 'ml2temp.png');
+                  this.nodeModules.fs.writeFileSync(file, buffer, { encoding: null });
+                  clipboard.write({ image: file });
+                  this.nodeModules.fs.unlinkSync(file);
+                }
+                this.showToast('Copied!', { type: 'success' });
+              } catch (err) {
+                console.error('Failed to cached', err.message);
+              }
+            });
+          }
+        },
+        this.obfuscatedClass('copy-to')
+      );
+      addElement(
+        'Jump to Message',
+        () => {
+          this.jumpToMessage(channelId, element.messageId, record.message.guild_id);
+        },
+        this.obfuscatedClass('jump-to')
+      );
+      if (record.delete_data && record.delete_data.hidden) {
+        addElement(
+          'Unhide Deleted Message',
+          () => {
+            record.delete_data.hidden = false;
+            this.invalidateChannelCache(record.message.channel_id); // good idea?
+            this.cacheChannelMessages(record.message.channel_id);
+            this.saveData();
+            this.showToast('Unhidden!', { type: 'success' });
+          },
+          this.obfuscatedClass('unhide-deleted')
+        );
+      }
+      if (record.edit_history && record.edits_hidden) {
+        addElement(
+          'Unhide Message History',
+          () => {
+            record.edits_hidden = false;
+            this.invalidateChannelCache(record.message.channel_id); // good idea?
+            this.cacheChannelMessages(record.message.channel_id);
+            this.saveData();
+            this.showToast('Unhidden!', { type: 'success' });
+          },
+          this.obfuscatedClass('unhide-edited')
+        );
+      }
+      addElement(
+        'Remove From Log',
+        () => {
+          this.deleteMessageFromRecords(element.messageId);
+          this.refilterMessages(); // I don't like calling that, maybe figure out a way to animate it collapsing on itself smoothly
+          this.saveData();
+          if (record.delete_data) this.dispatcher.dispatch({ type: 'MESSAGE_DELETE', id: messageId, channelId: channelId, ML2: true });
+          else this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
+        },
+        this.obfuscatedClass('remove')
+      );
+      if (!props.src.startsWith('https://i.clouds.tf/q2vy/r8q6.png')) {
+        addElement(
+          'Hide Image From Log',
+          () => {
+            record.message.attachments[attachmentIdx].hidden = true;
+            element.src = `https://i.clouds.tf/q2vy/r8q6.png#${channelId},${attachmentId}`;
+            element.width = 200;
+          },
+          this.obfuscatedClass('hide-image')
+        );
+      } else {
+        addElement(
+          'Unhide Image From Log',
+          () => {
+            record.message.attachments[attachmentIdx].hidden = false;
+            const srcFile = `http://localhost:7474/${attachmentId}${record.message.attachments[attachmentIdx].filename.match(/\.[0-9a-z]+$/)[0]}#${channelId},${attachmentId}`;
+            element.src = record.message.attachments[attachmentIdx].url === 'ERROR' ? srcFile : record.message.attachments[attachmentIdx].url;
+            element.width = record.message.attachments[attachmentIdx].url === 'ERROR' ? 256 : this.clamp(record.message.attachments[attachmentIdx].width, 200, 650);
+          },
+          this.obfuscatedClass('unhide-image')
+        );
+      }
 
       menu.push(BdApi.ContextMenu.buildMenuChildren([{
         type: 'group',
