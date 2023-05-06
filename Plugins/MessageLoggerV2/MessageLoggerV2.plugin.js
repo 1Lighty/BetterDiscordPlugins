@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.23
+ * @version 1.8.24
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.23';
+    return '1.8.24';
   }
   getAuthor() {
     return 'Lighty';
@@ -435,24 +435,30 @@ module.exports = class MessageLoggerV2 {
         constructor(imagePath, name) {
           try {
             ZeresPluginLibrary.WebpackModules.getByProps('bindAll', 'debounce').bindAll(this, ['_requestHandler', '_errorHandler']);
-            this._server = require('http').createServer(this._requestHandler);
+            this._server = require('http').createServer(this._requestHandler); // fuck bd 👍
             this._getMimetype = require('mime-types').lookup;
             this._parseURL = require('url').parse;
             this._fs = require('fs');
             this._path = require('path');
             this._imagePath = imagePath;
             this._name = name;
-          } catch (err) { }
+          } catch (err) {
+            //ZeresPluginLibrary.Logger.err(this._name, 'Error in ImageCacheServer', err);
+          }
         }
         start() {
           try {
             this._server.listen(7474, 'localhost', this._errorHandler);
-          } catch (err) { }
+          } catch (err) {
+            //ZeresPluginLibrary.Logger.err(this._name, 'Error in ImageCacheServer', err);
+          }
         }
         stop() {
           try {
             this._server.close();
-          } catch (err) { }
+          } catch (err) {
+            //ZeresPluginLibrary.Logger.err(this._name, 'Error in ImageCacheServer', err);
+          }
         }
         _errorHandler(err) {
           if (err) return ZeresPluginLibrary.Logger.err(this._name, 'Error in ImageCacheServer', err);
@@ -464,6 +470,7 @@ module.exports = class MessageLoggerV2 {
           const parsedFile = this._path.parse(parsedUrl.pathname);
           // extract URL path
           let pathname = this._path.join(this._imagePath, parsedFile.base);
+          console.log(pathname);
           this._fs.readFile(pathname, (err, data) => {
             if (err) {
               res.statusCode = 404;
@@ -2471,21 +2478,17 @@ module.exports = class MessageLoggerV2 {
     if (!record) return this.cachedMessageRecord.find(m => m.id == id);
     return record.message;
   }
-  cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts = 0) {
-    this.nodeModules.request({ url: url, encoding: null, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9002 Chrome/83.0.4103.122 Electron/9.3.5 Safari/537.36' } }, (err, res, buffer) => {
-      try {
-        if (err || res.statusCode != 200) {
-          if (res.statusCode == 404 || res.statusCode == 403) return;
-          attempts++;
-          if (attempts > 3) return ZeresPluginLibrary.Logger.warn(this.getName(), `Failed to get image ${attachmentId} for caching, error code ${res.statusCode}`);
-          return setTimeout(() => this.cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts), 1000);
-        }
-        const fileExtension = url.match(/\.[0-9a-z]+$/i)[0];
-        this.nodeModules.fs.writeFileSync(this.settings.imageCacheDir + `/${attachmentId}${fileExtension}`, buffer, { encoding: null });
-      } catch (err) {
-        console.error('Failed to save image cache', err.message);
-      }
-    });
+  async cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts = 0) {
+    const res = await fetch(url);
+    if (res.status != 200) {
+      if (res.status == 404 || res.status == 403) return;
+      attempts++;
+      if (attempts > 3) return ZeresPluginLibrary.Logger.warn(this.getName(), `Failed to get image ${attachmentId} for caching, error code ${res.status}`);
+      return setTimeout(() => this.cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts), 1000);
+    }
+    const fileExtension = url.match(/\.[0-9a-z]+$/i)[0];
+    const ab = await res.arrayBuffer();
+    this.nodeModules.fs.writeFileSync(`${this.settings.imageCacheDir}/${attachmentId}${fileExtension}`, Buffer.from(ab));
   }
   cacheMessageImages(message) {
     // don't block it, ugly but works, might rework later
@@ -3313,6 +3316,9 @@ module.exports = class MessageLoggerV2 {
     });
     instance.forceUpdate();
   }
+  closeContextMenu() {
+    this.dispatcher.dispatch({ type: 'CONTEXT_MENU_CLOSE' });
+  }
   patchModal() {
     try {
       const confirmModal = ZeresPluginLibrary.DiscordModules.ConfirmationModal;
@@ -3562,7 +3568,7 @@ module.exports = class MessageLoggerV2 {
                 {
                   label: 'Copy Formatted Message',
                   action: () => {
-                    ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                    this.closeContextMenu();
                     let result = '';
                     for (let msgid of messageIds) {
                       const record = this.messageRecord[msgid];
@@ -3578,7 +3584,7 @@ module.exports = class MessageLoggerV2 {
                   type: 'item',
                   label: 'Remove Group From Log',
                   action: () => {
-                    ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                    this.closeContextMenu();
                     let invalidatedChannelCache = false;
                     for (let msgid of messageIds) {
                       const record = this.messageRecord[msgid];
@@ -3646,7 +3652,7 @@ module.exports = class MessageLoggerV2 {
               type: 'item',
               label: 'Jump to Message',
               action: () => {
-                ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                this.closeContextMenu();
                 this.jumpToMessage(message.channel_id, messageId, message.guild_id);
               }
             });
@@ -3657,7 +3663,7 @@ module.exports = class MessageLoggerV2 {
                 type: 'item',
                 label: 'Copy Text',
                 action: () => {
-                  ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                  this.closeContextMenu();
                   this.nodeModules.electron.clipboard.writeText(editNum != -1 ? record.edit_history[editNum].content : record.message.content);
                   this.showToast('Copied!', { type: 'success' });
                 }
@@ -3666,7 +3672,7 @@ module.exports = class MessageLoggerV2 {
                 type: 'item',
                 label: 'Copy Formatted Message',
                 action: () => {
-                  ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                  this.closeContextMenu();
                   const content = editNum != -1 ? record.edit_history[editNum].content : record.message.content;
                   const result = `> **${record.message.author.username}** | ${this.createTimeStamp(record.message.timestamp, true)}\n> ${content.replace(/\n/g, '\n> ')}`;
                   this.nodeModules.electron.clipboard.writeText(result);
@@ -3680,7 +3686,7 @@ module.exports = class MessageLoggerV2 {
               type: 'item',
               label: 'Unhide Deleted Message',
               action: () => {
-                ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                this.closeContextMenu();
                 record.delete_data.hidden = false;
                 this.invalidateChannelCache(record.message.channel_id); // good idea?
                 this.cacheChannelMessages(record.message.channel_id);
@@ -3695,7 +3701,7 @@ module.exports = class MessageLoggerV2 {
                 type: 'item',
                 label: 'Delete Edit',
                 action: () => {
-                  ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                  this.closeContextMenu();
                   this.deleteEditedMessageFromRecord(messageId, editNum);
                   this.refilterMessages(); // I don't like calling that, maybe figure out a way to animate it collapsing on itself smoothly
                   this.showToast('Deleted!', { type: 'success' });
@@ -3707,7 +3713,7 @@ module.exports = class MessageLoggerV2 {
                 type: 'item',
                 label: 'Unhide Edits',
                 action: () => {
-                  ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                  this.closeContextMenu();
                   record.edits_hidden = false;
                   this.saveData();
                   this.showToast('Unhidden!', { type: 'success' });
@@ -3720,7 +3726,7 @@ module.exports = class MessageLoggerV2 {
               type: 'item',
               label: 'Remove From Log',
               action: () => {
-                ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                this.closeContextMenu();
                 let invalidatedChannelCache = false;
                 if ((record.edit_history && !record.edits_hidden) || (record.delete_data && !record.delete_data.hidden)) this.invalidateChannelCache((invalidatedChannelCache = record.message.channel_id));
                 this.deleteMessageFromRecords(messageId);
@@ -3745,7 +3751,7 @@ module.exports = class MessageLoggerV2 {
               type: 'item',
               label: 'Copy Message ID',
               action: () => {
-                ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                this.closeContextMenu();
                 this.nodeModules.electron.clipboard.writeText(messageId); // todo: store electron or writeText somewhere?
                 this.showToast('Copied!', { type: 'success' });
               }
@@ -3754,7 +3760,7 @@ module.exports = class MessageLoggerV2 {
               type: 'item',
               label: 'Copy Author ID',
               action: () => {
-                ZeresPluginLibrary.DiscordModules.ContextMenuActions.closeContextMenu();
+                this.closeContextMenu();
                 this.nodeModules.electron.clipboard.writeText(message.author.id);
                 this.showToast('Copied!', { type: 'success' });
               }
@@ -3929,15 +3935,17 @@ module.exports = class MessageLoggerV2 {
                   contentDiv.replaceChild(imageErrorDiv, img);
                 }
                 if (record) {
-                  this.nodeModules.request.head(attachment.url, (err, res) => {
+                  fetch(attachment.url, { method: 'HEAD' }).then(res => {
                     try {
-                      if (err || res.statusCode != 404) return;
+                      if (res.status != 404) return;
                       record.message.attachments[idx].url = 'ERROR';
                       img.src = 'http://localhost:7474/' + attachment.id + attachment.filename.match(/\.[0-9a-z]+$/)[0];
                       img.triedCache = true;
                     } catch (err) {
                       console.error('Failed loading cached image', err.message);
                     }
+                  }).catch(err => {
+                    console.error('Failed loading cached image', err.message);
                   });
                 }
               };
@@ -4755,141 +4763,6 @@ module.exports = class MessageLoggerV2 {
       }]));
     }));
 
-    this.unpatches.push(BdApi.ContextMenu.patch('channel-context', (ret, props) => {
-      if (props.channel.type === 4) return; // categories
-      const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-        ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'channel-context'),
-        'children'
-      );
-      if (!Array.isArray(menu)) return;
-
-      const newItems = [];
-      const addElement = (label, action, options = {}) => newItems.push({ label, action, ...options });
-
-      addElement('Open Logs', () => this.openWindow());
-      addElement(
-        `Open Log For Channel`,
-        () => {
-          _this.menu.filter = `channel:${props.channel.id}`;
-          _this.openWindow();
-        }
-      );
-      handleWhiteBlackList(newItems, props.channel.id);
-
-      menu.push(BdApi.ContextMenu.buildMenuChildren([{
-        type: 'group',
-        items: [{
-          type: 'submenu',
-          label: this.settings.contextmenuSubmenuName,
-          items: newItems
-        }]
-      }]));
-    }));
-
-    this.unpatches.push(BdApi.ContextMenu.patch('guild-context', (ret, props) => {
-      const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-        ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'guild-context'),
-        'children'
-      );
-      if (!Array.isArray(menu)) return;
-
-      const newItems = [];
-      const addElement = (label, action, options = {}) => newItems.push({ label, action, ...options });
-
-      addElement('Open Logs', () => this.openWindow());
-
-      addElement(
-        `Open Log For Guild`,
-        () => {
-          _this.menu.filter = `guild:${props.guild.id}`;
-          _this.openWindow();
-        }
-      );
-      handleWhiteBlackList(newItems, props.guild.id);
-
-      menu.push(BdApi.ContextMenu.buildMenuChildren([{
-        type: 'group',
-        items: [{
-          type: 'submenu',
-          label: this.settings.contextmenuSubmenuName,
-          items: newItems
-        }]
-      }]));
-    }));
-
-    this.unpatches.push(BdApi.ContextMenu.patch('user-context', (ret, props) => {
-      const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-        ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'user-context'),
-        'children'
-      );
-      if (!Array.isArray(menu)) return;
-
-      const newItems = [];
-      const addElement = (label, action, options = {}) => newItems.push({ label, action, ...options });
-
-      addElement('Open Logs', () => this.openWindow());
-      addElement(
-        `Open Log For User`,
-        () => {
-          _this.menu.filter = `user:${props.user.id}`;
-          _this.openWindow();
-        }
-      );
-
-      if (props.channel?.isDM()) {
-        addElement(
-          `Open Log For DM`,
-          () => {
-            _this.menu.filter = `channel:${props.channel.id}`;
-            _this.openWindow();
-          }
-        );
-
-        handleWhiteBlackList(newItems, props.channel.id);
-      }
-
-      menu.push(BdApi.ContextMenu.buildMenuChildren([{
-        type: 'group',
-        items: [{
-          type: 'submenu',
-          label: this.settings.contextmenuSubmenuName,
-          items: newItems
-        }]
-      }]));
-    }));
-
-    this.unpatches.push(BdApi.ContextMenu.patch('gdm-context', (ret, props) => {
-      const menu = ZeresPluginLibrary.Utilities.getNestedProp(
-        ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'gdm-context'),
-        'children'
-      );
-      if (!Array.isArray(menu)) return;
-
-      const newItems = [];
-      const addElement = (label, action, options = {}) => newItems.push({ label, action, ...options });
-
-      addElement('Open Logs', () => this.openWindow());
-      addElement(
-        `Open Log For Channel`,
-        () => {
-          _this.menu.filter = `channel:${props.channel.id}`;
-          _this.openWindow();
-        }
-      );
-      handleWhiteBlackList(newItems, props.channel.id);
-
-      menu.push(BdApi.ContextMenu.buildMenuChildren([{
-        type: 'group',
-        items: [{
-          type: 'submenu',
-          label: this.settings.contextmenuSubmenuName,
-          items: newItems
-        }]
-      }]));
-    }));
-
-
-
     this.unpatches.push(BdApi.ContextMenu.patch('image-context', (ret, props) => {
       const menu = ZeresPluginLibrary.Utilities.getNestedProp(
         ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.navId === 'image-context'),
@@ -4942,15 +4815,14 @@ module.exports = class MessageLoggerV2 {
                 if (isCached) {
                   attemptToUseCached();
                 } else {
-                  const req = this.nodeModules.request(record.message.attachments[attachmentIdx].url);
-                  req.on('response', res => {
-                    if (res.statusCode == 200) {
+                  const req = fetch(record.message.attachments[attachmentIdx].url);
+                  req.then(res => {
+                    if (res.status == 200) {
                       req
-                        .pipe(this.nodeModules.fs.createWriteStream(dir))
-                        .on('finish', () => this.showToast('Saved!', { type: 'success' }))
-                        .on('error', () => this.showToast('Failed to save! No permissions.', { type: 'error', timeout: 5000 }));
-                    } else if (res.statusCode == 404) {
-                      attemptToUseCached();
+                        .then(res => res.blob())
+                        .then(blob => {
+                          this.nodeModules.fs.writeFile(dir, blob, () => this.showToast('Saved!', { type: 'success' }));
+                        });
                     } else {
                       attemptToUseCached();
                     }
