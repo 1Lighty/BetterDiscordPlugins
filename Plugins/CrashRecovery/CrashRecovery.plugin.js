@@ -1,6 +1,6 @@
 /**
  * @name CrashRecovery
- * @version 1.0.5
+ * @version 1.0.6
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=CrashRecovery
@@ -46,7 +46,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.0.5',
+      version: '1.0.6',
       description: 'In the event that your Discord crashes, the plugin enables you to get Discord back to a working state, without needing to reload at all.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/CrashRecovery/CrashRecovery.plugin.js'
@@ -78,8 +78,78 @@ module.exports = (() => {
 
     const Patcher = XenoLib.createSmartPatcher(Api.Patcher);
 
-    const DelayedCall = (WebpackModules.getByProps('DelayedCall') || {}).DelayedCall;
-    const ElectronDiscordModule = WebpackModules.getByProps('cleanupDisplaySleep') || { cleanupDisplaySleep: DiscordModules.DiscordConstants.NOOP };
+    class CTimeout {
+      start(timeout, handler, reset = true) {
+        if (!this.isStarted() || reset) {
+          this.stop()
+          this._ref = setTimeout(() => {
+            this._ref = null
+            handler()
+          }, timeout)
+        }
+      }
+      stop() {
+        if (this._ref) {
+          clearTimeout(this._ref)
+          this._ref = null
+        }
+      }
+      isStarted() {
+        return !!this._ref
+      }
+    }
+
+    class CDelayedCall {
+      constructor(delay, handler) {
+        this._delay = delay;
+        this._handler = handler;
+        this._timeout = new CTimeout();
+      }
+      set(delay) {
+        this._delay = delay;
+        return this;
+      }
+      delay(reset = true) {
+        this._timeout.start(this._delay, this._handler, reset);
+      }
+      cancel() {
+        this._timeout.stop();
+      }
+      isDelayed() {
+        return this._timeout.isStarted();
+      }
+    }
+
+    var r = function () {
+      function e(e, t) {
+        this._delay = e;
+        this._handler = t;
+        this._timeout = new n
+      }
+      var t = e.prototype;
+      t.set = function (e) {
+        this._delay = e;
+        return this
+      }
+        ;
+      t.delay = function (e) {
+        void 0 === e && (e = !0);
+        this._timeout.start(this._delay, this._handler, e)
+      }
+        ;
+      t.cancel = function () {
+        this._timeout.stop()
+      }
+        ;
+      t.isDelayed = function () {
+        return this._timeout.isStarted()
+      }
+        ;
+      return e
+    }();
+    const NOOP = () => { };
+
+    const ElectronDiscordModule = WebpackModules.getByProps('cleanupDisplaySleep') || { cleanupDisplaySleep: NOOP };
 
     const ModalStack = WebpackModules.getByProps('closeAllModals');
 
@@ -129,10 +199,9 @@ module.exports = (() => {
         if (window.Lightcord) XenoLib.Notifications.warning(`[${this.getName()}] Lightcord is an unofficial and unsafe client with stolen code that is falsely advertising that it is safe, Lightcord has allowed the spread of token loggers hidden within plugins redistributed by them, and these plugins are not made to work on it. Your account is very likely compromised by malicious people redistributing other peoples plugins, especially if you didn't download this plugin from [GitHub](https://github.com/1Lighty/BetterDiscordPlugins/edit/master/Plugins/MessageLoggerV2/MessageLoggerV2.plugin.js), you should change your password immediately. Consider using a trusted client mod like [BandagedBD](https://rauenzi.github.io/BetterDiscordApp/) or [Powercord](https://powercord.dev/) to avoid losing your account.`, { timeout: 0 });
         this.attempts = 0;
         this.promises = { state: { cancelled: false } };
-        if (!DelayedCall) return this._startFailure('DelayedCall missing, plugin cannot function.');
-        if (ElectronDiscordModule.cleanupDisplaySleep === DiscordModules.DiscordConstants.NOOP) XenoLib.Notifications.error(`[**${this.name}**] cleanupDisplaySleep is missing.`);
+        if (ElectronDiscordModule.cleanupDisplaySleep === NOOP) XenoLib.Notifications.error(`[**${this.name}**] cleanupDisplaySleep is missing.`);
         delete this.onCrashRecoveredDelayedCall;
-        this.onCrashRecoveredDelayedCall = new DelayedCall(1000, () => {
+        this.onCrashRecoveredDelayedCall = new CDelayedCall(1000, () => {
           XenoLib.Notifications.remove(this.notificationId);
           this.notificationId = null;
           if (this.disabledPlugins) XenoLib.Notifications.danger(`${this.disabledPlugins.map(e => e)} ${this.disabledPlugins.length > 1 ? 'have' : 'has'} been disabled to recover from the crash`, { timeout: 0 });
@@ -157,11 +226,11 @@ module.exports = (() => {
         Utilities.suppressErrors(this.patchErrorBoundary.bind(this))(this.promises.state);
         if (!this.settings.lastErrorMapUpdate || Date.now() - this.settings.lastErrorMapUpdate > 2.628e+9) {
           const https = require('https');
-          const req = https.request(INVARIANTS_URL, { headers: { 'origin': 'discord.com' } }, res => {
+          const req = https.get(INVARIANTS_URL, { headers: { 'origin': 'discord.com' } }, res => {
             let body = '';
-            res.on('data', chunk => { body += chunk; });
-            res.on('end', () => {
-              if (res.statusCode !== 200) return;
+            res.on('data', chunk => { body += new TextDecoder("utf-8").decode(chunk); });
+            res.on('end', (rez) => {
+              if (rez.statusCode !== 200) return;
               try {
                 this.settings.errorMap = JSON.parse(body);
                 this.settings.lastErrorMapUpdate = Date.now();
@@ -169,7 +238,6 @@ module.exports = (() => {
               } catch { }
             });
           });
-          req.end();
         }
       }
       onStop() {
@@ -286,17 +354,12 @@ module.exports = (() => {
         ElectronDiscordModule.cleanupDisplaySleep();
         Dispatcher.wait(() => {
           try {
-            DiscordModules.ContextMenuActions.closeContextMenu();
+            Dispatcher.dispatch({ type: 'CONTEXT_MENU_CLOSE' });
           } catch (err) {
             Logger.stacktrace('Failed to close all context menus', err);
           }
           try {
-            DiscordModules.ModalStack.popAll();
-          } catch (err) {
-            Logger.stacktrace('Failed to pop old modalstack', err);
-          }
-          try {
-            DiscordModules.LayerManager.popAllLayers();
+            Dispatcher.dispatch({ type: 'LAYER_POP_ALL' });
           } catch (err) {
             Logger.stacktrace('Failed to pop all layers', err);
           }
@@ -372,7 +435,20 @@ module.exports = (() => {
       /* PATCHES */
 
       patchErrorBoundary() {
-        const ErrorBoundary = WebpackModules.getByDisplayName('ErrorBoundary');
+        const ErrorBoundary = (() => {
+          let ret = null;
+          ZeresPluginLibrary.WebpackModules.getModule(e => {
+            for (const val of Object.values(e)) {
+              if (typeof val !== 'function') continue;
+              const proto = val.prototype;
+              if (!proto || !proto.render || !proto.componentDidCatch || !proto._handleSubmitReport) continue;
+              ret = val;
+              return true;
+            }
+            return false;
+          });
+          return ret;
+        })();
         Patcher.instead(ErrorBoundary.prototype, 'componentDidCatch', (_this, [{ stack }, { componentStack }], orig) => {
           this.handleCrash(_this, stack, componentStack);
         });
@@ -395,7 +471,7 @@ module.exports = (() => {
                 React.createElement(
                   XenoLib.ReactComponents.Button,
                   {
-                    size: XenoLib.ReactComponents.ButtonOptions.ButtonSizes.LARGE,
+                    size: XenoLib.ReactComponents.ButtonOptions.Sizes.LARGE,
                     style: {
                       marginRight: 20
                     },
@@ -414,7 +490,7 @@ module.exports = (() => {
                 React.createElement(
                   XenoLib.ReactComponents.Button,
                   {
-                    size: XenoLib.ReactComponents.ButtonOptions.ButtonSizes.LARGE,
+                    size: XenoLib.ReactComponents.ButtonOptions.Sizes.LARGE,
                     style: {
                       marginRight: 20
                     },
@@ -439,7 +515,7 @@ module.exports = (() => {
               : false
           ];
         });
-        const ErrorBoundaryInstance = ReactTools.getOwnerInstance(document.querySelector(`.${XenoLib.getSingleClass('errorPage')}`) || document.querySelector('#app-mount > svg:first-of-type'), { include: ['ErrorBoundary'] });
+        const ErrorBoundaryInstance = ReactTools.getOwnerInstance(document.querySelector(`.${XenoLib.getSingleClass('errorPage')}`) || document.querySelector('#app-mount > svg:first-of-type'), { filter: e => e && e.__proto__ && e.__proto__._handleSubmitReport });
         ErrorBoundaryInstance.state.customPageError = false;
         ErrorBoundaryInstance.forceUpdate();
       }
@@ -554,14 +630,14 @@ module.exports = (() => {
                               try {
                                 let h = '';
                                 f.on('data', k => (h += k.toString())),
-                                f.on('end', () => {
-                                  try {
-                                    if (f.statusCode !== 200) return a.closeModal(m), i();
-                                    c.writeFile(d.join(e, '1XenoLib.plugin.js'), h, () => { });
-                                  } catch (a) {
-                                    console.error('Error writing XenoLib file', a);
-                                  }
-                                });
+                                  f.on('end', () => {
+                                    try {
+                                      if (f.statusCode !== 200) return a.closeModal(m), i();
+                                      c.writeFile(d.join(e, '1XenoLib.plugin.js'), h, () => { });
+                                    } catch (a) {
+                                      console.error('Error writing XenoLib file', a);
+                                    }
+                                  });
                               } catch (b) {
                                 console.error('Fatal error downloading XenoLib', b), a.closeModal(m), i();
                               }
@@ -580,20 +656,20 @@ module.exports = (() => {
                           try {
                             let h = '';
                             g.on('data', k => (h += k.toString())),
-                            g.on('end', () => {
-                              try {
-                                if (g.statusCode !== 200) return a.closeModal(m), i();
-                                c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => {
-                                  try {
-                                    f();
-                                  } catch (a) {
-                                    console.error('Error writing ZeresPluginLibrary file', a);
-                                  }
-                                });
-                              } catch (b) {
-                                console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
-                              }
-                            });
+                              g.on('end', () => {
+                                try {
+                                  if (g.statusCode !== 200) return a.closeModal(m), i();
+                                  c.writeFile(d.join(e, '0PluginLibrary.plugin.js'), h, () => {
+                                    try {
+                                      f();
+                                    } catch (a) {
+                                      console.error('Error writing ZeresPluginLibrary file', a);
+                                    }
+                                  });
+                                } catch (b) {
+                                  console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
+                                }
+                              });
                           } catch (b) {
                             console.error('Fatal error downloading ZeresPluginLibrary', b), a.closeModal(m), i();
                           }
