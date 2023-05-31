@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.24
+ * @version 1.8.25
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.24';
+    return '1.8.25';
   }
   getAuthor() {
     return 'Lighty';
@@ -594,7 +594,7 @@ module.exports = class MessageLoggerV2 {
 
     this.classes = {
       markup: ZeresPluginLibrary.WebpackModules.getByProps('markup')['markup'].split(/ /g)[0],
-      hidden: ZeresPluginLibrary.WebpackModules.getByProps('spoilerText', 'hidden').hidden.split(/ /g)[0],
+      hidden: ZeresPluginLibrary.WebpackModules.getByProps('spoilerContent', 'hidden').hidden.split(/ /g)[0],
       messages: this.safeGetClass(
         () => `.${ZeresPluginLibrary.WebpackModules.getByProps('container', 'containerCompactBounded').container.split(/ /g)[0]} > div:not(.${ZeresPluginLibrary.WebpackModules.getByProps('content', 'marginCompactIndent').content.split(/ /g)[0]})`,
         this.safeGetClass(() => `.${XenoLib.getSingleClass('scroller messages')} > .${XenoLib.getSingleClass('channelTextArea message')}`, 'Lighty-youre-a-failure-my-fucking-god'),
