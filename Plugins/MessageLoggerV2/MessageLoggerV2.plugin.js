@@ -754,46 +754,54 @@ module.exports = class MessageLoggerV2 {
                   background-color: rgba(240, 71, 71, 0.10) !important;
                 }
                 .theme-dark .${this.classes.markup}.${this.style.edited} .${this.style.edited} {
-                    filter: brightness(70%);
+                  filter: brightness(70%);
                 }
                 .theme-light .${this.classes.markup}.${this.style.edited} .${this.style.edited} {
-                    opacity: 0.5;
+                  opacity: 0.5;
                 }
 
                 .${this.style.editedCompact} {
-                    text-indent: 0;
+                  text-indent: 0;
                 }
 
-                .theme-dark .${this.style.deleted}:not(:hover) img:not(.${this.classes.avatar}), .${this.style.deleted}:not(:hover) .mention, .${this.style.deleted}:not(:hover) .reactions, .${this.style.deleted}:not(:hover) a {
-                    filter: grayscale(100%) !important;
+                .${this.style.deleted}:not(:hover) img:not(.${this.classes.avatar}),
+                .${this.style.deleted}:not(:hover) .mention,
+                .${this.style.deleted}:not(:hover) .reactions,
+                .${this.style.deleted}:not(:hover) .channelMention,
+                .${this.style.deleted}:not(:hover) a {
+                  filter: grayscale(100%) !important;
                 }
 
-                .${this.style.deleted} img:not(.${this.classes.avatar}), .${this.style.deleted} .mention, .${this.style.deleted} .reactions, .${this.style.deleted} a {
-                    transition: filter 0.3s !important;
+                .${this.style.deleted} img:not(.${this.classes.avatar}),
+                .${this.style.deleted} .mention,
+                .${this.style.deleted} .reactions,
+                .${this.style.deleted} .channelMention,
+                .${this.style.deleted} a {
+                  transition: filter 0.3s !important;
                 }
 
                 .theme-dark .${this.style.tab} {
-                    border-color: transparent;
-                    color: rgba(255, 255, 255, 0.4);
-                    padding: 0px 24px;
+                  border-color: transparent;
+                  color: rgba(255, 255, 255, 0.4);
+                  padding: 0px 24px;
                 }
                 .theme-light .${this.style.tab} {
-                    border-color: transparent;
-                    color: rgba(0, 0, 0, 0.4);
-                    padding: 0px 24px;
+                  border-color: transparent;
+                  color: rgba(0, 0, 0, 0.4);
+                  padding: 0px 24px;
                 }
 
                 #sent.${this.style.tab} {
                   display: none;
                 }
 
-                .theme-dark  .${this.style.tabSelected} {
-                    border-color: rgb(255, 255, 255);
-                    color: rgb(255, 255, 255);
+                .theme-dark .${this.style.tabSelected} {
+                  border-color: rgb(255, 255, 255);
+                  color: rgb(255, 255, 255);
                 }
-                .theme-light  .${this.style.tabSelected} {
-                    border-color: rgb(0, 0, 0);
-                    color: rgb(0, 0, 0);
+                .theme-light .${this.style.tabSelected} {
+                  border-color: rgb(0, 0, 0);
+                  color: rgb(0, 0, 0);
                 }
 
                 #${this.style.menuTabBar} {
@@ -801,7 +809,7 @@ module.exports = class MessageLoggerV2 {
                 }
 
                 .${this.style.textIndent} {
-                    margin-left: 40px;
+                  margin-left: 40px;
                 }
 
                 .${this.style.imageRoot} {
