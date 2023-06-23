@@ -742,8 +742,10 @@ module.exports = class MessageLoggerV2 {
     ZeresPluginLibrary.PluginUtilities.addStyle(
       (this.style.css = !this.settings.obfuscateCSSClasses ? 'ML2-CSS' : this.randomString()),
       `
-                .${this.style.deleted} .${this.classes.markup}, .${this.style.deleted} .${this.classes.markup} .hljs, .${this.style.deleted} .container-1ov-mD *{
-                    color: #f04747 !important;
+                .${this.style.deleted} .${this.classes.markup}, .${this.style.deleted} .${this.classes.markup} .hljs, .${this.style.deleted} .container-1ov-mD *,
+                .${this.style.deleted} .${this.classes.markup} h1, .${this.style.deleted} .${this.classes.markup} h2, .${this.style.deleted} .${this.classes.markup} h3,
+                .${this.style.deleted} .${this.classes.markup} h4, .${this.style.deleted} .${this.classes.markup} h5, .${this.style.deleted} .${this.classes.markup} h6 {
+                  color: #f04747 !important;
                 }
                 html #app-mount .${this.style.deletedAlt} {
                   background-color: rgba(240, 71, 71, 0.15) !important;
