@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.25
+ * @version 1.8.26
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.25';
+    return '1.8.26';
   }
   getAuthor() {
     return 'Lighty';
@@ -567,7 +567,7 @@ module.exports = class MessageLoggerV2 {
       avatarSingle: this.safeGetClass(() => ZeresPluginLibrary.WebpackModules.getByProps('containerCozyBounded').avatar.split(/ /g)[0], 'avatar'),
       avatarImg: XenoLib.getClass('clickable avatar'),
       avatarImgSingle: XenoLib.getSingleClass('clickable avatar'),
-      botTag: ZeresPluginLibrary.WebpackModules.getByProps('botTagRegular').botTagRegular + ' ' + ZeresPluginLibrary.WebpackModules.getByProps('botTagCozy').botTagCozy,
+      botTag: ZeresPluginLibrary.WebpackModules.getByProps('botTagRegular').botTagRegular + ' ' + ZeresPluginLibrary.WebpackModules.getByProps('botTagCozy').botTagCozy + ' ' + ZeresPluginLibrary.WebpackModules.getByProps('botTagRegular').rem,
       markupSingle: ZeresPluginLibrary.WebpackModules.getByProps('markup').markup.split(/ /g)[0]
     };
 
@@ -3576,7 +3576,7 @@ module.exports = class MessageLoggerV2 {
                       if (!result.length) result += `> **${record.message.author.username}** | ${this.createTimeStamp(record.message.timestamp, true)}\n`;
                       result += `> ${record.message.content.replace(/\n/g, '\n> ')}\n`;
                     }
-                    this.nodeModules.electron.clipboard.writeText(result);
+                    DiscordNative.clipboard.copy(result);
                     this.showToast('Copied!', { type: 'success' });
                   }
                 },
@@ -3664,7 +3664,7 @@ module.exports = class MessageLoggerV2 {
                 label: 'Copy Text',
                 action: () => {
                   this.closeContextMenu();
-                  this.nodeModules.electron.clipboard.writeText(editNum != -1 ? record.edit_history[editNum].content : record.message.content);
+                  DiscordNative.clipboard.copy(editNum != -1 ? record.edit_history[editNum].content : record.message.content);
                   this.showToast('Copied!', { type: 'success' });
                 }
               },
@@ -3675,7 +3675,7 @@ module.exports = class MessageLoggerV2 {
                   this.closeContextMenu();
                   const content = editNum != -1 ? record.edit_history[editNum].content : record.message.content;
                   const result = `> **${record.message.author.username}** | ${this.createTimeStamp(record.message.timestamp, true)}\n> ${content.replace(/\n/g, '\n> ')}`;
-                  this.nodeModules.electron.clipboard.writeText(result);
+                  DiscordNative.clipboard.copy(result);
                   this.showToast('Copied!', { type: 'success' });
                 }
               }
@@ -3752,7 +3752,7 @@ module.exports = class MessageLoggerV2 {
               label: 'Copy Message ID',
               action: () => {
                 this.closeContextMenu();
-                this.nodeModules.electron.clipboard.writeText(messageId); // todo: store electron or writeText somewhere?
+                DiscordNative.clipboard.copy(messageId); // todo: store electron or writeText somewhere?
                 this.showToast('Copied!', { type: 'success' });
               }
             },
@@ -3761,7 +3761,7 @@ module.exports = class MessageLoggerV2 {
               label: 'Copy Author ID',
               action: () => {
                 this.closeContextMenu();
-                this.nodeModules.electron.clipboard.writeText(message.author.id);
+                DiscordNative.clipboard.copy(message.author.id);
                 this.showToast('Copied!', { type: 'success' });
               }
             }
@@ -4134,7 +4134,7 @@ module.exports = class MessageLoggerV2 {
             messages = messages.filter(x => {
               const message = this.getMessageAny(x);
               if (!message) return false;
-              if (Array.isArray(message.attachments)) if (message.attachments.some(({ filename }) => ZeresPluginLibrary.DiscordModules.DiscordConstants.IMAGE_RE.test(filename))) return true;
+              if (Array.isArray(message.attachments)) if (message.attachments.some(({ filename }) => /\.(gif|jpe?g|png)$/i.test(filename))) return true;
               if (Array.isArray(message.embeds)) return message.embeds.some(({ image }) => !!image);
               return false;
             });
@@ -4278,14 +4278,14 @@ module.exports = class MessageLoggerV2 {
         children: [
           ZeresPluginLibrary.ReactTools.createWrappedElement([
             this.parseHTML(
-              `<div class="${this.multiClasses.defaultColor}">"server: <servername or serverid>" - Filter results with the specified server name or id.
-                        "channel: <channelname or channelid>" - Filter results with the specified channel name or id.
-                        "user: <username, nickname or userid>" - Filter results with the specified username, nickname or userid.
-                        "message: <search or messageid>" or "content: <search or messageid>" - Filter results with the specified message content.
-                        "has: <image|link> - Filter results to only images or links
+              `<div class="${this.multiClasses.defaultColor}">"server: &lt;servername or server ID&gt;" - Filter results with the specified server name or ID.
+                        "channel: &lt;channelname or channel ID&gt;" - Filter results with the specified channel name or ID.
+                        "user: &lt;username, nickname or user ID&gt;" - Filter results with the specified username, nickname or user ID.
+                        "message: &lt;search or message ID&gt;" or "content: &lt;search or message ID&gt;" - Filter results with the specified message content.
+                        "has: &lt;image or link&gt;" - Filter results to only images or links
 
                         Separate the search tags with commas.
-                        Example: server: tom's bd stuff, message: heck
+                        Example: "server: tom's bd stuff, message: heck"
 
 
                         Shortcut help:
