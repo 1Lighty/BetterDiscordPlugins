@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.12
+ * @version 1.4.13
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.12',
+      version: '1.4.13',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -1807,7 +1807,25 @@ module.exports = (() => {
           return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
-        const BadgesModule = WebpackModules.getByProps('NumberBadge');
+        const NumberBadge = (() => {
+          let ret = null;
+          ZeresPluginLibrary.WebpackModules.getModule(e => {
+            for (const val of Object.values(e)) {
+              if (typeof val !== 'function') continue;
+              try {
+                const cont = val.toString();
+                if (!cont.includes('.STATUS_DANGER') || !cont.includes('.numberBadge')) continue;
+              } catch (err) {
+                console.log(err, val);
+                continue;
+              }
+              ret = val;
+              return true;
+            }
+            return false;
+          });
+          return ret;
+        })();
         const CloseButton = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24' }, React.createElement('path', { d: 'M18.4 4L12 10.4L5.6 4L4 5.6L10.4 12L4 18.4L5.6 20L12 13.6L18.4 20L20 18.4L13.6 12L20 5.6L18.4 4Z', fill: 'currentColor' }));
         class Notification extends React.PureComponent {
           constructor(props) {
@@ -2105,7 +2123,7 @@ module.exports = (() => {
                       },
                       CloseButton
                     ),
-                    this.state.counter > 1 && BadgesModule.NumberBadge({ count: this.state.counter, className: 'xenLib-notification-counter', color: '#2196f3' }),
+                    this.state.counter > 1 && NumberBadge({ count: this.state.counter, className: 'xenLib-notification-counter', color: '#2196f3' }),
                     this.state.contentParsed
                   )
                 )
@@ -2255,10 +2273,18 @@ module.exports = (() => {
       }
     }
 
+    const ThemeProvider = WebpackModules.getModule(m => m?.toString?.().includes("amoled:") && m?.toString?.().includes("Provider"), { searchExports: true });
+    const useStateFromStores = WebpackModules.getModule(m => m.toString?.().includes("useStateFromStores"));
+    const ThemeStore = WebpackModules.getModule(m => m.theme);
+
+    function DiscordThemeProviderWrapper(props) {
+      const theme = useStateFromStores([ThemeStore], () => ThemeStore.theme);
+      return React.createElement(ThemeProvider, { theme }, props.children);
+    }
 
     class SwitchItemWrapper extends React.PureComponent {
       render() {
-        return React.createElement(DiscordModules.SwitchRow, this.props);
+        return React.createElement(DiscordThemeProviderWrapper, {}, React.createElement(DiscordModules.SwitchRow, this.props));
       }
     }
 
