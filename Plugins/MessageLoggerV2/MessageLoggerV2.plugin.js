@@ -4113,11 +4113,13 @@ module.exports = class MessageLoggerV2 {
           return message.channel_id == filter || (channel && channel.name.toLowerCase().includes(filter.replace('#', '').toLowerCase()));
         });
 
-      if (filterType == 'message' || filterType == 'content')
+      if (filterType == 'message' || filterType == 'content') {
+        const regex = new RegExp(filter, 'i');
         messages = messages.filter(x => {
           const message = this.getMessageAny(x);
-          return x == filter || (message && message.content.toLowerCase().includes(filter.toLowerCase()));
+          return x === filter || (message && regex.test(message.content));
         });
+      }
 
       if (filterType == 'user')
         messages = messages.filter(x => {
