@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.25
+ * @version 1.8.26
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -2116,7 +2116,8 @@ module.exports = class MessageLoggerV2 {
     ZeresPluginLibrary.DiscordModules.NavigationUtils.transitionTo(`/channels/${guildId || '@me'}/${channelId}${messageId ? '/' + messageId : ''}`);
   }
   isImage(url) {
-    return /\.(jpe?g|png|gif|bmp)$/i.test(url);
+    var string = "(http)?s?:?(\/\/[^\"']*\.(?:png|jpg|jpeg|gif|png|svg))"
+    return new RegExp(string).test(url)
   }
   cleanupEmbed(embed) {
     /* backported code from MLV2 rewrite */
@@ -2480,13 +2481,13 @@ module.exports = class MessageLoggerV2 {
   }
   async cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts = 0) {
     const res = await fetch(url);
-    if (res.status != 200) {
-      if (res.status == 404 || res.status == 403) return;
+    if (res.status !== 200) {
+      if (res.status === 404 || res.status === 403) return;
       attempts++;
       if (attempts > 3) return ZeresPluginLibrary.Logger.warn(this.getName(), `Failed to get image ${attachmentId} for caching, error code ${res.status}`);
       return setTimeout(() => this.cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts), 1000);
     }
-    const fileExtension = url.match(/\.[0-9a-z]+$/i)[0];
+    const fileExtension = '.' + url.split(/[#?]/)[0].split('.').pop().trim();
     const ab = await res.arrayBuffer();
     this.nodeModules.fs.writeFileSync(`${this.settings.imageCacheDir}/${attachmentId}${fileExtension}`, Buffer.from(ab));
   }
