@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.25
+ * @version 1.8.26
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.25';
+    return '1.8.26';
   }
   getAuthor() {
     return 'Lighty';
@@ -96,8 +96,8 @@ module.exports = class MessageLoggerV2 {
           let a = `The ${e ? "libraries" : "library"} `;
           return c || XenoLibOutdated ? (a += "XenoLib ", (d || ZeresPluginLibraryOutdated) && (a += "and ZeresPluginLibrary ")) : (d || ZeresPluginLibraryOutdated) && (a += "ZeresPluginLibrary "), a += `required for ${this.getName()} ${e ? "are" : "is"} ${c || d ? "missing" : ""}${XenoLibOutdated || ZeresPluginLibraryOutdated ? c || d ? " and/or outdated" : "outdated" : ""}.`, a
         })(),
-        h = BdApi.findModuleByDisplayName("Text") || BdApi.findModule(e => e.Text?.displayName === 'Text')?.Text,
-        i = BdApi.findModuleByDisplayName("ConfirmModal"),
+        h = BdApi.findModule(e => (Object.keys(e).length === 2) && e.Colors && e.Sizes),
+        i = BdApi.findModuleByProps('ConfirmModal')?.ConfirmModal,
         j = () => BdApi.alert(f, BdApi.React.createElement("span", {
           style: {
             color: "white"
@@ -633,26 +633,7 @@ module.exports = class MessageLoggerV2 {
       return ret;
     })();
 
-    const MaskedLink = (() => {
-      let ret = null;
-      ZeresPluginLibrary.WebpackModules.getModule(e => {
-        for (const val of Object.values(e)) {
-          if (!val.type || typeof val.type !== 'function') return false;
-          try {
-            const cont = val.type.toString();
-            if (!cont.includes('.sanitizeUrl(')) return false;
-          } catch (err) {
-            console.log(err, val);
-            return false;
-          }
-          ret = val;
-          return true;
-        }
-        return false;
-      });
-      return ret;
-    })();
-    const renderLinkComponent = props => ZeresPluginLibrary.DiscordModules.React.createElement(MaskedLink, props);
+    const renderLinkComponent = props => ZeresPluginLibrary.WebpackModules.getByProps('renderMaskedLinkComponent')?.renderMaskedLinkComponent;
 
     const MLV2ImageModal = props =>
       ZeresPluginLibrary.DiscordModules.React.createElement(
@@ -1188,7 +1169,7 @@ module.exports = class MessageLoggerV2 {
           }
           if (!this.selectedChannel) return ZeresPluginLibrary.Logger.warn(this.getName(), 'Chat was loaded but no text channel is selected');
           if (isTitle && this.settings.showOpenLogsButton) {
-            let srch = change.querySelector('div[class*="search-"]');
+            let srch = change.querySelector('div[class*="search__"]');
             if (!srch) return ZeresPluginLibrary.Logger.warn(this.getName(), 'Observer caught title loading, but no search bar was found! Open Logs button will not show!');
             if (this.channelLogButton && srch.parentElement) {
               srch.parentElement.insertBefore(this.channelLogButton, srch); // memory leak..?
@@ -2116,7 +2097,7 @@ module.exports = class MessageLoggerV2 {
     ZeresPluginLibrary.DiscordModules.NavigationUtils.transitionTo(`/channels/${guildId || '@me'}/${channelId}${messageId ? '/' + messageId : ''}`);
   }
   isImage(url) {
-    return /\.(jpe?g|png|gif|bmp)$/i.test(url);
+    return /\.(jpe?g|png|gif|bmp)(?:$|\?)/i.test(url);
   }
   cleanupEmbed(embed) {
     /* backported code from MLV2 rewrite */
@@ -2486,7 +2467,7 @@ module.exports = class MessageLoggerV2 {
       if (attempts > 3) return ZeresPluginLibrary.Logger.warn(this.getName(), `Failed to get image ${attachmentId} for caching, error code ${res.status}`);
       return setTimeout(() => this.cacheImage(url, attachmentIdx, attachmentId, messageId, channelId, attempts), 1000);
     }
-    const fileExtension = url.match(/\.[0-9a-z]+$/i)[0];
+    const fileExtension = url.match(/(\.[0-9a-z]+)(?:$|\?)/i)[1];
     const ab = await res.arrayBuffer();
     this.nodeModules.fs.writeFileSync(`${this.settings.imageCacheDir}/${attachmentId}${fileExtension}`, Buffer.from(ab));
   }
@@ -3170,11 +3151,12 @@ module.exports = class MessageLoggerV2 {
     })();
     const MessageContent = ZeresPluginLibrary.WebpackModules.getModule(e => e?.type?.toString()?.includes('Messages.MESSAGE_EDITED'));
     const MemoMessage = await (async () => {
-      var el = document.querySelector('.messageListItem-ZZ7v6g') || (await new Promise(res => {
+      const selector = `.${XenoLib.getSingleClass('message messageListItem')}`;
+      var el = document.querySelector(selector) || (await new Promise(res => {
         var sub = ZeresPluginLibrary.DOMTools.observer.subscribeToQuerySelector(() => {
           ZeresPluginLibrary.DOMTools.observer.unsubscribe(sub);
-          res(document.querySelector('.messageListItem-ZZ7v6g'));
-        }, '.messageListItem-ZZ7v6g', null, true)
+          res(document.querySelector(selector));
+        }, selector, null, true)
       }));
       return ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(el), e => ((typeof e?.memoizedProps?.isHighlight) === 'boolean'), { walkable: ['return'] })?.elementType
     })()
