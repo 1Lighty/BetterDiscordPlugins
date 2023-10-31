@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.13
+ * @version 1.4.14
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.13',
+      version: '1.4.14',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -904,21 +904,8 @@ module.exports = (() => {
 
 
     try {
-      XenoLib.ReactComponents.ButtonOptions = (() => {
-        let ret = null;
-        ZeresPluginLibrary.WebpackModules.getModule(e => {
-          for (const val of Object.values(e)) {
-            if (typeof val !== 'function') continue;
-            if (val.BorderColors) {
-              ret = val;
-              return true;
-            }
-          }
-          return false;
-        });
-        return ret;
-      })();
-      XenoLib.ReactComponents.Button = XenoLib.ReactComponents.ButtonOptions;
+      XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('Button');
+      XenoLib.ReactComponents.Button = WebpackModules.getByProps('Button').Button;
     } catch (e) {
       Logger.stacktrace('Error getting Button component', e);
     }
@@ -1084,7 +1071,7 @@ module.exports = (() => {
       XenoLib.ReactComponents.PluginFooter = NOOP_NULL;
     }
 
-    const TextElement = WebpackModules.getByDisplayName('Text') || WebpackModules.find(e => e.Text?.displayName === 'Text')?.Text;
+    const TextElement = WebpackModules.getModule(e => (Object.keys(e).length === 2) && e.Colors && e.Sizes);
 
     /* shared between FilePicker and ColorPicker */
     const MultiInputClassname = 'xenoLib-multiInput';
@@ -1784,17 +1771,7 @@ module.exports = (() => {
           }
         };
         XenoLib.Notifications = utils;
-        const ReactSpring = (() => {
-          const olfilter = Array.prototype.filter
-          Array.prototype.filter = function (callbackFn, thisArg) {
-            return [];
-          }
-          try {
-            return WebpackModules.getByProps('useTransition')
-          } finally {
-            Array.prototype.filter = olfilter;
-          }
-        })();
+        const ReactSpring = WebpackModules.getByProps('useTransition', 'animated');
 
         function hex2int(hex) {
           return parseInt(hex, 16);
@@ -2170,7 +2147,7 @@ module.exports = (() => {
     const PositionSelectorWrapperClassname = 'xenoLib-position-wrapper';
     const PositionSelectorSelectedClassname = 'selected-xenoLib';
     const PositionSelectorHiddenInputClassname = 'xenoLib-position-hidden-input';
-    const FormText = WebpackModules.getByDisplayName('FormText');
+    const FormText = WebpackModules.getByProps('FormText')?.FormText;
     class NotificationPosition extends React.PureComponent {
       constructor(props) {
         super(props);
@@ -2273,8 +2250,8 @@ module.exports = (() => {
       }
     }
 
-    const ThemeProvider = WebpackModules.getModule(m => m?.toString?.().includes("amoled:") && m?.toString?.().includes("Provider"), { searchExports: true });
-    const useStateFromStores = WebpackModules.getModule(m => m.toString?.().includes("useStateFromStores"));
+    const ThemeProvider = WebpackModules.getByProps('RootThemeContextProvider').RootThemeContextProvider;
+    const useStateFromStores = WebpackModules.getByProps('useStateFromStores').useStateFromStores;
     const ThemeStore = WebpackModules.getModule(m => m.theme);
 
     function DiscordThemeProviderWrapper(props) {
