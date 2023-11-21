@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.26
+ * @version 1.8.27
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.26';
+    return '1.8.27';
   }
   getAuthor() {
     return 'Lighty';
@@ -3158,7 +3158,7 @@ module.exports = class MessageLoggerV2 {
           res(document.querySelector(selector));
         }, selector, null, true)
       }));
-      return ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(el), e => ((typeof e?.memoizedProps?.isHighlight) === 'boolean'), { walkable: ['return'] })?.elementType
+      return ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(el), e => ((typeof e?.memoizedProps?.renderContentOnly) === 'boolean'), { walkable: ['return'] })?.elementType
     })()
     if (!MessageContent || !MemoMessage) return XenoLib.Notifications.error('Failed to patch message components, edit history and deleted tint will not show!', { timeout: 0 });
     this.unpatches.push(
