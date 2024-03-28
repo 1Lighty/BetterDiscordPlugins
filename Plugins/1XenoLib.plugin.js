@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.14
+ * @version 1.4.15
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.14',
+      version: '1.4.15',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -904,8 +904,8 @@ module.exports = (() => {
 
 
     try {
-      XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('Button');
-      XenoLib.ReactComponents.Button = WebpackModules.getByProps('Button').Button;
+      XenoLib.ReactComponents.ButtonOptions = WebpackModules.getByProps('Button', 'ButtonColors');
+      XenoLib.ReactComponents.Button = WebpackModules.getByProps('Button', 'ButtonColors').Button;
     } catch (e) {
       Logger.stacktrace('Error getting Button component', e);
     }
