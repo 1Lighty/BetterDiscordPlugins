@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.27
+ * @version 1.8.28
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.27';
+    return '1.8.28';
   }
   getAuthor() {
     return 'Lighty';
@@ -77,7 +77,7 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.11')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.15')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '2.0.3')) ZeresPluginLibraryOutdated = true;
     }
     if (!global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated) {
@@ -3105,7 +3105,7 @@ module.exports = class MessageLoggerV2 {
       ZeresPluginLibrary.WebpackModules.getModule(e => {
         for (const val of Object.values(e)) {
           if (typeof val !== 'function') continue;
-          if (val.Colors && val.prototype.shouldShowTooltip) {
+          if (val.Colors && val.prototype?.shouldShowTooltip) {
             ret = val;
             return true;
           }
@@ -3205,7 +3205,7 @@ module.exports = class MessageLoggerV2 {
                   noSuffix
                     ? null
                     : ZeresPluginLibrary.DiscordModules.React.createElement(SuffixEdited, {
-                      timestamp: this.tools.createMomentObject(edit.time)
+                      timestamp: new Date(edit.time)
                     })
                 )
             )
