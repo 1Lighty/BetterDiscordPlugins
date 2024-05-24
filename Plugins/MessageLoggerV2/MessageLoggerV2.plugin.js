@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.28
+ * @version 1.8.29
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.28';
+    return '1.8.29';
   }
   getAuthor() {
     return 'Lighty';
@@ -668,6 +668,20 @@ module.exports = class MessageLoggerV2 {
     this.channelMessages = ZeresPluginLibrary.WebpackModules.find(m => m._channelMessages)._channelMessages;
 
     this.autoBackupSaveInterupts = 0;
+
+    // have to patch messageHasExpiredAttachmentUrl, otherwise Discord will needlessly reload the channel causing scrolling issues most likely
+    this.unpatches.push(
+      this.Patcher.instead(ZeresPluginLibrary.WebpackModules.getByProps('messageHasExpiredAttachmentUrl'), 'messageHasExpiredAttachmentUrl', (_, args, original) => {
+        const [message] = args;
+        // check if ID is in messageRecord and force return false
+        if (message.id && this.messageRecord[message.id]) return false;
+
+        // run original otherwise to not interfere
+        return original(...args);
+      })
+    );
+
+
 
     this.dispatcher = ZeresPluginLibrary.WebpackModules.find(e => e.dispatch && e.subscribe);
 
@@ -3194,19 +3208,21 @@ module.exports = class MessageLoggerV2 {
                 hideOnClick: true
               },
               _ =>
-                ZeresPluginLibrary.DiscordModules.React.createElement(
-                  'div',
-                  {
-                    ..._,
-                    className: XenoLib.joinClassNames({ [this.style.editedCompact]: props.compact && !isSingular, [this.style.edited]: !isSingular }),
-                    editNum
-                  },
-                  parseContent({ channel_id: props.message.channel_id, mentionChannels: props.message.mentionChannels, content: edit.content, embeds: [], isCommandType: () => false, hasFlag: () => false }, {}).content,
-                  noSuffix
-                    ? null
-                    : ZeresPluginLibrary.DiscordModules.React.createElement(SuffixEdited, {
-                      timestamp: new Date(edit.time)
-                    })
+                ZeresPluginLibrary.DiscordModules.React.createElement(() =>
+                  ZeresPluginLibrary.DiscordModules.React.createElement( // avoiding breaking the rules of react hooks :p
+                    'div',
+                    {
+                      ..._,
+                      className: XenoLib.joinClassNames({ [this.style.editedCompact]: props.compact && !isSingular, [this.style.edited]: !isSingular }),
+                      editNum
+                    },
+                    parseContent({ channel_id: props.message.channel_id, mentionChannels: props.message.mentionChannels, content: edit.content, embeds: [], isCommandType: () => false, hasFlag: () => false }, {}).content,
+                    noSuffix
+                      ? null
+                      : ZeresPluginLibrary.DiscordModules.React.createElement(SuffixEdited, {
+                        timestamp: new Date(edit.time)
+                      })
+                  )
                 )
             )
           );
