@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.29
+ * @version 1.8.30
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.29';
+    return '1.8.30';
   }
   getAuthor() {
     return 'Lighty';
@@ -3208,14 +3208,14 @@ module.exports = class MessageLoggerV2 {
                 hideOnClick: true
               },
               _ =>
-                ZeresPluginLibrary.DiscordModules.React.createElement(() =>
-                  ZeresPluginLibrary.DiscordModules.React.createElement( // avoiding breaking the rules of react hooks :p
-                    'div',
-                    {
-                      ..._,
-                      className: XenoLib.joinClassNames({ [this.style.editedCompact]: props.compact && !isSingular, [this.style.edited]: !isSingular }),
-                      editNum
-                    },
+                ZeresPluginLibrary.DiscordModules.React.createElement(
+                  'div', // required div for the tooltip to properly position itself
+                  {
+                    ..._,
+                    className: XenoLib.joinClassNames({ [this.style.editedCompact]: props.compact && !isSingular, [this.style.edited]: !isSingular }),
+                    editNum
+                  },
+                  ZeresPluginLibrary.DiscordModules.React.createElement(() => // avoiding breaking the rules of react hooks :p
                     parseContent({ channel_id: props.message.channel_id, mentionChannels: props.message.mentionChannels, content: edit.content, embeds: [], isCommandType: () => false, hasFlag: () => false }, {}).content,
                     noSuffix
                       ? null
