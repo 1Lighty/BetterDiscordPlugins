@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.15
+ * @version 1.4.16
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.15',
+      version: '1.4.16',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -115,7 +115,12 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: []
+        items: ['Fixed not loading', 'Fixed changelog so it sorta works again', 'Thanks copilot..']
+      },
+      {
+        type: 'image',
+        src: 'https://i.imgur.com/Nvm5B43.png',
+        height: 56
       }
     ],
     defaultConfig: [
@@ -212,7 +217,7 @@ module.exports = (() => {
   const buildPlugin = ([Plugin, Api]) => {
     const start = performance.now();
     const { Settings, Modals, Utilities, WebpackModules, DiscordModules, ColorConverter, DiscordClasses, ReactTools, ReactComponents, Logger, PluginUpdater, PluginUtilities, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Titles, Changelog: ChangelogModal, SelectedChannelStore, SelectedGuildStore, Moment } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Changelog: ChangelogModal, SelectedChannelStore, SelectedGuildStore, Moment } = DiscordModules;
 
     if (window.__XL_waitingForWatcherTimeout) clearTimeout(window.__XL_waitingForWatcherTimeout);
 
@@ -608,9 +613,9 @@ module.exports = (() => {
         top: 0;
         cursor: pointer;
       }
-      .XL-chl-p img{
+      /* idk why I did that .XL-chl-p img{
         width: unset !important;
-      }
+      }*/
       .xenoLib-error-text {
         padding-top: 5px;
       }
@@ -1392,20 +1397,35 @@ module.exports = (() => {
     const FancyParser = (() => {
       const Markdown = WebpackModules.getByProps('astParserFor', 'parse');
       try {
-        const { default: DeepClone } = WebpackModules.find(m => {
-          if (!m.default || m.useVirtualizedAnchor || typeof m.default !== 'function') return false;
-          const toString = m.default.toString();
-          return toString.indexOf('/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(') !== -1 && toString.search(/\w\({},\w\[\w\],{},\w\[\w\]\)/) !== -1;
-        });
-        // SOOO much more extra code with zeres lib compared to Astra, maybe I just can't figure out how to use it effectively
-        const ReactParserRules = WebpackModules.find(m => typeof m === 'function' && (m = m.toString()) && (m.toString().replace(/\n/g, '').search(/^function\(\w\){return \w\({},\w,{link:\(0,\w.default\)\(\w\),emoji:\(\w=\w,\w=\w\.emojiTooltipPosition,\w=void 0===\w?\w/) !== -1));
-        const FANCY_PANTS_PARSER_RULES = DeepClone([WebpackModules.getByProps('RULES').RULES, ReactParserRules({}), { mention: WebpackModules.find(e => e.Z && e.Z.react).Z }]);
+        const MentionRule = WebpackModules.find(e => e.react && e.react.toString().includes('className:"mention"'));
+        const ReactParserRules = WebpackModules.find(m => typeof m === 'function' && (m = m.toString()) && (m.toString().replace(/\n/g, '').search(/^function \w\(\w\){return{\.\.\.\w,link:\(0,\w.\w\)\(\w\)/) !== -1));
+        const { RULES } = WebpackModules.getByProps('RULES');
+
+        function mergeRules(rules) {
+          let mergedRules = {};
+          for (let ruleSet of rules) {
+            for (let ruleName in ruleSet) {
+              if (ruleName in mergedRules) {
+                mergedRules[ruleName] = {
+                  ...mergedRules[ruleName],
+                  ...ruleSet[ruleName]
+                };
+              } else {
+                mergedRules[ruleName] = {
+                  ...ruleSet[ruleName]
+                };
+              }
+            }
+          }
+          return mergedRules;
+        }
+        const FANCY_PANTS_PARSER_RULES = mergeRules([RULES, ReactParserRules({ enableBuildOverrides: true }), { mention: MentionRule }]);
         const { defaultRules } = WebpackModules.getByProps('defaultParse');
         FANCY_PANTS_PARSER_RULES.image = defaultRules.image;
         FANCY_PANTS_PARSER_RULES.link = defaultRules.link;
         return Markdown.reactParserFor(FANCY_PANTS_PARSER_RULES);
       } catch (e) {
-        //Logger.stacktrace('Failed to create special parser', e);
+        Logger.stacktrace('Failed to create special parser', e);
         try {
           return Markdown.parse;
         } catch (e) {
@@ -1437,58 +1457,62 @@ module.exports = (() => {
       }
     })();
     const ComponentRenderers = WebpackModules.getByProps('renderVideoComponent') || {};
+    const Heading = WebpackModules.getByProps('Heading')?.Heading || 'span';
     /* MY CHANGELOG >:C */
     XenoLib.showChangelog = (title, version, changelog, footer, showDisclaimer) => {
-      return;
-      const ChangelogClasses = DiscordClasses.Changelog;
-      const items = [];
-      let isFistType = true;
-      for (let i = 0; i < changelog.length; i++) {
-        const item = changelog[i];
-        switch (item.type) {
-          case 'image':
-            items.push(React.createElement('img', { alt: '', src: item.src, width: item.width || 451, height: item.height || 254 }));
-            continue;
-          case 'video':
-            items.push(React.createElement(VideoComponent, { src: item.src, poster: item.thumbnail, width: item.width || 451, height: item.height || 254, loop: item.loop || !0, muted: item.muted || !0, autoPlay: item.autoplay || !0, className: ChangelogClasses.video }));
-            continue;
-          case 'youtube':
-            items.push(React.createElement(EmbedVideo, { className: ChangelogClasses.video, allowFullScreen: !1, href: `https://youtu.be/${item.youtube_id}`, thumbnail: { url: `https://i.ytimg.com/vi/${item.youtube_id}/maxresdefault.jpg`, width: item.width || 451, height: item.height || 254 }, video: { url: `https://www.youtube.com/embed/${item.youtube_id}?vq=large&rel=0&controls=0&showinfo=0`, width: item.width || 451, height: item.height || 254 }, width: item.width || 451, height: item.height || 254, renderVideoComponent: ComponentRenderers.renderVideoComponent || NOOP_NULL, renderImageComponent: ComponentRenderers.renderImageComponent || NOOP_NULL, renderLinkComponent: ComponentRenderers.renderMaskedLinkComponent || NOOP_NULL }));
-            continue;
-          case 'description':
-            items.push(React.createElement('p', {}, FancyParser(item.content)));
-            continue;
-          default:
-            const logType = ChangelogClasses[item.type] || ChangelogClasses.added;
-            items.push(React.createElement('h1', { className: XenoLib.joinClassNames(logType.value, { [ChangelogClasses.marginTop.value]: item.marginTop || isFistType }) }, item.title));
-            items.push(React.createElement(
-              'ul',
-              { className: 'XL-chl-p' },
-              item.items.map(e =>
-                React.createElement(
-                  'li',
-                  {},
+      try {
+        const ChangelogClasses = DiscordClasses.Changelog;
+        const items = [];
+        let isFistType = true;
+        for (let i = 0; i < changelog.length; i++) {
+          const item = changelog[i];
+          switch (item.type) {
+            case 'image':
+              items.push(React.createElement('img', { alt: '', src: item.src, width: item.width || 451, height: item.height || 254 }));
+              continue;
+            case 'video':
+              items.push(React.createElement(VideoComponent, { src: item.src, poster: item.thumbnail, width: item.width || 451, height: item.height || 254, loop: item.loop || !0, muted: item.muted || !0, autoPlay: item.autoplay || !0, className: ChangelogClasses.video }));
+              continue;
+            case 'youtube':
+              items.push(React.createElement(EmbedVideo, { className: ChangelogClasses.video, allowFullScreen: !1, href: `https://youtu.be/${item.youtube_id}`, thumbnail: { url: `https://i.ytimg.com/vi/${item.youtube_id}/maxresdefault.jpg`, width: item.width || 451, height: item.height || 254 }, video: { url: `https://www.youtube.com/embed/${item.youtube_id}?vq=large&rel=0&controls=0&showinfo=0`, width: item.width || 451, height: item.height || 254 }, width: item.width || 451, height: item.height || 254, renderVideoComponent: ComponentRenderers.renderVideoComponent || NOOP_NULL, renderImageComponent: ComponentRenderers.renderImageComponent || NOOP_NULL, renderLinkComponent: ComponentRenderers.renderMaskedLinkComponent || NOOP_NULL }));
+              continue;
+            case 'description':
+              items.push(React.createElement('p', {}, FancyParser(item.content)));
+              continue;
+            default:
+              const logType = ChangelogClasses[item.type] || ChangelogClasses.added;
+              items.push(React.createElement('h1', { className: XenoLib.joinClassNames(logType.value, { [ChangelogClasses.marginTop.value]: item.marginTop || isFistType }) }, item.title));
+              items.push(React.createElement(
+                'ul',
+                { className: 'XL-chl-p' },
+                item.items.map(e =>
                   React.createElement(
-                    'p',
+                    'li',
                     {},
-                    Array.isArray(e)
-                      ? e.map(e =>
-                      (Array.isArray(e)
-                        ? React.createElement(
-                          'ul',
-                          {},
-                          e.map(e => React.createElement('li', {}, FancyParser(e)))
-                        )
-                        : FancyParser(e)))
-                      : FancyParser(e)
-                  )
-                ))
-            ));
-            isFistType = false;
+                    React.createElement(
+                      'p',
+                      {},
+                      Array.isArray(e)
+                        ? e.map(e =>
+                        (Array.isArray(e)
+                          ? React.createElement(
+                            'ul',
+                            {},
+                            e.map(e => React.createElement('li', {}, FancyParser(e)))
+                          )
+                          : FancyParser(e)))
+                        : FancyParser(e)
+                    )
+                  ))
+              ));
+              isFistType = false;
+          }
         }
+        const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => Modals.showConfirmationModal('Please confirm', 'Are you sure you want to join my support server?', { confirmText: 'Yes', cancelText: 'Nope', onConfirm: () => (LayerManager.popLayer(), ModalStack.pop(), NewModalStack.closeAllModals(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }) }, 'Join my support server'), '! Or consider donating via ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://paypal.me/lighty13') }, 'Paypal'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://ko-fi.com/lighty_') }, 'Ko-fi'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://www.patreon.com/lightyp') }, 'Patreon'), '!', showDisclaimer ? '\nBy using these plugins, you agree to being part of the anonymous user counter, unless disabled in settings.' : ''];
+        NewModalStack.openModal(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Heading, { variant: 'heading-lg/semibold' }, title), React.createElement(TextElement, { size: TextElement?.Sizes?.SIZE_12, variant: 'text-xs/normal', className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement?.Sizes?.SIZE_12, variant: 'text-xs/normal' }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
+      } catch (err) {
+        Logger.stacktrace('Failed to show changelog', err);
       }
-      const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => Modals.showConfirmationModal('Please confirm', 'Are you sure you want to join my support server?', { confirmText: 'Yes', cancelText: 'Nope', onConfirm: () => (LayerManager.popLayer(), ModalStack.pop(), NewModalStack.closeAllModals(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }) }, 'Join my support server'), '! Or consider donating via ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://paypal.me/lighty13') }, 'Paypal'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://ko-fi.com/lighty_') }, 'Ko-fi'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://www.patreon.com/lightyp') }, 'Patreon'), '!', showDisclaimer ? '\nBy using these plugins, you agree to being part of the anonymous user counter, unless disabled in settings.' : ''];
-      NewModalStack.openModal(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Titles.default, { tag: Titles.Tags.H4 }, title), React.createElement(TextElement, { size: TextElement?.Sizes?.SIZE_12, variant: 'text-xs/normal', className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement?.Sizes?.SIZE_12, variant: 'text-xs/normal' }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
     };
 
     /* https://github.com/react-spring/zustand
@@ -2116,7 +2140,8 @@ module.exports = (() => {
         const DOMElement = document.createElement('div');
         document.querySelector('#app-mount').appendChild(DOMElement); // fucking incompetent powercord needs me to append it first
         DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
-        ReactDOM.render(React.createElement(NotificationsWrapper, {}), DOMElement);
+        const root = ReactDOM.createRoot(DOMElement);
+        root.render(React.createElement(NotificationsWrapper, {}));
       }
     } catch (e) {
       Logger.stacktrace('There has been an error loading the Notifications system, fallback object has been put in place to prevent errors', e);
@@ -2251,11 +2276,11 @@ module.exports = (() => {
     }
 
     const ThemeProvider = WebpackModules.getByProps('RootThemeContextProvider').RootThemeContextProvider;
-    const useStateFromStores = WebpackModules.getByProps('useStateFromStores').useStateFromStores;
+    const useSyncExternalStore = WebpackModules.getByProps('useSyncExternalStore').useSyncExternalStore;
     const ThemeStore = WebpackModules.getModule(m => m.theme);
 
     function DiscordThemeProviderWrapper(props) {
-      const theme = useStateFromStores([ThemeStore], () => ThemeStore.theme);
+      const theme = useSyncExternalStore([ThemeStore], () => ThemeStore.theme);
       return React.createElement(ThemeProvider, { theme }, props.children);
     }
 
@@ -2536,7 +2561,6 @@ module.exports = (() => {
 
       }
       showChangelog(footer) {
-        return;
         XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog, void 0, true);
       }
       get name() {
@@ -2570,7 +2594,7 @@ module.exports = (() => {
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]);
     let b = BdApi.Plugins.get('ZeresPluginLibrary');
-    ((b, c) => b && b.version && a(b.version, c))(b, '2.0.8') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b.version && a(b.version, c))(b, '2.0.21') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
