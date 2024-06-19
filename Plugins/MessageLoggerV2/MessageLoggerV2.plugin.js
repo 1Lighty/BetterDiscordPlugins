@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.30
+ * @version 1.8.31
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.30';
+    return '1.8.31';
   }
   getAuthor() {
     return 'Lighty';
@@ -77,8 +77,8 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.15')) XenoLibOutdated = true;
-      if (isOutOfDate(iZeresPluginLibrary, '2.0.3')) ZeresPluginLibraryOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.16')) XenoLibOutdated = true;
+      if (isOutOfDate(iZeresPluginLibrary, '2.0.21')) ZeresPluginLibraryOutdated = true;
     }
     if (!global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated) {
       this._XL_PLUGIN = true;
@@ -187,7 +187,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed, but you won\'t see this anyway :(.']
+        items: ['Very hot fix!', 'Expect one or two more updates']
       }
     ];
   }
@@ -575,8 +575,8 @@ module.exports = class MessageLoggerV2 {
       defaultColor: ZeresPluginLibrary.WebpackModules.getByProps('defaultColor').defaultColor,
       item: ZeresPluginLibrary.WebpackModules.find(m => m.item && m.selected && m.topPill).item,
       /* tabBarItem: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBarItem, */
-      tabBarContainer: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBarContainer,
-      tabBar: ZeresPluginLibrary.DiscordClassModules.UserModal.tabBar,
+      tabBarContainer: ZeresPluginLibrary.DiscordClassModules.UserModal?.tabBarContainer,
+      tabBar: ZeresPluginLibrary.DiscordClassModules.UserModal?.tabBar,
       edited: XenoLib.joinClassNames(XenoLib.getClass('separator timestamp'), XenoLib.getClass('separator timestampInline')),
       markup: ZeresPluginLibrary.WebpackModules.getByProps('markup')['markup'],
       message: {
@@ -670,16 +670,16 @@ module.exports = class MessageLoggerV2 {
     this.autoBackupSaveInterupts = 0;
 
     // have to patch messageHasExpiredAttachmentUrl, otherwise Discord will needlessly reload the channel causing scrolling issues most likely
-    this.unpatches.push(
-      this.Patcher.instead(ZeresPluginLibrary.WebpackModules.getByProps('messageHasExpiredAttachmentUrl'), 'messageHasExpiredAttachmentUrl', (_, args, original) => {
-        const [message] = args;
-        // check if ID is in messageRecord and force return false
-        if (message.id && this.messageRecord[message.id]) return false;
+    /*     this.unpatches.push(
+          this.Patcher.instead(ZeresPluginLibrary.WebpackModules.getByProps('messageHasExpiredAttachmentUrl'), 'messageHasExpiredAttachmentUrl', (_, args, original) => {
+            const [message] = args;
+            // check if ID is in messageRecord and force return false
+            if (message.id && this.messageRecord[message.id]) return false;
 
-        // run original otherwise to not interfere
-        return original(...args);
-      })
-    );
+            // run original otherwise to not interfere
+            return original(...args);
+          })
+        ); */
 
 
 
@@ -1183,7 +1183,7 @@ module.exports = class MessageLoggerV2 {
           }
           if (!this.selectedChannel) return ZeresPluginLibrary.Logger.warn(this.getName(), 'Chat was loaded but no text channel is selected');
           if (isTitle && this.settings.showOpenLogsButton) {
-            let srch = change.querySelector('div[class*="search__"]');
+            let srch = change.querySelector('div[class*="search_"]');
             if (!srch) return ZeresPluginLibrary.Logger.warn(this.getName(), 'Observer caught title loading, but no search bar was found! Open Logs button will not show!');
             if (this.channelLogButton && srch.parentElement) {
               srch.parentElement.insertBefore(this.channelLogButton, srch); // memory leak..?
