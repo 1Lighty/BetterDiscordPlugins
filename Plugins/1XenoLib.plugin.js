@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.16
+ * @version 1.4.17
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.16',
+      version: '1.4.17',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -115,12 +115,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed not loading', 'Fixed changelog so it sorta works again', 'Thanks copilot..']
-      },
-      {
-        type: 'image',
-        src: 'https://i.imgur.com/Nvm5B43.png',
-        height: 56
+        items: ['Fixed toggles in plugin settings not appearing (this includes MessageLoggerV2 settings and any others)']
       }
     ],
     defaultConfig: [
@@ -551,8 +546,8 @@ module.exports = (() => {
         line-height: 0;
       }
       .selected-xenoLib.option-xenoLib {
-        background-color: var(--brand-experiment);
-        border-color: var(--brand-experiment);
+        background-color: var(--brand-500);
+        border-color: var(--brand-500);
         box-shadow: 0 2px 0 rgba(0,0,0,.3);
         opacity: 1;
       }
@@ -605,7 +600,7 @@ module.exports = (() => {
         background-color: rgba(0,0,0,.1);
         padding-bottom: 56.25%;
         border-radius: 8px;
-        border: 2px solid var(--brand-experiment);
+        border: 2px solid var(--brand-500);
       }
       .xenoLib-position-hidden-input {
         opacity: 0;
@@ -2280,13 +2275,17 @@ module.exports = (() => {
     const ThemeStore = WebpackModules.getModule(m => m.theme);
 
     function DiscordThemeProviderWrapper(props) {
-      const theme = useSyncExternalStore([ThemeStore], () => ThemeStore.theme);
+      const theme = /* React.useSyncExternalStore([ThemeStore], () => ThemeStore.theme) */ ThemeStore.theme;
       return React.createElement(ThemeProvider, { theme }, props.children);
+    }
+
+    function DiscordThemeProviderWrapperWrapper(props) {
+      return React.createElement(DiscordThemeProviderWrapper, {}, props.children);
     }
 
     class SwitchItemWrapper extends React.PureComponent {
       render() {
-        return React.createElement(DiscordThemeProviderWrapper, {}, React.createElement(DiscordModules.SwitchRow, this.props));
+        return React.createElement(DiscordThemeProviderWrapperWrapper, {}, React.createElement(DiscordModules.SwitchRow, this.props));
       }
     }
 
@@ -2298,7 +2297,8 @@ module.exports = (() => {
       }
 
       onAdded() {
-        const reactElement = ReactDOM.render(React.createElement(SwitchItemWrapper, {
+        const root = ReactDOM.createRoot(this.getElement());
+        const reactElement = root.render(React.createElement(SwitchItemWrapper, {
           children: this.name,
           note: this.note,
           disabled: this.disabled,
@@ -2309,7 +2309,13 @@ module.exports = (() => {
             reactElement.forceUpdate();
             this.onChange(e);
           }
-        }), this.getElement());
+        }));
+
+        this.root = root;
+      }
+
+      onRemoved() {
+        this.root.unmount();
       }
     }
 
