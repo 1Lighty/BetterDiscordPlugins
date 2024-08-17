@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.17
+ * @version 1.4.18
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.17',
+      version: '1.4.18',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -115,7 +115,7 @@ module.exports = (() => {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed toggles in plugin settings not appearing (this includes MessageLoggerV2 settings and any others)']
+        items: ['Fixed toggles in plugin settings not appearing (this includes MessageLoggerV2 settings and any others)', 'Part 2 cause it didn\'t work the first time']
       }
     ],
     defaultConfig: [
@@ -2298,15 +2298,17 @@ module.exports = (() => {
 
       onAdded() {
         const root = ReactDOM.createRoot(this.getElement());
+        const ref = React.createRef();
         const reactElement = root.render(React.createElement(SwitchItemWrapper, {
+          ref: ref,
           children: this.name,
           note: this.note,
           disabled: this.disabled,
           hideBorder: false,
           value: this.value,
           onChange: e => {
-            reactElement.props.value = e;
-            reactElement.forceUpdate();
+            ref.current.props.value = e;
+            ref.current.forceUpdate();
             this.onChange(e);
           }
         }));
