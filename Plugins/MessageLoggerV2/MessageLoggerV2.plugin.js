@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.31
+ * @version 1.8.32
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.31';
+    return '1.8.32';
   }
   getAuthor() {
     return 'Lighty';
@@ -178,6 +178,9 @@ module.exports = class MessageLoggerV2 {
   stop() {
     try {
       this.shutdown();
+      const currLocation = globalThis?.location?.pathname;
+      ZeresPluginLibrary?.DiscordModules?.NavigationUtils?.transitionTo('/channels/@me'); // dirty fix for crash
+      if (currLocation) setTimeout(() => ZeresPluginLibrary.DiscordModules.NavigationUtils.transitionTo(currLocation), 500);
     } catch (err) {
       // ZeresPluginLibrary.Logger.stacktrace(this.getName(), 'Failed to stop!', err);
     }
@@ -187,7 +190,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Very hot fix!', 'Expect one or two more updates']
+        items: ['Fixed not being able to patch message component resulting in no edited messages nor the deleted tint to show up.', 'Now uses a REALLY DIRTY workaround to the crash when plugin updates or is turned off.']
       }
     ];
   }
@@ -321,6 +324,12 @@ module.exports = class MessageLoggerV2 {
       this.automaticallyUpdate();
     }
     if (this.settings.versionInfo !== this.getVersion() && this.settings.displayUpdateNotes) {
+      // TRY to avoid the crash preemptively if they were on the non fixed version
+      if (this.settings.versionInfo === '1.8.31') {
+        const currLocation = globalThis?.location?.pathname;
+        ZeresPluginLibrary?.DiscordModules?.NavigationUtils?.transitionTo('/channels/@me'); // dirty fix for crash
+        if (currLocation) setTimeout(() => ZeresPluginLibrary.DiscordModules.NavigationUtils.transitionTo(currLocation), 500);
+      }
       XenoLib.showChangelog(`${this.getName()} has been updated!`, this.getVersion(), this.getChanges());
       this.settings.versionInfo = this.getVersion();
       this.saveSettings();
@@ -595,11 +604,11 @@ module.exports = class MessageLoggerV2 {
     this.classes = {
       markup: ZeresPluginLibrary.WebpackModules.getByProps('markup')['markup'].split(/ /g)[0],
       hidden: ZeresPluginLibrary.WebpackModules.getByProps('spoilerContent', 'hidden').hidden.split(/ /g)[0],
-      messages: this.safeGetClass(
+      /* messages: this.safeGetClass(
         () => `.${ZeresPluginLibrary.WebpackModules.getByProps('container', 'containerCompactBounded').container.split(/ /g)[0]} > div:not(.${ZeresPluginLibrary.WebpackModules.getByProps('content', 'marginCompactIndent').content.split(/ /g)[0]})`,
         this.safeGetClass(() => `.${XenoLib.getSingleClass('scroller messages')} > .${XenoLib.getSingleClass('channelTextArea message')}`, 'Lighty-youre-a-failure-my-fucking-god'),
         true
-      ),
+      ), not even used...? */
       avatar: this.safeGetClass(() => XenoLib.getSingleClass('header avatar', true), 'avatar-MLV2')
     };
 
@@ -3129,9 +3138,9 @@ module.exports = class MessageLoggerV2 {
       return ret;
     })();
     const dateFormat = ZeresPluginLibrary.WebpackModules.getModule(e => typeof e === 'function' && e?.toString()?.includes('sameDay'), { searchExports: true });
-    const i18n = ZeresPluginLibrary.WebpackModules.find(e => e.Messages && e.Messages.HOME);
+    //const i18n = ZeresPluginLibrary.WebpackModules.find(e => e.Messages && e.Messages.HOME);
     /* suck it you retarded asshole devilfuck */
-    const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => ZeresPluginLibrary.DiscordModules.React.createElement(Tooltip, { text: e.timestamp ? dateFormat(e.timestamp, 'LLLL') : null }, tt => ZeresPluginLibrary.DiscordModules.React.createElement('time', Object.assign({ dateTime: e.timestamp.toISOString(), className: this.multiClasses.edited, role: 'note' }, tt), `(${i18n.Messages.MESSAGE_EDITED})`)));
+    const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => ZeresPluginLibrary.DiscordModules.React.createElement(Tooltip, { text: e.timestamp ? dateFormat(e.timestamp, 'LLLL') : null }, tt => ZeresPluginLibrary.DiscordModules.React.createElement('time', Object.assign({ dateTime: e.timestamp.toISOString(), className: this.multiClasses.edited, role: 'note' }, tt), `(${/* i18n.Messages.MESSAGE_EDITED uhhhhhhhhh what now? */'Edited'})`)));
     SuffixEdited.displayName = 'SuffixEdited';
     const parseContent = (() => {
       const parse = (() => {
@@ -3163,7 +3172,7 @@ module.exports = class MessageLoggerV2 {
       }
       return null;
     })();
-    const MessageContent = ZeresPluginLibrary.WebpackModules.getModule(e => e?.type?.toString()?.includes('Messages.MESSAGE_EDITED'));
+    const MessageContent = ZeresPluginLibrary.WebpackModules.getModule(e => e?.type?.toString()?.includes('.editedTimestamp,'));
     const MemoMessage = await (async () => {
       const selector = `.${XenoLib.getSingleClass('message messageListItem')}`;
       var el = document.querySelector(selector) || (await new Promise(res => {
@@ -3216,12 +3225,14 @@ module.exports = class MessageLoggerV2 {
                     editNum
                   },
                   ZeresPluginLibrary.DiscordModules.React.createElement(() => // avoiding breaking the rules of react hooks :p
-                    parseContent({ channel_id: props.message.channel_id, mentionChannels: props.message.mentionChannels, content: edit.content, embeds: [], isCommandType: () => false, hasFlag: () => false }, {}).content,
-                    noSuffix
-                      ? null
-                      : ZeresPluginLibrary.DiscordModules.React.createElement(SuffixEdited, {
-                        timestamp: new Date(edit.time)
-                      })
+                    [
+                      parseContent({ channel_id: props.message.channel_id, mentionChannels: props.message.mentionChannels, content: edit.content, embeds: [], isCommandType: () => false, hasFlag: () => false }, {}).content,
+                      noSuffix
+                        ? null
+                        : ZeresPluginLibrary.DiscordModules.React.createElement(SuffixEdited, {
+                          timestamp: new Date(edit.time)
+                        })
+                    ]
                   )
                 )
             )
