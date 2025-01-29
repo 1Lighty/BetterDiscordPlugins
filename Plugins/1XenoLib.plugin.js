@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.19
+ * @version 1.4.20
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,16 +106,26 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.19',
+      version: '1.4.20',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
     },
     changelog: [
       {
-        title: 'Fixed',
+        title: 'Uh oh',
         type: 'fixed',
-        items: ['HOTFIX for not working at all']
+        items: ['Due to how SEVERLY things have changed internally in Discord, it\'ll take a little while to get everything back up and running to how it was before, please be patient!', 'I\'ll wait until BD itself is less broken as well before continuing any work.', 'Very basic functionality of MLv2 has been restored of logging and showing in chat, but nothing else as of right now.']
+      },
+      {
+        type: 'description',
+        content: 'Have a cat in these trying times:'
+      },
+      {
+        type: 'image',
+        src: 'https://media1.tenor.com/m/Cb9LJoV6I7sAAAAC/cat-cat-kiss.gif',
+        alt: 'cat pawing at the camera',
+        height: 675
       }
     ],
     defaultConfig: [
@@ -1254,7 +1264,32 @@ module.exports = (() => {
         );
       }
     }
-    const NewModalStack = WebpackModules.getByProps('openModal', 'hasModalOpen');
+    const NewModalStack = (() => {
+      try {
+        const NewModalStackRaw = WebpackModules.getModule(e => {
+          const possFuncs = Object.values(e);
+          if (possFuncs.length < 15 || possFuncs.length > 20) return false;
+          if (!possFuncs.some(e => typeof e === 'function' && e.toString().match(/\w=null!=\w\.modalKey\?\w\.modalKey:\w\(\)\(\)/))) return false;
+          return true;
+        });
+        const FunctionSignatures = {
+          openModalAsync: /\w=null!=\w\.modalKey\?\w\.modalKey:\w\(\)\(\)/,
+          openModal: /Layer:\w,render:\w,onCloseRequest:null!=\w\?\w:\(\)=>\w\(\w,\w\),onCloseCallback:\w,/,
+          closeModal: /null!=\w&&null!=\w\.onCloseCallback&&\w\.onCloseCallback\(\)/,
+          closeAllModals: /getState\(\);for\(let \w in \w\)for\(let \w of \w\[\w\]\)\w\(\w\.key,\w\)/
+        }
+        const Funcs = Object.values(NewModalStackRaw).filter(e => typeof e === 'function');
+        const _NewModalStack = {};
+        for (const func of Funcs) {
+          for (const [name, sig] of Object.entries(FunctionSignatures)) {
+            if (func.toString().match(sig)) _NewModalStack[name] = func;
+          }
+        }
+        return _NewModalStack;
+      } catch (e) {
+        Logger.stacktrace('Failed to get NewModalStack', e);
+      }
+    })();
 
     const ExtraButtonClassname = 'xenoLib-button';
     const TextClassname = 'xl-text-1SHFy0';
@@ -1475,7 +1510,11 @@ module.exports = (() => {
       }
     })();
     const ComponentRenderers = WebpackModules.getByProps('renderVideoComponent') || {};
-    const Heading = WebpackModules.getByProps('Heading')?.Heading || 'span';
+    const Heading = (() => Object.values(WebpackModules.getModule(e => {
+      const possFuncs = Object.values(e);
+      if (possFuncs.length !== 1) return false;
+      return possFuncs[0]?.render?.toString().match(/case"currentColor":\w="currentColor";break;case"none":\w=void 0;break;case"always-white":\w="white";/);
+    }))[0])() || 'span';
     /* MY CHANGELOG >:C */
     XenoLib.showChangelog = (title, version, changelog, footer, showDisclaimer) => {
       try {
@@ -1527,7 +1566,53 @@ module.exports = (() => {
           }
         }
         const renderFooter = () => ['Need support? ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => Modals.showConfirmationModal('Please confirm', 'Are you sure you want to join my support server?', { confirmText: 'Yes', cancelText: 'Nope', onConfirm: () => (LayerManager.popLayer(), ModalStack.pop(), NewModalStack.closeAllModals(), InviteActions.acceptInviteAndTransitionToInviteChannel('NYvWdN5')) }) }, 'Join my support server'), '! Or consider donating via ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://paypal.me/lighty13') }, 'Paypal'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://ko-fi.com/lighty_') }, 'Ko-fi'), ', ', React.createElement('a', { className: XenoLib.joinClassNames(AnchorClasses.anchor, AnchorClasses.anchorUnderlineOnHover), onClick: () => window.open('https://www.patreon.com/lightyp') }, 'Patreon'), '!', showDisclaimer ? '\nBy using these plugins, you agree to being part of the anonymous user counter, unless disabled in settings.' : ''];
-        NewModalStack.openModal(props => React.createElement(XenoLib.ReactComponents.ErrorBoundary, { label: 'Changelog', onError: () => props.onClose() }, React.createElement(ChangelogModal, { className: ChangelogClasses.container, selectable: true, onScroll: _ => _, onClose: _ => _, renderHeader: () => React.createElement(FlexChild.Child, { grow: 1, shrink: 1 }, React.createElement(Heading, { variant: 'heading-lg/semibold' }, title), React.createElement(TextElement, { size: TextElement?.Sizes?.SIZE_12, variant: 'text-xs/normal', className: ChangelogClasses.date }, `Version ${version}`)), renderFooter: () => React.createElement(FlexChild.Child, { gro: 1, shrink: 1 }, React.createElement(TextElement, { size: TextElement?.Sizes?.SIZE_12, variant: 'text-xs/normal' }, footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter())), children: items, ...props })));
+        NewModalStack.openModal(props =>
+          React.createElement(XenoLib.ReactComponents.ErrorBoundary,
+            {
+              label: 'Changelog',
+              onError: () => props.onClose()
+            },
+            React.createElement(/* ChangelogModal */ WebpackModules.getByProps('ConfirmModal')?.ConfirmModal || (() => null),
+              {
+                className: WebpackModules.getModule(e => e?.content && e.modal && (Object.keys(e).length === 2))?.content || '',
+                selectable: true,
+                onScroll: _ => _,
+                onClose: _ => _,
+                ...props
+              },
+              React.createElement(FlexChild?.Child || 'div',
+                {
+                  grow: 1,
+                  shrink: 1
+                },
+                React.createElement(Heading,
+                  {
+                    variant: 'heading-lg/semibold'
+                  },
+                  title),
+                React.createElement(TextElement || 'span',
+                  {
+                    size: TextElement?.Sizes?.SIZE_12,
+                    variant: 'text-xs/normal',
+                    className: ChangelogClasses.date
+                  },
+                  `Version ${version}`
+                )
+              ),
+              items,
+              React.createElement(FlexChild?.Child || 'div',
+                {
+                  gro: 1,
+                  shrink: 1
+                }, React.createElement(TextElement || 'span',
+                  {
+                    size: TextElement?.Sizes?.SIZE_12,
+                    variant: 'text-xs/normal'
+                  },
+                  footer ? (typeof footer === 'string' ? FancyParser(footer) : footer) : renderFooter()
+                )
+              )
+            )));
       } catch (err) {
         Logger.stacktrace('Failed to show changelog', err);
       }
