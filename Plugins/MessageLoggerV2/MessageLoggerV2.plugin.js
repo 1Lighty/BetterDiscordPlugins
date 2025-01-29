@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.32
+ * @version 1.8.33
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.32';
+    return '1.8.33';
   }
   getAuthor() {
     return 'Lighty';
@@ -3350,6 +3350,7 @@ module.exports = class MessageLoggerV2 {
       this.createModal.confirmationModal.Sizes = ZeresPluginLibrary.WebpackModules.getByProps('ModalSize').ModalSize;
     } catch { }
     this.ModalStack = ZeresPluginLibrary.WebpackModules.getByProps('openModal', 'hasModalOpen');
+    if (this.ModalStack) {
     this._modalsApiUnsubcribe = (this.ModalStack.modalsApi || this.ModalStack.useModalsStore).subscribe(_ => {
       if (this.menu.open && !this.ModalStack.hasModalOpen(this.style.menu)) {
         this.menu.filter = '';
@@ -3357,7 +3358,7 @@ module.exports = class MessageLoggerV2 {
         this.menu.shownMessages = -1;
         if (this.menu.messages) this.menu.messages.length = 0;
       }
-    });
+    });}
     /*
     this.createModal.confirmationModal = class ConfirmationModal extends ZeresPluginLibrary.DiscordModules.ConfirmationModal {
       constructor(props) {
