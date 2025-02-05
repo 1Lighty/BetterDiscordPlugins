@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.33
+ * @version 1.8.34
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.33';
+    return '1.8.34';
   }
   getAuthor() {
     return 'Lighty';
@@ -77,102 +77,39 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.16')) XenoLibOutdated = true;
-      if (isOutOfDate(iZeresPluginLibrary, '2.0.21')) ZeresPluginLibraryOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.21')) XenoLibOutdated = true;
+      if (isOutOfDate(iZeresPluginLibrary, '2.0.23')) ZeresPluginLibraryOutdated = true;
     }
-    if (!global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated) {
+    if (/* !global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated */!BdApi.Plugins.get('XenoLib') || XenoLibOutdated) {
       this._XL_PLUGIN = true;
-      const a = !!window.powercord && "function" == typeof BdApi.__getPluginConfigPath,
-        b = BdApi.findModuleByProps("openModal", "hasModalOpen");
-      if (b && b.hasModalOpen(`${this.getName()}_DEP_MODAL`)) return;
-      const c = !global.XenoLib,
-        d = !global.ZeresPluginLibrary,
-        e = c && d || (c || d) && (XenoLibOutdated || ZeresPluginLibraryOutdated),
-        f = (() => {
-          let a = "";
-          return c || d ? a += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? " and outdated" : ""} ` : (XenoLibOutdated || ZeresPluginLibraryOutdated) && (a += `Outdated `), a += `${e ? "Libraries" : "Library"} `, a
-        })(),
-        g = (() => {
-          let a = `The ${e ? "libraries" : "library"} `;
-          return c || XenoLibOutdated ? (a += "XenoLib ", (d || ZeresPluginLibraryOutdated) && (a += "and ZeresPluginLibrary ")) : (d || ZeresPluginLibraryOutdated) && (a += "ZeresPluginLibrary "), a += `required for ${this.getName()} ${e ? "are" : "is"} ${c || d ? "missing" : ""}${XenoLibOutdated || ZeresPluginLibraryOutdated ? c || d ? " and/or outdated" : "outdated" : ""}.`, a
-        })(),
-        h = BdApi.findModule(e => (Object.keys(e).length === 2) && e.Colors && e.Sizes),
-        i = BdApi.findModuleByProps('ConfirmModal')?.ConfirmModal,
-        j = () => BdApi.alert(f, BdApi.React.createElement("span", {
-          style: {
-            color: "white"
+      // asking people to do simple tasks is stupid, relying on stupid modals that are *supposed* to help them is unreliable
+      // forcing the download on enable is good enough
+      const fs = require('fs');
+      const path = require('path');
+      const pluginsDir = (BdApi.Plugins && BdApi.Plugins.folder) || (window.ContentManager && window.ContentManager.pluginsFolder);
+      const xenoLibPath = path.join(pluginsDir, '1XenoLib.plugin.js');
+      BdApi.Net.fetch('https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/refs/heads/master/Plugins/1XenoLib.plugin.js', { headers: { origin: 'discord.com' } })
+        .then(r => {
+          if (!r.ok) {
+            throw new Error('Network request threw error ' + r.statusText);
           }
-        }, BdApi.React.createElement("div", {}, g), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, d || ZeresPluginLibraryOutdated ? BdApi.React.createElement("div", {}, BdApi.React.createElement("a", {
-          href: "https://betterdiscord.app/Download?id=9",
-          target: "_blank"
-        }, "Click here to download ZeresPluginLibrary")) : null, c || XenoLibOutdated ? BdApi.React.createElement("div", {}, BdApi.React.createElement("a", {
-          href: "https://astranika.com/bd/xenolib",
-          target: "_blank"
-        }, "Click here to download XenoLib")) : null));
-      if (!b || !i || !h) return console.error(`Missing components:${(b ? "" : " ModalStack") + (i ? "" : " ConfirmationModalComponent") + (h ? "" : "TextElement")}`), j();
-      class k extends BdApi.React.PureComponent {
-        constructor(a) {
-          super(a), this.state = {
-            hasError: !1
-          }, this.componentDidCatch = a => (console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({
-            hasError: !0
-          }), "function" == typeof this.props.onError && this.props.onError(a)), this.render = () => this.state.hasError ? null : this.props.children
-        }
-      }
-      let l = false,
-        m = !1;
-      const n = b.openModal(c => {
-        if (m) return null;
-        try {
-          return BdApi.React.createElement(k, {
-            label: "missing dependency modal",
-            onError: () => (b.closeModal(n), j())
-          }, BdApi.React.createElement(i, Object.assign({
-            header: f,
-            children: BdApi.React.createElement(h, {
-              size: h.Sizes?.SIZE_16,
-              variant: 'text-md/normal',
-              children: [`${g} Please click Download Now to download ${e ? "them" : "it"}.`]
-            }),
-            red: !1,
-            confirmText: "Download Now",
-            cancelText: "Cancel",
-            onCancel: c.onClose,
-            onConfirm: () => {
-              if (l) return;
-              l = !0;
-              const c = require("request"),
-                d = require("fs"),
-                e = require("path"),
-                f = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
-                g = () => global.XenoLib && !XenoLibOutdated ? (BdApi.isSettingEnabled("fork-ps-5") || BdApi.isSettingEnabled("autoReload")) && !a ? void 0 : void BdApi.showToast("Reload to load the libraries and plugin!") : void c("https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js", (c, g, h) => {
-                  try {
-                    if (c || 200 !== g.statusCode) return b.closeModal(n), j();
-                    d.writeFile(e.join(f, "1XenoLib.plugin.js"), h, () => {
-                      (BdApi.isSettingEnabled("fork-ps-5") || BdApi.isSettingEnabled("autoReload")) && !a || BdApi.showToast("Reload to load the libraries and plugin!")
-                    })
-                  } catch (a) {
-                    console.error("Fatal error downloading XenoLib", a), b.closeModal(n), j()
-                  }
-                });
-              !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? c("https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js", (a, c, h) => {
-                try {
-                  if (a || 200 !== c.statusCode) return b.closeModal(n), j();
-                  d.writeFile(e.join(f, "0PluginLibrary.plugin.js"), h, () => { }), g()
-                } catch (a) {
-                  console.error("Fatal error downloading ZeresPluginLibrary", a), b.closeModal(n), j()
-                }
-              }) : g()
-            }
-          }, c, {
-            onClose: () => { }
-          })))
-        } catch (a) {
-          return console.error("There has been an error constructing the modal", a), m = !0, b.closeModal(n), j(), null
-        }
-      }, {
-        modalKey: `${this.getName()}_DEP_MODAL`
-      });
+          return r.text();
+        })
+        .then(data => {
+          fs.writeFileSync(xenoLibPath, data);
+        })
+        .catch(err => {
+          console.error('Error downloading XenoLib!', err);
+          BdApi.UI.showConfirmationModal('XenoLib Missing',
+            `XenoLib is missing! Click the GitHub link below and press CTRL + S to download it, then put it in your plugins folder!
+
+You can find the plugins folder by going to Settings > Plugins and clicking the folder icon!
+
+https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js`, {
+            confirmText: 'Got it',
+            cancelText: null
+          });
+        });
     } else onLoaded();
   }
   stop() {
@@ -190,7 +127,7 @@ module.exports = class MessageLoggerV2 {
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed not being able to patch message component resulting in no edited messages nor the deleted tint to show up.', 'Now uses a REALLY DIRTY workaround to the crash when plugin updates or is turned off.']
+        items: ['Menu works now somewhat :)']
       }
     ];
   }
@@ -619,50 +556,6 @@ module.exports = class MessageLoggerV2 {
     this.menu.filter = '';
     this.menu.open = false;;
 
-    const Modals = ZeresPluginLibrary.WebpackModules.getByProps('ModalRoot');
-    const ImageModalClasses = ZeresPluginLibrary.WebpackModules.getByProps('modal', 'image');
-
-    const ImageModal = (() => {
-      let ret = null;
-      ZeresPluginLibrary.WebpackModules.getModule(e => {
-        for (const val of Object.values(e)) {
-          if (typeof val !== 'function') return false;
-          try {
-            const cont = val.toString();
-            if (!cont.includes('"renderLinkComponent","maxWidth"')) return false;
-          } catch (err) {
-            console.log(err, val);
-            return false;
-          }
-          ret = val;
-          return true;
-        }
-        return false;
-      });
-      return ret;
-    })();
-
-    const renderLinkComponent = props => ZeresPluginLibrary.WebpackModules.getByProps('renderMaskedLinkComponent')?.renderMaskedLinkComponent;
-
-    const MLV2ImageModal = props =>
-      ZeresPluginLibrary.DiscordModules.React.createElement(
-        Modals.ModalRoot,
-        { className: ImageModalClasses.modal, ...props, size: Modals.ModalSize.DYNAMIC },
-        ZeresPluginLibrary.DiscordModules.React.createElement(
-          ImageModal,
-          Object.assign(
-            {
-              renderLinkComponent,
-              className: ImageModalClasses.image,
-              shouldAnimate: true
-            },
-            props
-          )
-        )
-      );
-
-    this.createModal.imageModal = MLV2ImageModal;
-
     const chatContent = ZeresPluginLibrary.WebpackModules.getByProps('chatContent');
     this.observer.chatContentClass = ((chatContent && chatContent.chatContent) || 'chat-3bRxxu').split(/ /g)[0];
     this.observer.chatClass = 'chat-3bRxxu';
@@ -722,6 +615,7 @@ module.exports = class MessageLoggerV2 {
     this.style.tab = this.obfuscatedClass('ml2-tab');
     this.style.tabSelected = this.obfuscatedClass('ml2-tab-selected');
     this.style.textIndent = this.obfuscatedClass('ml2-help-text-indent');
+    this.style.menuModalLarge = this.obfuscatedClass('MLv2-menu-modal-large');
     this.style.menu = this.obfuscatedClass('ML2-MENU');
     this.style.openLogs = this.obfuscatedClass('ML2-OL');
     this.style.filter = this.obfuscatedClass('ML2-FILTER');
@@ -787,6 +681,10 @@ module.exports = class MessageLoggerV2 {
 
                 #sent.${this.style.tab} {
                   display: none;
+                }
+
+                .${this.style.menuModalLarge} {
+                  width: 960px;
                 }
 
                 .theme-dark  .${this.style.tabSelected} {
@@ -1166,7 +1064,7 @@ module.exports = class MessageLoggerV2 {
           const theActualFileNameZere = _zerecantcode_path.join(__dirname, _zerecantcode_path.basename(__filename));
           fs.writeFileSync(theActualFileNameZere, body);
           XenoLib.Notifications.success(`[${this.getName()}] Successfully updated!`, { timeout: 0 });
-          if (BdApi.isSettingEnabled('fork-ps-5') && !this.__isPowerCord) return;
+          // if (BdApi.isSettingEnabled('fork-ps-5') && !this.__isPowerCord) return;
           BdApi.Plugins.reload(this.getName());
         });
       });
@@ -1760,16 +1658,9 @@ module.exports = class MessageLoggerV2 {
     div.style.display = 'inline-flex';
     div.appendChild(this.createButton('Changelog', () => XenoLib.showChangelog(`${this.getName()} has been updated!`, this.getVersion(), this.getChanges())));
     div.appendChild(this.createButton('Stats', () => this.showStatsModal()));
-    div.appendChild(this.createButton('Donate', () => this.nodeModules.electron.shell.openExternal('https://paypal.me/lighty13')));
+    div.appendChild(this.createButton('Donate', () => window.open('https://paypal.me/lighty13')));
     div.appendChild(
-      this.createButton('Support server', () => {
-        ZeresPluginLibrary.DiscordModules.LayerManager.popLayer();
-        if (this.tools.getServer('389049952732446731')) {
-          ZeresPluginLibrary.DiscordModules.GuildActions.transitionToGuildSync('389049952732446731');
-        } else {
-          ZeresPluginLibrary.DiscordModules.InviteActions.openNativeAppModal('NYvWdN5');
-        }
-      })
+      this.createButton('Support server', () => BdApi.UI.showInviteModal('NYvWdN5'))
     );
     div.appendChild(this.createButton('Help', () => this.showLoggerHelpModal()));
     let button = div.firstElementChild;
@@ -2116,7 +2007,7 @@ module.exports = class MessageLoggerV2 {
     this.saveData();
   }
   jumpToMessage(channelId, messageId, guildId) {
-    if (this.menu.open) this.ModalStack.closeModal(this.style.menu);
+    if (this.menu.open) XenoLib.ModalStack.closeModal(this.style.menu);
     ZeresPluginLibrary.DiscordModules.NavigationUtils.transitionTo(`/channels/${guildId || '@me'}/${channelId}${messageId ? '/' + messageId : ''}`);
   }
   isImage(url) {
@@ -2187,106 +2078,112 @@ module.exports = class MessageLoggerV2 {
     this.channelLogButton.remove();
   }
   showLoggerHelpModal(initial = false) {
-    this.createModal({
-      confirmText: 'OK',
-      header: 'Logger help',
-      size: this.createModal.confirmationModal.Sizes.LARGE,
-      children: [
-        ZeresPluginLibrary.ReactTools.createWrappedElement([
-          this.parseHTML(
-            `<div class="${this.multiClasses.defaultColor}" style="max-height: 0; min-height: 60vh;">
-                               ${initial ? '</br><span style="font-size: 40px;">As you are a <strong>first time user</strong>, you must know in order to have a server be logged, you must <strong>RIGHT CLICK</strong> a server or channel and add it to the whitelist.</br>Alternatively if this behavior is unwanted, you can always log all unmuted servers and channels by disabling <strong>Only log whitelist</strong> in logger settings under <strong>IGNORES AND OVERRIDES</strong>.</span></br></br>' : ''}
-                               Hello! This is the ${this.getName()} help modal! You may at any time open this in plugin settings by clicking the help button, or in the menu by pressing the question mark button and then then Logger help button.</br>
-                               <strong>Menu:</strong></br></br>
-                                <div class="${this.style.textIndent}">
-                                    DELETE + LEFT-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Clicking on a message, deletes the message</br>
-                                        Clicking on an edit deletes that specific edit</br>
-                                        Clicking on the timestamp deletes all messages in that message group
-                                    </div></br>
-                                    RIGHT-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Right-clicking the timestamp opens up options for the entire message group
-                                    </div></br>
-                                </div>
-                                <strong>Toasts:</strong></br>
-                                <div class="${this.style.textIndent}">
-                                    Note: Little "notifications" in discord that tell you if a message was edited, deleted, purged etc are called Toasts!</br></br>
-                                    LEFT-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Opens menu with the relevant tab</br>
-                                    </div></br>
-                                    RIGHT-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Jumps to relevant message in the relevant channel
-                                    </div></br>
-                                    MIDDLE-CLICK/SCROLLWHEEL-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Only dismisses/closes the Toast.
-                                    </div></br>
-                                </div>
-                                <strong>Notifications:</strong></br>
-                                <div class="${this.style.textIndent}">
-                                    Note: They show in the top right corner and are called XenoLib notifications. Can be enabled in Settings > Display Settings, all the way at the bottom.</br></br>
-                                    LEFT-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Opens menu with the relevant tab</br>
-                                    </div></br>
-                                    RIGHT-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Jumps to relevant message in the relevant channel
-                                    </div></br>
-                                </div>
-                                <strong>Open Logs button (top right next to search):</strong></br>
-                                <div class="${this.style.textIndent}">
-                                    LEFT-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Opens menu</br>
-                                    </div></br>
-                                    RIGHT-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Opens filtered menu that only shows messages from selected channel</br>
-                                    </div></br>
-                                </div>
-                                <strong>Whitelist/blacklist, ignores and overrides:</strong></br>
-                                <div class="${this.style.textIndent}">
-                                    WHITELIST-ONLY:</br>
-                                    <div class="${this.style.textIndent}">
-                                        All servers are ignored unless whitelisted</br>
-                                        Muted channels in whitelisted servers are ignored unless whitelisted or "Ignore muted channels" is disabled</br>
-                                        All channels in whitelisted servers are logged unless blacklisted, or muted and "Ignore muted channels" is enabled
-                                    </div></br>
-                                    DEFAULT:</br>
-                                    <div class="${this.style.textIndent}">
-                                        All servers are logged unless blacklisted or muted and "Ignore muted servers" is enabled</br>
-                                        Muted channels are ignored unless whitelisted or "Ignore muted channels" is disabled</br>
-                                        Muted servers are ignored unless whitelisted or "Ignore muted servers" is disabled</br>
-                                        Whitelisted channels in muted or blacklisted servers are logged</br>
-                                    </div></br>
-                                    ALL:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Whitelisted channels in blacklisted servers are logged</br>
-                                        Blacklisted channels in whitelisted servers are ignored</br>
-                                        "Always log selected channel" overrides blacklist, whitelist-only mode, NSFW channel ignore, mute</br>
-                                        "Always log DMs" overrides blacklist as well as whitelist-only mode</br>
-                                        Channels marked NSFW and not whitelisted are ignored unless "Ignore NSFW channels" is disabled
-                                    </div></br>
-                                </div>
-                                <strong>Chat:</strong></br>
-                                <div class="${this.style.textIndent}">
-                                    RIGHT-CLICK:</br>
-                                    <div class="${this.style.textIndent}">
-                                        Right-clicking an edit (darkened text) allows you to delete that edit, or hide edits</br>
-                                        Right-clicking on a edited or deleted message gives you the option to hide the deleted message or hide or unhide edits, remove the edited or deleted message from log and remove deleted tint which makes the message look like it isn't deleted.
-                                    </div></br>
-                                </div>
-                            </div>`
-          )
-        ])
-      ],
-      red: false
-    });
+    const { React } = BdApi;
+    BdApi.UI.showConfirmationModal('Logger help',
+      React.createElement('div', { className: this.multiClasses.defaultColor, style: { maxHeight: '0', minHeight: '60vh' } },
+        initial ? React.createElement('span', { style: { fontSize: '40px' } },
+          'As you are a ', React.createElement('strong', null, 'first time user'),
+          ', you must know in order to have a server be logged, you must ', React.createElement('strong', null, 'RIGHT CLICK'),
+          ' a server or channel and add it to the whitelist.', React.createElement('br'),
+          'Alternatively if this behavior is unwanted, you can always log all unmuted servers and channels by disabling ',
+          React.createElement('strong', null, 'Only log whitelist'),
+          ' in logger settings under ', React.createElement('strong', null, 'IGNORES AND OVERRIDES'),
+          '.', React.createElement('br'), React.createElement('br')
+        ) : null,
+        'Hello! This is the ', this.getName(), ' help modal! You may at any time open this in plugin settings by clicking the help button, or in the menu by pressing the question mark button and then then Logger help button.', React.createElement('br'),
+        React.createElement('strong', null, 'Menu:'), React.createElement('br'), React.createElement('br'),
+        React.createElement('div', { className: this.style.textIndent },
+          'DELETE + LEFT-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Clicking on a message, deletes the message', React.createElement('br'),
+            'Clicking on an edit deletes that specific edit', React.createElement('br'),
+            'Clicking on the timestamp deletes all messages in that message group'
+          ), React.createElement('br'),
+          'RIGHT-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Right-clicking the timestamp opens up options for the entire message group'
+          ), React.createElement('br')
+        ),
+        React.createElement('strong', null, 'Toasts:'), React.createElement('br'),
+        React.createElement('div', { className: this.style.textIndent },
+          'Note: Little "notifications" in discord that tell you if a message was edited, deleted, purged etc are called Toasts!', React.createElement('br'), React.createElement('br'),
+          'LEFT-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Opens menu with the relevant tab', React.createElement('br')
+          ), React.createElement('br'),
+          'RIGHT-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Jumps to relevant message in the relevant channel', React.createElement('br')
+          ), React.createElement('br'),
+          'MIDDLE-CLICK/SCROLLWHEEL-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Only dismisses/closes the Toast.', React.createElement('br')
+          ), React.createElement('br')
+        ),
+        React.createElement('strong', null, 'Notifications:'), React.createElement('br'),
+        React.createElement('div', { className: this.style.textIndent },
+          'Note: They show in the top right corner and are called XenoLib notifications. Can be enabled in Settings > Display Settings, all the way at the bottom.', React.createElement('br'), React.createElement('br'),
+          'LEFT-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Opens menu with the relevant tab', React.createElement('br')
+          ), React.createElement('br'),
+          'RIGHT-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Jumps to relevant message in the relevant channel', React.createElement('br')
+          ), React.createElement('br')
+        ),
+        React.createElement('strong', null, 'Open Logs button (top right next to search):'), React.createElement('br'),
+        React.createElement('div', { className: this.style.textIndent },
+          'LEFT-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Opens menu', React.createElement('br')
+          ), React.createElement('br'),
+          'RIGHT-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Opens filtered menu that only shows messages from selected channel', React.createElement('br')
+          ), React.createElement('br')
+        ),
+        React.createElement('strong', null, 'Whitelist/blacklist, ignores and overrides:'), React.createElement('br'),
+        React.createElement('div', { className: this.style.textIndent },
+          'WHITELIST-ONLY:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'All servers are ignored unless whitelisted', React.createElement('br'),
+            'Muted channels in whitelisted servers are ignored unless whitelisted or "Ignore muted channels" is disabled', React.createElement('br'),
+            'All channels in whitelisted servers are logged unless blacklisted, or muted and "Ignore muted channels" is enabled'
+          ), React.createElement('br'),
+          'DEFAULT:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'All servers are logged unless blacklisted or muted and "Ignore muted servers" is enabled', React.createElement('br'),
+            'Muted channels are ignored unless whitelisted or "Ignore muted channels" is disabled', React.createElement('br'),
+            'Muted servers are ignored unless whitelisted or "Ignore muted servers" is disabled', React.createElement('br'),
+            'Whitelisted channels in muted or blacklisted servers are logged'
+          ), React.createElement('br'),
+          'ALL:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Whitelisted channels in blacklisted servers are logged', React.createElement('br'),
+            'Blacklisted channels in whitelisted servers are ignored', React.createElement('br'),
+            '"Always log selected channel" overrides blacklist, whitelist-only mode, NSFW channel ignore, mute', React.createElement('br'),
+            '"Always log DMs" overrides blacklist as well as whitelist-only mode', React.createElement('br'),
+            'Channels marked NSFW and not whitelisted are ignored unless "Ignore NSFW channels" is disabled'
+          ), React.createElement('br')
+        ),
+        React.createElement('strong', null, 'Chat:'), React.createElement('br'),
+        React.createElement('div', { className: this.style.textIndent },
+          'RIGHT-CLICK:', React.createElement('br'),
+          React.createElement('div', { className: this.style.textIndent },
+            'Right-clicking an edit (darkened text) allows you to delete that edit, or hide edits', React.createElement('br'),
+            'Right-clicking on a edited or deleted message gives you the option to hide the deleted message or hide or unhide edits, remove the edited or deleted message from log and remove deleted tint which makes the message look like it isn\'t deleted.'
+          ), React.createElement('br')
+        )
+      ),
+      {
+        confirmText: 'OK',
+        cancelText: null
+        // sizing is currently not exposed.. nor is classes, so can't fix
+        // https://github.com/BetterDiscord/BetterDiscord/issues/1793
+        // https://github.com/BetterDiscord/BetterDiscord/pull/1837
+      }
+    );
   }
   showStatsModal() {
     const elements = [];
@@ -2321,8 +2218,14 @@ module.exports = class MessageLoggerV2 {
 
       messageCounts.push(messageCount);
     }
+    const { React } = BdApi;
     const addLine = (name, value) => {
-      elements.push(this.parseHTML(`<div class="${this.multiClasses.defaultColor}"><strong>${name}</strong>: ${value}</div></br>`));
+      elements.push(
+        React.createElement('div', { className: this.multiClasses.defaultColor, key: name },
+          React.createElement('strong', null, `${name}: `),
+          value
+        )
+      );
     };
     addLine('Total messages', totalMessages);
     addLine('Deleted message count', messageCounts[0]);
@@ -2335,12 +2238,10 @@ module.exports = class MessageLoggerV2 {
 
     //    addLine('Data file size', (this.nodeModules.fs.statSync(this.pluginDir + '/MessageLoggerV2Data.config.json').size / 1024 / 1024).toFixed(2) + 'MB');
     //  addLine('Data file size severity', this.slowSaveModeStep == 0 ? 'OK' : this.slowSaveModeStep == 1 ? 'MILD' : this.slowSaveModeStep == 2 ? 'BAD' : 'EXTREME');
-    this.createModal({
+
+    BdApi.UI.showConfirmationModal('Data stats', React.createElement('div', null, elements), {
       confirmText: 'OK',
-      header: 'Data stats',
-      size: ZeresPluginLibrary.Modals.ModalSizes.SMALL,
-      children: [ZeresPluginLibrary.ReactTools.createWrappedElement(elements)],
-      red: false
+      cancelText: null
     });
   }
   _findLastIndex(array, predicate) {
@@ -2474,8 +2375,46 @@ module.exports = class MessageLoggerV2 {
     return ret;
   }
   createModal(options, image, name) {
-    const modal = image ? this.createModal.imageModal : this.createModal.confirmationModal;
-    this.ModalStack.openModal(props => ZeresPluginLibrary.DiscordModules.React.createElement(modal, Object.assign({}, options, props, options.onClose ? { onClose: options.onClose } : {})), { modalKey: name });
+    if (image) {
+      const openMediaViewer = Object.values(BdApi.Webpack.getBySource(/numMediaItems:\w\.items\.length,source:_,hasMediaOptions:!\w\.shouldHideMediaOptions/) || {})[0];
+      if (!openMediaViewer || typeof openMediaViewer !== 'function') return this.showToast('Failed to open image modal, missing dependency');
+
+      /*
+      {
+        className: p.modal,
+        onClose: this.onCloseImage,
+        items: [{
+          alt: undefined,
+          animated: false,
+          children: undefined,
+          height: 1894,
+          original: 'X',
+          sourceMetadata: {
+            identifier: {
+              attachmentId: 'X',
+              filename: 'funny.jpeg',
+              size: 123456,
+              title: undefined,
+              type: 'attachment'
+            },
+            message: <message object>
+          },
+          srcIsAnimated: false,
+          trigger: 'CLICK',
+          type: 'IMAGE',
+          url: 'X',
+          width: 2048
+          zoomThumbnailPlaceholder: 'X'
+        }],
+        shouldHideMediaOptions: h,
+        location: null != g ? g : "LazyImageZoomable",
+        contextKey: this.modalContext
+      })
+      */
+      return this.showToast('Not implemented yet');
+      return openMediaViewer(options);
+    }
+    XenoLib.ModalStack.openModal(props => ZeresPluginLibrary.DiscordModules.React.createElement(this.createModal.confirmationModal, Object.assign({}, options, props, options.onClose ? { onClose: options.onClose } : {})), { modalKey: name });
   }
   getMessageAny(id) {
     const record = this.messageRecord[id];
@@ -3330,7 +3269,8 @@ module.exports = class MessageLoggerV2 {
   }
   patchModal() {
     try {
-      const confirmModal = ZeresPluginLibrary.DiscordModules.ConfirmationModal;
+      const confirmationModalRegex = /header:\w,children:\w,confirmText:_,cancelText:\w,className:\w,onConfirm:\w,onCancel:\w,onClose:\w,onCloseCallback:\w/;
+      const confirmModal = Object.values(BdApi.Webpack.getBySource(confirmationModalRegex)).find(e => typeof e === 'function' && e.toString().match(confirmationModalRegex)) || (() => null);
       this.createModal.confirmationModal = props => {
         try {
           const ret = confirmModal(props);
@@ -3347,18 +3287,17 @@ module.exports = class MessageLoggerV2 {
           return null;
         }
       };
-      this.createModal.confirmationModal.Sizes = ZeresPluginLibrary.WebpackModules.getByProps('ModalSize').ModalSize;
     } catch { }
-    this.ModalStack = ZeresPluginLibrary.WebpackModules.getByProps('openModal', 'hasModalOpen');
-    if (this.ModalStack) {
-    this._modalsApiUnsubcribe = (this.ModalStack.modalsApi || this.ModalStack.useModalsStore).subscribe(_ => {
-      if (this.menu.open && !this.ModalStack.hasModalOpen(this.style.menu)) {
-        this.menu.filter = '';
-        this.menu.open = false;
-        this.menu.shownMessages = -1;
-        if (this.menu.messages) this.menu.messages.length = 0;
-      }
-    });}
+    if (XenoLib.ModalStack.modalStore?.subscribe) {
+      this._modalsApiUnsubcribe = XenoLib.ModalStack.modalStore.subscribe(_ => {
+        if (this.menu.open && !XenoLib.ModalStack.hasModalOpen(this.style.menu)) {
+          this.menu.filter = '';
+          this.menu.open = false;
+          this.menu.shownMessages = -1;
+          if (this.menu.messages) this.menu.messages.length = 0;
+        }
+      });
+    }
     /*
     this.createModal.confirmationModal = class ConfirmationModal extends ZeresPluginLibrary.DiscordModules.ConfirmationModal {
       constructor(props) {
@@ -3586,8 +3525,9 @@ module.exports = class MessageLoggerV2 {
                       if (!result.length) result += `> **${record.message.author.username}** | ${this.createTimeStamp(record.message.timestamp, true)}\n`;
                       result += `> ${record.message.content.replace(/\n/g, '\n> ')}\n`;
                     }
-                    this.nodeModules.electron.clipboard.writeText(result);
-                    this.showToast('Copied!', { type: 'success' });
+                    navigator.clipboard.writeText(result)
+                      .then(_ => this.showToast('Copied!', { type: 'success' }))
+                      .catch(_ => this.showToast('Failed to copy!', { type: 'error' }));
                   }
                 },
                 {
@@ -3674,8 +3614,9 @@ module.exports = class MessageLoggerV2 {
                 label: 'Copy Text',
                 action: () => {
                   this.closeContextMenu();
-                  this.nodeModules.electron.clipboard.writeText(editNum != -1 ? record.edit_history[editNum].content : record.message.content);
-                  this.showToast('Copied!', { type: 'success' });
+                  navigator.clipboard.writeText(editNum != -1 ? record.edit_history[editNum].content : record.message.content)
+                    .then(_ => this.showToast('Copied!', { type: 'success' }))
+                    .catch(_ => this.showToast('Failed to copy!', { type: 'error' }));
                 }
               },
               {
@@ -3685,8 +3626,9 @@ module.exports = class MessageLoggerV2 {
                   this.closeContextMenu();
                   const content = editNum != -1 ? record.edit_history[editNum].content : record.message.content;
                   const result = `> **${record.message.author.username}** | ${this.createTimeStamp(record.message.timestamp, true)}\n> ${content.replace(/\n/g, '\n> ')}`;
-                  this.nodeModules.electron.clipboard.writeText(result);
-                  this.showToast('Copied!', { type: 'success' });
+                  navigator.clipboard.writeText(result)
+                    .then(_ => this.showToast('Copied!', { type: 'success' }))
+                    .catch(_ => this.showToast('Failed to copy!', { type: 'error' }));
                 }
               }
             );
@@ -3762,8 +3704,9 @@ module.exports = class MessageLoggerV2 {
               label: 'Copy Message ID',
               action: () => {
                 this.closeContextMenu();
-                this.nodeModules.electron.clipboard.writeText(messageId); // todo: store electron or writeText somewhere?
-                this.showToast('Copied!', { type: 'success' });
+                navigator.clipboard.writeText(messageId)
+                  .then(_ => this.showToast('Copied!', { type: 'success' }))
+                  .catch(_ => this.showToast('Failed to copy!', { type: 'error' }));
               }
             },
             {
@@ -3771,8 +3714,9 @@ module.exports = class MessageLoggerV2 {
               label: 'Copy Author ID',
               action: () => {
                 this.closeContextMenu();
-                this.nodeModules.electron.clipboard.writeText(message.author.id);
-                this.showToast('Copied!', { type: 'success' });
+                navigator.clipboard.writeText(message.author.id)
+                  .then(_ => this.showToast('Copied!', { type: 'success' }))
+                  .catch(_ => this.showToast('Failed to copy!', { type: 'error' }));
               }
             }
           );
@@ -4280,34 +4224,36 @@ module.exports = class MessageLoggerV2 {
     inputEl.addEventListener('paste', onUpdate);
     const helpButton = textBox.getElementsByClassName(classes.questionMarkSingle)[0];
     helpButton.addEventListener('click', () => {
-      const extraHelp = this.createButton('Logger help', () => this.showLoggerHelpModal());
-      this.createModal({
-        confirmText: 'OK',
-        header: 'Filter help',
-        size: this.createModal.confirmationModal.Sizes.LARGE,
-        children: [
-          ZeresPluginLibrary.ReactTools.createWrappedElement([
-            this.parseHTML(
-              `<div class="${this.multiClasses.defaultColor}">"server: <servername or serverid>" - Filter results with the specified server name or id.
-                        "channel: <channelname or channelid>" - Filter results with the specified channel name or id.
-                        "user: <username, nickname or userid>" - Filter results with the specified username, nickname or userid.
-                        "message: <search or messageid>" or "content: <search or messageid>" - Filter results with the specified message content.
-                        "has: <image|link> - Filter results to only images or links
+      const helpText =
+        `"server: <server name or server id>" - Filter results with the specified server name or id.
+"channel: <channel name or channel id>" - Filter results with the specified channel name or id.
+"user: <username, nickname or user id>" - Filter results with the specified username, nickname or userid.
+"message: <text or message id>" or "content: <text or message id>" - Filter results with the specified message content.
+"has: <image or link> - Filter results to only images or links
 
-                        Separate the search tags with commas.
-                        Example: server: tom's bd stuff, message: heck
+Separate the search tags with commas.
+Example: server: BetterDiscord, message: heck
 
+Pro tip: Right clicking the icon will filter the messages to the current channel.`;
 
-                        Shortcut help:
-
-                        "Ctrl + M" (default) - Open message log.
-                        "Ctrl + N" (default) - Open message log with selected channel filtered.\n\n</div>`.replace(/\n/g, '</br>')
-            ),
-            extraHelp
-          ])
-        ],
-        red: false
-      });
+      const { React } = BdApi;
+      BdApi.UI.showConfirmationModal('Filter help',
+        React.createElement('div', { className: this.multiClasses.defaultColor },
+          React.createElement('p', {
+            style: {
+              whiteSpace: 'pre-wrap'
+            }
+          }, helpText
+          ),
+          React.createElement(XenoLib.ReactComponents.Button, {
+            onClick: _ => this.showLoggerHelpModal()
+          }, 'Logger help'
+          )
+        ),
+        {
+          confirmText: 'OK',
+          cancelText: null,
+        });
     });
     new ZeresPluginLibrary.Tooltip(helpButton, 'Help!', { side: 'top' });
     return textBox;
@@ -4339,47 +4285,51 @@ module.exports = class MessageLoggerV2 {
       if (document.getElementById(this.style.filter).parentElement.parentElement.className.indexOf(this.createTextBox.classes.focused[0]) != -1) return;
       let type = this.menu.selectedTab;
       if (type === 'ghostpings') type = 'ghost pings';
-      else {
-        type += ' messages';
-      }
-      this.createModal({
-        header: 'Clear log',
-        children: ZeresPluginLibrary.DiscordModules.React.createElement(Text, { size: Text.Sizes.SIZE_16, children: [`Are you sure you want to delete all ${type}${this.menu.filter.length ? ' that also match filter' : ''}?`] }),
-        confirmText: 'Confirm',
-        cancelText: 'Cancel',
-        onConfirm: () => {
-          if (this.menu.selectedTab == 'sent') {
-            if (!this.menu.filter.length)
-              for (let id of this.menu.messages)
-                this.cachedMessageRecord.splice(
-                  this.cachedMessageRecord.findIndex(m => m.id === id),
-                  1
-                );
-            else this.cachedMessageRecord.length = 0; // hack, does it cause a memory leak?
-          } else {
-            for (let id of this.menu.messages) {
-              const record = this.messageRecord[id];
-              let isSelected = false;
-              if (record) {
-                this.invalidateChannelCache(record.message.channel_id);
-                if (this.selectedChannel) isSelected = record.message.channel_id === this.selectedChannel.id;
+      else type += ' messages';
+
+      BdApi.UI.showConfirmationModal('Clear log',
+        BdApi.React.createElement(Text, { size: Text.Sizes.SIZE_16, children: [`Are you sure you want to delete all ${type}${this.menu.filter.length ? ' that also match filter' : ''}?`] }),
+        {
+          confirmText: 'Confirm',
+          danger: true,
+          cancelText: 'Cancel',
+          onConfirm: () => {
+            if (this.menu.selectedTab == 'sent') {
+              if (!this.menu.filter.length)
+                for (let id of this.menu.messages)
+                  this.cachedMessageRecord.splice(
+                    this.cachedMessageRecord.findIndex(m => m.id === id),
+                    1
+                  );
+              else this.cachedMessageRecord.length = 0; // hack, does it cause a memory leak?
+            } else {
+              for (let id of this.menu.messages) {
+                const record = this.messageRecord[id];
+                let isSelected = false;
+                if (record) {
+                  this.invalidateChannelCache(record.message.channel_id);
+                  if (this.selectedChannel) isSelected = record.message.channel_id === this.selectedChannel.id;
+                }
+                this.deleteMessageFromRecords(id);
+                if (this.selectedChannel && isSelected) this.cacheChannelMessages(this.selectedChannel.id);
               }
-              this.deleteMessageFromRecords(id);
-              if (this.selectedChannel && isSelected) this.cacheChannelMessages(this.selectedChannel.id);
+              this.saveData();
             }
-            this.saveData();
+            setImmediate(_ => this.refilterMessages());
+            // this.menu.refilterOnMount = true;
           }
-          setImmediate(_ => this.refilterMessages());
-          // this.menu.refilterOnMount = true;
-        }
-      });
+        });
     };
+
+    // unfortunately the BdApi.UI.showConfirmationModal doesn't support what I have in mind here, so this will have to stay
+    // more specifically, does not support overriding what the confirm and cancel buttons do entirely
+    // they inadvertently close the modal which is not the intended functionality
     this.createModal(
       {
         confirmText: 'Clear log',
         cancelText: 'Sort direction: ' + (!this.settings.reverseOrder ? 'new - old' : 'old - new'),
         header: ZeresPluginLibrary.ReactTools.createWrappedElement([this.createTextBox(), this.createHeader()]),
-        size: this.createModal.confirmationModal.Sizes.LARGE,
+        className: this.style.menuModalLarge,
         children: [ZeresPluginLibrary.ReactTools.createWrappedElement([messagesDIV])],
         onCancel: onChangeOrder,
         onConfirm: onClearLog,
