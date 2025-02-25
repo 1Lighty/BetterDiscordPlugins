@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.34
+ * @version 1.8.35
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.34';
+    return '1.8.35';
   }
   getAuthor() {
     return 'Lighty';
@@ -127,7 +127,7 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Menu works now somewhat :)']
+        items: ['Fixed menu, dum bug']
       }
     ];
   }
@@ -3269,11 +3269,12 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
   }
   patchModal() {
     try {
-      const confirmationModalRegex = /header:\w,children:\w,confirmText:_,cancelText:\w,className:\w,onConfirm:\w,onCancel:\w,onClose:\w,onCloseCallback:\w/;
-      const confirmModal = Object.values(BdApi.Webpack.getBySource(confirmationModalRegex)).find(e => typeof e === 'function' && e.toString().match(confirmationModalRegex)) || (() => null);
+      const confirmationModalRegex = /header:\w,children:\w,confirmText:\w,cancelText:\w,className:\w,onConfirm:\w,onCancel:\w,onClose:\w,onCloseCallback:\w/;
+      const confirmModal = Object.values(BdApi.Webpack.getBySource(confirmationModalRegex) || {}).find(e => typeof e === 'function' && e.toString().match(confirmationModalRegex)) || (() => null);
       this.createModal.confirmationModal = props => {
         try {
           const ret = confirmModal(props);
+          if (!ret) return null;
           if (props.size) ret.props.size = props.size;
 
           if (props.onCancel) {
