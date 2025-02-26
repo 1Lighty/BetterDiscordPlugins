@@ -1539,12 +1539,12 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
         settings: [
           {
             name: 'Cached messages cap',
-            note: 'Max number of sent messages logger should keep track of',
+            note: 'Max number of sent messages logger should keep track of (use 0 for unlimited)',
             id: 'messageCacheCap',
             type: 'textbox',
             onChange: val => {
               if (isNaN(val)) return this.showToast('Value must be a number!', { type: 'error' });
-              this.settings.messageCacheCap = parseInt(val);
+              this.settings.messageCacheCap = Number(val) === 0 ? Infinity : val;
               clearInterval(this.dataManagerInterval);
               this.dataManagerInterval = setInterval(() => {
                 this.handleMessagesCap();
@@ -1553,12 +1553,12 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
           },
           {
             name: 'Saved messages cap',
-            note: "Max number of messages saved to disk, this limit is for deleted, edited and purged INDIVIDUALLY. So if you have it set to 1000, it'll be 1000 edits, 1000 deletes and 1000 purged messages max",
+            note: "Max number of messages saved to disk (use 0 for unlimited) – this limit is for deleted, edited and purged INDIVIDUALLY, so if you have it set to 1000, it'll be 1000 edits, 1000 deletes and 1000 purged messages max",
             id: 'savedMessagesCap',
             type: 'textbox',
             onChange: val => {
               if (isNaN(val)) return this.showToast('Value must be a number!', { type: 'error' });
-              this.settings.savedMessagesCap = parseInt(val);
+              this.settings.savedMessagesCap = Number(val) === 0 ? Infinity : val;
               clearInterval(this.dataManagerInterval);
               this.dataManagerInterval = setInterval(() => {
                 this.handleMessagesCap();
