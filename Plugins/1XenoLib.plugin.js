@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.21
+ * @version 1.4.22
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.21',
+      version: '1.4.22',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -114,7 +114,7 @@ module.exports = (() => {
     changelog: [
       {
         type: 'fixed',
-        items: ['Minor fixes.']
+        items: ['Fixed notifications not functioning.']
       }
     ],
     defaultConfig: [
@@ -908,7 +908,7 @@ module.exports = (() => {
         if (typeof e === 'function') return false;
         const possFuncs = Object.values(e);
         if (possFuncs.length < 3 || possFuncs.length > 8) return false;
-        if (!possFuncs.some(e => typeof e === 'object' && e?.BRAND_INVERTED)) return false;
+        if (!possFuncs.some(e => typeof e === 'object' && e?.BRAND_INVERTED && typeof e.BRAND_INVERTED !== 'function')) return false;
         return true;
       })
       let ButtonOptions = {};
