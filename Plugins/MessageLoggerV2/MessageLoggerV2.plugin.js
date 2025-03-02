@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.35
+ * @version 1.8.36
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.35';
+    return '1.8.36';
   }
   getAuthor() {
     return 'Lighty';
@@ -127,7 +127,7 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Fixed menu, dum bug']
+        items: ['Data saving/loading related issues due to defunct BDApi funcs. woops.']
       }
     ];
   }
@@ -1682,7 +1682,7 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
     if (!this.handleDataSaving.errorPageClass) this.handleDataSaving.errorPageClass = '.' + XenoLib.getClass('errorPage');
     /* refuse saving on error page */
     if (!this.messageRecord || document.querySelector(this.handleDataSaving.errorPageClass)) return; /* did we crash? */
-    if (!Object.keys(this.messageRecord).length) return BdApi.deleteData(this.getName() + 'Data', 'data');
+    if (!Object.keys(this.messageRecord).length) return BdApi.Data.delete(this.getName() + 'Data', 'data');
     const callback = err => {
       if (err) {
         XenoLib.Notifications.error('There has been an error saving the data file');
@@ -1729,7 +1729,7 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
       let loadedData;
       try {
         /* bd gay bruh */
-        loadedData = BdApi.loadData(name, key);
+        loadedData = BdApi.Data.load(name, key);
       } catch (err) { }
       if (loadedData) for (const key in data) loadedData[key] = data[key];
       this.nodeModules.fs.writeFile(this.__isPowerCord ? BdApi.__getPluginConfigPath(name) : this.nodeModules.path.join(this.pluginDir, `${name}.config.json`), JSON.stringify({ [key]: data }), callback);
