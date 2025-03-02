@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.22
+ * @version 1.4.23
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -106,7 +106,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.22',
+      version: '1.4.23',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -114,7 +114,7 @@ module.exports = (() => {
     changelog: [
       {
         type: 'fixed',
-        items: ['Fixed notifications not functioning.']
+        items: ['Data saving/loading related issues due to defunct BDApi funcs. woops.']
       }
     ],
     defaultConfig: [
@@ -264,7 +264,7 @@ module.exports = (() => {
 
     XenoLib.loadData = (name, key, defaultData, returnNull) => {
       try {
-        return XenoLib._.mergeWith(defaultData ? Utilities.deepclone(defaultData) : {}, BdApi.getData(name, key), (_, b) => {
+        return XenoLib._.mergeWith(defaultData ? Utilities.deepclone(defaultData) : {}, BdApi.Data.load(name, key), (_, b) => {
           if (XenoLib._.isArray(b)) return b;
         });
       } catch (err) {
