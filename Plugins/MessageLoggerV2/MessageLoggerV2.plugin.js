@@ -3137,7 +3137,7 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
                 ZeresPluginLibrary.Logger.stacktrace(this.getName(), 'Failed to show all edited messages', err);
               }
             }
-          }), `(${/* i18n.Messages.MESSAGE_EDITED uhhhhhhhhh what now? */'Edited'})${e.__MLV2_hasMore === 'before' ? ` <(${e.__MLV2_numHidden})` : e.__MLV2_hasMore === 'after' ? ` (${e.__MLV2_numHidden})` : ''}`))
+          }), `(${/* i18n.Messages.MESSAGE_EDITED uhhhhhhhhh what now? */'Edited'})${e.__MLV2_hasMore === 'before' ? ` <(${e.__MLV2_numHidden})` : e.__MLV2_hasMore === 'after' ? ` (${e.__MLV2_numHidden})>` : ''}`))
     });
     SuffixEdited.displayName = 'SuffixEdited';
     const parseContent = (() => {
