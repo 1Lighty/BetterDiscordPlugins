@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.8.36
+ * @version 1.9.0
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.8.36';
+    return '1.9.0';
   }
   getAuthor() {
     return 'Lighty';
@@ -77,7 +77,7 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.21')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.23')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '2.0.23')) ZeresPluginLibraryOutdated = true;
     }
     if (/* !global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated */!BdApi.Plugins.get('XenoLib') || XenoLibOutdated) {
@@ -127,7 +127,20 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
       {
         title: 'Fixed',
         type: 'fixed',
-        items: ['Data saving/loading related issues due to defunct BDApi funcs. woops.']
+        items: [
+          'Logger button now always shows up upon load.',
+          'Fixed channels randomly reloading and/or scrolling up if there were deleted messages with images in them.',
+          'Fixed double tooltip on edited messages'
+        ]
+      },
+      {
+        title: 'Changes! (can you believe it?)',
+        type: 'improved',
+        items: [
+          'Changed default setting so now only shows 5 edits max (only applicable to new users).',
+          'An indicator has been added if there are more edits before or after the shown ones, this also shows when showinge edits is disabled',
+          'Only applicable if max shown edits is set (Display Settings > Max number of shown edits)'
+        ]
       }
     ];
   }
@@ -202,7 +215,7 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
       //   /* 162, 78 */
       // ], // ctrl + n on windows
       renderCap: 50,
-      maxShownEdits: 0,
+      maxShownEdits: 5,
       hideNewerEditsFirst: true,
       displayDates: true,
       deletedMessageColor: '',
@@ -571,17 +584,29 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
 
     this.autoBackupSaveInterupts = 0;
 
-    // have to patch messageHasExpiredAttachmentUrl, otherwise Discord will needlessly reload the channel causing scrolling issues most likely
-    /*     this.unpatches.push(
-          this.Patcher.instead(ZeresPluginLibrary.WebpackModules.getByProps('messageHasExpiredAttachmentUrl'), 'messageHasExpiredAttachmentUrl', (_, args, original) => {
+    // have to patch (what was previously named) messageHasExpiredAttachmentUrl, otherwise Discord will needlessly
+    // reload the channel causing scrolling issues, quite annoying!
+    const AttachmentUtils = BdApi.Webpack.getBySource('(["/attachments/","/ephemeral-attachments/"])');
+
+    if (AttachmentUtils) {
+      try {
+        const targetName = Object.keys(AttachmentUtils).find(e => AttachmentUtils[e].toString().match(/return \w\.attachments\.some\(\w\)\|\|\w\.embeds\.some\(\w\)/));
+        if (!targetName) throw new Error('Failed to find targetName');
+        this.unpatches.push(
+          this.Patcher.instead(AttachmentUtils, targetName, (_, args, original) => {
             const [message] = args;
             // check if ID is in messageRecord and force return false
             if (message.id && this.messageRecord[message.id]) return false;
 
             // run original otherwise to not interfere
             return original(...args);
-          })
-        ); */
+          }
+          )
+        );
+      } catch (e) {
+        ZeresPluginLibrary.Logger.warn(this.getName(), 'Failed to patch AttachmentUtils!', e);
+      }
+    } else ZeresPluginLibrary.Logger.warn(this.getName(), 'Failed to find AttachmentUtils!');
 
 
 
@@ -654,6 +679,11 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
                 }
                 .theme-light .${this.classes.markup}.${this.style.edited} .${this.style.edited} {
                     opacity: 0.5;
+                }
+
+                .${this.style.editedTagClicky} {
+                    cursor: pointer;
+                    pointer-events: all;
                 }
 
                 .${this.style.editedCompact} {
@@ -947,7 +977,7 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
     });
     new ZeresPluginLibrary.Tooltip(this.channelLogButton, 'Open Logs', { side: 'bottom' });
 
-    if (this.settings.showOpenLogsButton) this.addOpenLogsButton();
+    if (this.settings.showOpenLogsButton) setTimeout(() => this.addOpenLogsButton(), 1000); // I hate this.. buuut it works, at this point idk what order things are executing..
 
     this.unpatches.push(
       this.Patcher.instead(ZeresPluginLibrary.DiscordModules.MessageActions, 'deleteMessage', (_, args, original) => {
@@ -2068,9 +2098,9 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
   /* ==================================================-|| START MISC ||-================================================== */
   addOpenLogsButton() {
     if (!this.selectedChannel) return;
-    const parent = document.querySelector('div[class*="chat-"] div[class*="toolbar-"]');
+    const parent = document.querySelector('div[class*="chat_"] div[class*="toolbar_"]');
     if (!parent) return;
-    const srch = parent.querySelector('div[class*="search-"]'); // you know who you are that think this is my issue
+    const srch = parent.querySelector('div[class*="search_"]'); // you know who you are that think this is my issue
     if (!srch) return;
     parent.insertBefore(this.channelLogButton, srch);
   }
@@ -3079,7 +3109,36 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
     const dateFormat = ZeresPluginLibrary.WebpackModules.getModule(e => typeof e === 'function' && e?.toString()?.includes('sameDay'), { searchExports: true });
     //const i18n = ZeresPluginLibrary.WebpackModules.find(e => e.Messages && e.Messages.HOME);
     /* suck it you retarded asshole devilfuck */
-    const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => ZeresPluginLibrary.DiscordModules.React.createElement(Tooltip, { text: e.timestamp ? dateFormat(e.timestamp, 'LLLL') : null }, tt => ZeresPluginLibrary.DiscordModules.React.createElement('time', Object.assign({ dateTime: e.timestamp.toISOString(), className: this.multiClasses.edited, role: 'note' }, tt), `(${/* i18n.Messages.MESSAGE_EDITED uhhhhhhhhh what now? */'Edited'})`)));
+    const SuffixEdited = ZeresPluginLibrary.DiscordModules.React.memo(e => {
+      const text = (e.__MLV2_hasMore === 'before' || e.__MLV2_hasMore === 'after') ? `There are ${e.__MLV2_numHidden} more edited messages ${e.__MLV2_hasMore} this one! Click to show!` : null;
+      return ZeresPluginLibrary.DiscordModules.React.createElement(
+        Tooltip,
+        {
+          text: [(e.timestamp && e.__MLV2_shouldShow ? dateFormat(e.timestamp, 'LLLL') : null), text && ZeresPluginLibrary.DiscordModules.React.createElement('br'), text],
+          shouldShow: e.__MLV2_shouldShow || !!text
+        },
+        tt => ZeresPluginLibrary.DiscordModules.React.createElement(
+          'time',
+          Object.assign({
+            dateTime: e.timestamp ? e.timestamp.toISOString() : null,
+            className: XenoLib.joinClassNames(this.multiClasses.edited, { [this.style.editedTagClicky]: !!text }),
+            role: 'note'
+          }, tt, {
+            onClick: () => {
+              try {
+                tt.onClick();
+              } catch (err) {
+                ZeresPluginLibrary.Logger.stacktrace(this.getName(), 'Failed to execute tooltip onClick', err);
+              }
+              try {
+                if (!text) return;
+                e.__MLV2_showAllMessages();
+              } catch (err) {
+                ZeresPluginLibrary.Logger.stacktrace(this.getName(), 'Failed to show all edited messages', err);
+              }
+            }
+          }), `(${/* i18n.Messages.MESSAGE_EDITED uhhhhhhhhh what now? */'Edited'})${e.__MLV2_hasMore === 'before' ? ` <(${e.__MLV2_numHidden})` : e.__MLV2_hasMore === 'after' ? ` (${e.__MLV2_numHidden})` : ''}`))
+    });
     SuffixEdited.displayName = 'SuffixEdited';
     const parseContent = (() => {
       const parse = (() => {
@@ -3140,20 +3199,42 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
           },
           [props.message.id, forceUpdate]
         );
-        if (!this.settings.showEditedMessages || (typeof props.className === 'string' && ~props.className.indexOf('repliedTextContent'))) return;
+        if ((typeof props.className === 'string' && ~props.className.indexOf('repliedTextContent'))) return;
         if (!this.editedMessageRecord[props.message.channel_id] || this.editedMessageRecord[props.message.channel_id].indexOf(props.message.id) === -1) return;
         const record = this.messageRecord[props.message.id];
-        if (!record || record.edits_hidden || !Array.isArray(ret.props.children)) return;
-        const createEditedMessage = (edit, editNum, isSingular, noSuffix) =>
-          ZeresPluginLibrary.DiscordModules.React.createElement(
+        if (!record || !Array.isArray(ret.props.children)) return;
+        const createEditedMessage = (edit, editNum, options = { isSingular: false, noSuffix: false, hasMore: 'none', numHidden: 0 }) => {
+          const { isSingular = false, noSuffix = false, hasMore = 'none', numHidden = 0 } = options;
+
+          const result = ZeresPluginLibrary.DiscordModules.React.createElement(() => // avoiding breaking the rules of react hooks :p
+            [
+              parseContent({ channel_id: props.message.channel_id, mentionChannels: props.message.mentionChannels, content: edit.content, embeds: [], isCommandType: () => false, hasFlag: () => false }, {}).content,
+              noSuffix
+                ? null
+                : ZeresPluginLibrary.DiscordModules.React.createElement(SuffixEdited, {
+                  timestamp: new Date(edit.time),
+                  __MLV2_hasMore: hasMore,
+                  __MLV2_numHidden: numHidden,
+                  __MLV2_shouldShow: !!isSingular,
+                  __MLV2_showAllMessages: () => {
+                    if (record.edits_hidden) record.edits_hidden = false;
+                    if (this.settings.maxShownEdits && record.edit_history.length > this.settings.maxShownEdits) this.editModifiers[props.message.id] = { showAllEdits: true };
+                    forceUpdate({});
+                  }
+                })
+            ]
+          );
+
+          return ZeresPluginLibrary.DiscordModules.React.createElement(
             XenoLib.ReactComponents.ErrorBoundary,
             { label: 'Edit history' },
-            ZeresPluginLibrary.DiscordModules.React.createElement(
+            editNum === -1 ? result : ZeresPluginLibrary.DiscordModules.React.createElement(
               Tooltip,
               {
                 text: !!record.delete_data ? null : 'Edited: ' + this.createTimeStamp(edit.time),
                 position: 'left',
-                hideOnClick: true
+                hideOnClick: true,
+                shouldShow: !isSingular
               },
               _ =>
                 ZeresPluginLibrary.DiscordModules.React.createElement(
@@ -3163,43 +3244,48 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
                     className: XenoLib.joinClassNames({ [this.style.editedCompact]: props.compact && !isSingular, [this.style.edited]: !isSingular }),
                     editNum
                   },
-                  ZeresPluginLibrary.DiscordModules.React.createElement(() => // avoiding breaking the rules of react hooks :p
-                    [
-                      parseContent({ channel_id: props.message.channel_id, mentionChannels: props.message.mentionChannels, content: edit.content, embeds: [], isCommandType: () => false, hasFlag: () => false }, {}).content,
-                      noSuffix
-                        ? null
-                        : ZeresPluginLibrary.DiscordModules.React.createElement(SuffixEdited, {
-                          timestamp: new Date(edit.time)
-                        })
-                    ]
-                  )
+                  result
                 )
             )
           );
+        };
         ret.props.className = XenoLib.joinClassNames(ret.props.className, this.style.edited);
         const modifier = this.editModifiers[props.message.id];
-        if (modifier) {
-          ret.props.children = [createEditedMessage(record.edit_history[modifier.editNum], modifier.editNum, true, modifier.noSuffix)];
+        if (modifier?.editNum) {
+          ret.props.children = [createEditedMessage(record.edit_history[modifier.editNum], -1, { isSingular: true, noSuffix: modifier.noSuffix })];
           return;
         }
+
+        if ((!this.settings.showEditedMessages && !modifier?.showAllEdits) || record.edits_hidden) {
+          ret.props.children = [createEditedMessage(record.edit_history[record.edit_history.length - 1], -1, { isSingular: true, noSuffix: false, hasMore: 'before', numHidden: record.edit_history.length })];
+          return;
+        }
+
         const oContent = Array.isArray(ret.props.children[0]) ? ret.props.children[0] : ret.props.children[1];
         const edits = [];
         let i = 0;
         let max = record.edit_history.length;
-        if (this.settings.maxShownEdits) {
+        let hasMore = 'none';
+        let hasMoreIdx = -1;
+        if (this.settings.maxShownEdits && !modifier?.showAllEdits) {
           if (record.edit_history.length > this.settings.maxShownEdits) {
             if (this.settings.hideNewerEditsFirst) {
               max = this.settings.maxShownEdits;
+              hasMore = 'after';
+              hasMoreIdx = max - 1;
             } else {
               i = record.edit_history.length - this.settings.maxShownEdits;
+              hasMore = 'before';
+              hasMoreIdx = i;
             }
           }
         }
+        const numHidden = record.edit_history.length - this.settings.maxShownEdits;
         for (; i < max; i++) {
           const edit = record.edit_history[i];
           if (!edit) continue;
           let editNum = i;
-          edits.push(createEditedMessage(edit, editNum));
+          edits.push(createEditedMessage(edit, editNum, i === hasMoreIdx ? { hasMore, numHidden } : {}));
         }
         ret.props.children = [edits, oContent];
       })
@@ -4440,49 +4526,74 @@ Pro tip: Right clicking the icon will filter the messages to the current channel
                 target = target.parentElement;
               }
               if (target) {
-                if (!this.editModifiers[messageId]) {
-                  addElement(
-                    'Hide Edits',
-                    () => {
-                      record.edits_hidden = true;
-                      this.saveData();
-                      this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
-                    }
-                  );
-                }
+                const modifiers = this.editModifiers[messageId];
                 const editNum = target.getAttribute('editNum');
-                if (this.editModifiers[messageId]) {
+                if (modifiers?.editNum) {
                   addElement(
-                    `${this.editModifiers[messageId].noSuffix ? 'Show' : 'Hide'} (edited) Tag`,
+                    `${modifiers.noSuffix ? 'Show' : 'Hide'} (edited) Tag`,
                     () => {
-                      this.editModifiers[messageId].noSuffix = true;
+                      modifiers.noSuffix = true;
                       this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
                     }
                   );
                   addElement(
                     `Undo Show As Message`,
                     () => {
-                      delete this.editModifiers[messageId];
+                      delete modifiers.editNum;
+                      if (!Object.keys(modifiers).length) delete this.editModifiers[messageId];
                       this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
                     },
                     this.obfuscatedClass('undo-show-as-message')
                   );
-                } else if (typeof editNum !== 'undefined' && editNum !== null) {
-                  addElement(
-                    'Show Edit As Message',
-                    () => {
-                      this.editModifiers[messageId] = { editNum };
-                      this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
-                    }
-                  );
-                  addElement(
-                    'Delete Edit',
-                    () => {
-                      this.deleteEditedMessageFromRecord(messageId, parseInt(editNum));
-                      this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
-                    },
-                    { color: 'danger' }
-                  );
+                } else {
+                  if (typeof editNum !== 'undefined' && editNum !== null) {
+                    addElement(
+                      'Show Edit As Message',
+                      () => {
+                        if (modifiers) modifiers.editNum = parseInt(editNum);
+                        else this.editModifiers[messageId] = { editNum };
+                        this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
+                      }
+                    );
+                    addElement(
+                      'Delete Edit',
+                      () => {
+                        this.deleteEditedMessageFromRecord(messageId, parseInt(editNum));
+                        this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
+                      },
+                      { color: 'danger' }
+                    );
+                  }
+                  if (this.settings.showEditedMessages) {
+                    addElement(
+                      'Hide Edits',
+                      () => {
+                        record.edits_hidden = true;
+                        this.saveData();
+                        this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
+                      }
+                    );
+                  }
+
+                  if (modifiers?.showAllEdits) {
+                    addElement(
+                      'Undo show all edits',
+                      () => {
+                        delete modifiers.showAllEdits;
+                        if (!Object.keys(modifiers).length) delete this.editModifiers[messageId];
+                        this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
+                      },
+                      this.obfuscatedClass('undo-show-all-edits')
+                    )
+                  } else if (this.settings.maxShownEdits && record.edit_history.length > this.settings.maxShownEdits) {
+                    addElement(
+                      'Show All Edits',
+                      () => {
+                        this.editModifiers[messageId] = { showAllEdits: true };
+                        this.dispatcher.dispatch({ type: 'MLV2_FORCE_UPDATE_MESSAGE_CONTENT', id: messageId });
+                      }
+                    );
+                  }
                 }
               }
             }
