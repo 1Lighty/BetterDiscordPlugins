@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.1
+ * @version 1.9.2
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.1';
+    return '1.9.2';
   }
   getAuthor() {
     return 'Lighty';
@@ -128,7 +128,8 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed a bug where disabling `Display edited messages in chat` OR right clicking and hiding edits would accidentally display the previous edit instead of latest.'
+          'Fixed a bug where disabling `Display edited messages in chat` OR right clicking and hiding edits would accidentally display the previous edit instead of latest.',
+          'We love introducing more bugs while squashing bugs! You were no longer allowed to see your own edits!'
         ]
       }
     ];
@@ -2701,7 +2702,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
           // if we have lastEdited then we can still continue as we have all the data we need to process it.
           if (!last && !lastEditedSaved) return callDefault(...args); // nothing we can do past this point..
 
-          if (!lastEditedSaved.message.edited_timestamp) lastEditedSaved.message.edited_timestamp = dispatch.message.edited_timestamp;
+          if (lastEditedSaved && !lastEditedSaved.message.edited_timestamp) lastEditedSaved.message.edited_timestamp = dispatch.message.edited_timestamp;
 
           if (isSaved && !lastEditedSaved.local_mentioned) {
             lastEditedSaved.message.content = dispatch.message.content; // don't save history, just the value so we don't confuse the user
@@ -2924,7 +2925,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         const last = this.getCachedMessage(dispatch.message.id, channel.id);
         const lastEditedSaved = this.getEditedMessage(dispatch.message.id, channel.id);
 
-        if (!lastEditedSaved.message.edited_timestamp) lastEditedSaved.message.edited_timestamp = dispatch.message.edited_timestamp;
+        if (lastEditedSaved && !lastEditedSaved.message.edited_timestamp) lastEditedSaved.message.edited_timestamp = dispatch.message.edited_timestamp;
 
         // if we have lastEdited then we can still continue as we have all the data we need to process it.
         if (!last && !lastEditedSaved) return callDefault(...args); // nothing we can do past this point..
