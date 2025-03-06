@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.0
+ * @version 1.9.1
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -29,7 +29,7 @@
   WScript.Quit();
 @else @*/
 /*
- * Copyright © 2019-2023, _Lighty_
+ * Copyright © 2019-2025, _Lighty_
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.0';
+    return '1.9.1';
   }
   getAuthor() {
     return 'Lighty';
@@ -101,11 +101,11 @@ module.exports = class MessageLoggerV2 {
         .catch(err => {
           console.error('Error downloading XenoLib!', err);
           BdApi.UI.showConfirmationModal('XenoLib Missing',
-            `XenoLib is missing! Click the GitHub link below and press CTRL + S to download it, then put it in your plugins folder!
+            `XenoLib is missing! Click the link below to download it, then put it in your plugins folder!
 
 You can find the plugins folder by going to Settings > Plugins and clicking the folder icon!
 
-https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js`, {
+https://astranika.com/bd/download?plugin=1XenoLib`, {
             confirmText: 'Got it',
             cancelText: null
           });
@@ -128,18 +128,7 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Logger button now always shows up upon load.',
-          'Fixed channels randomly reloading and/or scrolling up if there were deleted messages with images in them.',
-          'Fixed double tooltip on edited messages'
-        ]
-      },
-      {
-        title: 'Changes! (can you believe it?)',
-        type: 'improved',
-        items: [
-          'Changed default setting so now only shows 5 edits max (only applicable to new users).',
-          'An indicator has been added if there are more edits before or after the shown ones, this also shows when showinge edits is disabled',
-          'Only applicable if max shown edits is set (Display Settings > Max number of shown edits)'
+          'Fixed a bug where disabling `Display edited messages in chat` OR right clicking and hiding edits would accidentally display the previous edit instead of latest.'
         ]
       }
     ];
@@ -2712,6 +2701,8 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
           // if we have lastEdited then we can still continue as we have all the data we need to process it.
           if (!last && !lastEditedSaved) return callDefault(...args); // nothing we can do past this point..
 
+          if (!lastEditedSaved.message.edited_timestamp) lastEditedSaved.message.edited_timestamp = dispatch.message.edited_timestamp;
+
           if (isSaved && !lastEditedSaved.local_mentioned) {
             lastEditedSaved.message.content = dispatch.message.content; // don't save history, just the value so we don't confuse the user
             return callDefault(...args);
@@ -2932,6 +2923,8 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
 
         const last = this.getCachedMessage(dispatch.message.id, channel.id);
         const lastEditedSaved = this.getEditedMessage(dispatch.message.id, channel.id);
+
+        if (!lastEditedSaved.message.edited_timestamp) lastEditedSaved.message.edited_timestamp = dispatch.message.edited_timestamp;
 
         // if we have lastEdited then we can still continue as we have all the data we need to process it.
         if (!last && !lastEditedSaved) return callDefault(...args); // nothing we can do past this point..
@@ -3256,12 +3249,26 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
           return;
         }
 
+        const oContent = Array.isArray(ret.props.children[0]) ? ret.props.children[0] : ret.props.children[1];
+
         if ((!this.settings.showEditedMessages && !modifier?.showAllEdits) || record.edits_hidden) {
-          ret.props.children = [createEditedMessage(record.edit_history[record.edit_history.length - 1], -1, { isSingular: true, noSuffix: false, hasMore: 'before', numHidden: record.edit_history.length })];
+          ret.props.children = [
+            oContent,
+            ZeresPluginLibrary.DiscordModules.React.createElement(SuffixEdited, {
+              timestamp: new Date(props.message.editedTimestamp),
+              __MLV2_hasMore: 'before',
+              __MLV2_numHidden: record.edit_history.length,
+              __MLV2_shouldShow: true,
+              __MLV2_showAllMessages: () => {
+                if (record.edits_hidden) record.edits_hidden = false;
+                if (this.settings.maxShownEdits && record.edit_history.length > this.settings.maxShownEdits) this.editModifiers[props.message.id] = { showAllEdits: true };
+                forceUpdate({});
+              }
+            })
+          ];
           return;
         }
 
-        const oContent = Array.isArray(ret.props.children[0]) ? ret.props.children[0] : ret.props.children[1];
         const edits = [];
         let i = 0;
         let max = record.edit_history.length;
@@ -3327,7 +3334,9 @@ https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1X
           [props.message.id, forceUpdate]
         );
         const record = this.messageRecord[props.message.id];
-        if (!record || !record.delete_data) return;
+        if (!record) return;
+        if (props.message.editedTimestamp) record.message.edited_timestamp = new Date(props.message.editedTimestamp).getTime();
+        if (!record.delete_data) return;
         if (this.noTintIds.indexOf(props.message.id) !== -1) return;
         const message = ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && typeof e?.props?.className === 'string' && ~e?.props?.className?.indexOf(messageClass));
         if (!message) return;
