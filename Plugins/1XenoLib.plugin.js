@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.23
+ * @version 1.4.24
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -33,7 +33,7 @@
 
 @else@*/
 /*
- * Copyright © 2019-2023, _Lighty_
+ * Copyright © 2019-2025, _Lighty_
  * All rights reserved.
  * Code may not be redistributed, modified or otherwise taken without explicit permission.
  */
@@ -89,6 +89,32 @@ function _parseNewMeta(code/* : string */)/* : BDPluginManifest */ {
   return ret;
 }
 
+try {
+  const fs = require('fs');
+  const path = require('path');
+
+  const HOTFIXES = {
+    'className: "react-wrapper", ref: "element"': 'className: "react-wrapper", ref: (e) => {if (!this.refs) this.refs = {}; this.refs.element = e;}',
+    '    /** Fired when root node added to DOM */\n    onAdded() {\n        const reactElement = modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.ReactDOM.render(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement(ReactSetting, Object.assign({\n            title: this.name,\n            type: this.type,\n            note: this.note,\n        }, this.props)), this.getElement());\n\n        if (this.props.onChange) reactElement.props.onChange = this.props.onChange(reactElement);\n        reactElement.forceUpdate();\n    }\n\n    /** Fired when root node removed from DOM */\n    onRemoved() {\n        modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.ReactDOM.unmountComponentAtNode(this.getElement());\n    }': '    /** Fired when root node added to DOM */\n    onAdded() {\n        this.rroot = BdApi.ReactDOM.createRoot(this.getElement());\n        this.rroot.render(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement(ReactSetting, Object.assign({\n            title: this.name,\n            type: this.type,\n            note: this.note,\n        }, this.props)));\n\n        const instance = this.rroot?._internalRoot?.current?.child?.stateNode;\n        if (!instance) return;\n        if (this.props.onChange) instance.props.onChange = this.props.onChange(instance);\n        instance.forceUpdate();\n    }\n\n    /** Fired when root node removed from DOM */\n    onRemoved() {\n        this.rroot.unmount();\n    }',
+    "/** \n * Creates a textbox using discord's built in textbox.\n * @memberof module:Settings\n * @extends module:Settings.SettingField\n */\nclass Textbox": "/** \n * Creates a textbox using discord's built in textbox.\n * @memberof module:Settings\n * @extends module:Settings.SettingField\n */\n\nclass TextBoxWrapper extends BdApi.React.PureComponent {\n    constructor(...args) {\n        super(...args);\n        this.state = {\n          value: this.props.value\n        };\n\n        this.onChange = this.onChange.bind(this);\n      }\n\n      onChange(value) {\n        this.setState({ value });\n        this.props.onChange(value);\n      }\n\n      render() {\n        return BdApi.React.createElement(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.Textbox, { ...this.props, value: this.state.value, onChange: this.onChange });\n      }\n}\n\nclass Textbox",
+    "super(name, note, onChange, modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.Textbox, {": "super(name, note, onChange, TextBoxWrapper, {"
+  }
+
+  let ZLibCode = fs.readFileSync(path.join(__dirname, '0PluginLibrary.plugin.js'), 'utf8');
+  let gotChanged = false;
+
+  for (const [key, value] of Object.entries(HOTFIXES)) {
+    if (!ZLibCode.includes(key)) continue;
+    ZLibCode = ZLibCode.replace(key, value);
+    gotChanged = true;
+  }
+  if (gotChanged) {
+    fs.writeFileSync(path.join(__dirname, '0PluginLibrary.plugin.js'), ZLibCode, 'utf8');
+    console.log('Patched ZLib');
+  }
+} catch (err) {
+  console.error('Failed to patch ZLib', err);
+}
 module.exports = (() => {
   const canUseAstraNotifAPI = !!(global.Astra && Astra.n11s && Astra.n11s.n11sApi);
   // 1 day interval in milliseconds
@@ -106,7 +132,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.23',
+      version: '1.4.24',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -114,7 +140,7 @@ module.exports = (() => {
     changelog: [
       {
         type: 'fixed',
-        items: ['Data saving/loading related issues due to defunct BDApi funcs. woops.']
+        items: ['Fixed issues related to Discord updating React to a newer version.']
       }
     ],
     defaultConfig: [
@@ -211,7 +237,9 @@ module.exports = (() => {
   const buildPlugin = ([Plugin, Api]) => {
     const start = performance.now();
     const { Settings, Modals, Utilities, WebpackModules, DiscordModules, ColorConverter, DiscordClasses, ReactTools, ReactComponents, Logger, PluginUpdater, PluginUtilities, Structs } = Api;
-    const { React, ModalStack, ContextMenuActions, ReactDOM, ChannelStore, GuildStore, UserStore, DiscordConstants, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Changelog: ChangelogModal, SelectedChannelStore, SelectedGuildStore, Moment } = DiscordModules;
+    const { React, ModalStack, ContextMenuActions, ChannelStore, GuildStore, UserStore, DiscordConstants, PrivateChannelActions, LayerManager, InviteActions, FlexChild, Changelog: ChangelogModal, SelectedChannelStore, SelectedGuildStore, Moment } = DiscordModules;
+
+    const { ReactDOM } = BdApi;
 
     if (window.__XL_waitingForWatcherTimeout) clearTimeout(window.__XL_waitingForWatcherTimeout);
 
@@ -252,8 +280,8 @@ module.exports = (() => {
       try {
         const notifWrapper = document.querySelector('.xenoLib-notifications');
         if (notifWrapper) {
-          ReactDOM.unmountComponentAtNode(notifWrapper);
           notifWrapper.remove();
+          notifWrapper._XL_rootNode?.unmount();
         }
       } catch (e) {
         Logger.stacktrace('Failed to unmount Notifications component', e);
@@ -735,7 +763,7 @@ module.exports = (() => {
       useTransition?(...args: any[]): any
     } */ = {})/* : void */ {
       // @ts-ignore
-      const ReactDispatcher = React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher.current;
+      const ReactDispatcher = Object.values(React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE).find(e => e.useState);
       const oUseCallback = ReactDispatcher.useCallback;
       const oUseContext = ReactDispatcher.useContext;
       const oUseDebugValue = ReactDispatcher.useDebugValue;
@@ -2263,6 +2291,7 @@ module.exports = (() => {
         DOMElement.className = XenoLib.joinClassNames('xenoLib-notifications', `xenoLib-centering-${LibrarySettings.notifications.position}`);
         const root = ReactDOM.createRoot(DOMElement);
         root.render(React.createElement(NotificationsWrapper, {}));
+        DOMElement._XL_rootNode = root;
       }
     } catch (e) {
       Logger.stacktrace('There has been an error loading the Notifications system, fallback object has been put in place to prevent errors', e);
@@ -2375,8 +2404,20 @@ module.exports = (() => {
     }
 
     class RadioGroupWrapper extends React.PureComponent {
+      constructor(...args) {
+        super(...args);
+        this.state = {
+          value: this.props.value
+        };
+        this.onChange = this.onChange.bind(this);
+      }
+      onChange(value) {
+        this.setState({ value: value.value });
+        this.props.onChange(value);
+      }
+
       render() {
-        return React.createElement(DiscordModules.RadioGroup, this.props);
+        return React.createElement(DiscordModules.RadioGroup, { ...this.props, value: this.state.value, onChange: this.onChange });
       }
     }
 
@@ -2420,8 +2461,22 @@ module.exports = (() => {
     }
 
     class SwitchItemWrapper extends React.PureComponent {
+      constructor(...args) {
+        super(...args);
+        this.state = {
+          value: this.props.value
+        };
+
+        this.onChange = this.onChange.bind(this);
+      }
+
+      onChange(value) {
+        this.setState({ value });
+        this.props.onChange(value);
+      }
+
       render() {
-        return React.createElement(DiscordThemeProviderWrapperWrapper, {}, React.createElement(DiscordModules.SwitchRow, this.props));
+        return React.createElement(DiscordThemeProviderWrapperWrapper, {}, React.createElement(DiscordModules.SwitchRow, { ...this.props, value: this.state.value, onChange: this.onChange }));
       }
     }
 
@@ -2434,17 +2489,13 @@ module.exports = (() => {
 
       onAdded() {
         const root = ReactDOM.createRoot(this.getElement());
-        const ref = React.createRef();
-        const reactElement = root.render(React.createElement(SwitchItemWrapper, {
-          ref: ref,
+        root.render(React.createElement(SwitchItemWrapper, {
           children: this.name,
           note: this.note,
           disabled: this.disabled,
           hideBorder: false,
           value: this.value,
           onChange: e => {
-            ref.current.props.value = e;
-            ref.current.forceUpdate();
             this.onChange(e);
           }
         }));
@@ -2738,7 +2789,7 @@ module.exports = (() => {
   try {
     const a = (c, a) => ((c = c.split('.').map(b => parseInt(b))), (a = a.split('.').map(b => parseInt(b))), !!(a[0] > c[0])) || !!(a[0] == c[0] && a[1] > c[1]) || !!(a[0] == c[0] && a[1] == c[1] && a[2] > c[2]);
     let b = BdApi.Plugins.get('ZeresPluginLibrary');
-    ((b, c) => b && b.version && a(b.version, c))(b, '2.0.21') && (ZeresPluginLibraryOutdated = !0);
+    ((b, c) => b && b.version && a(b.version, c))(b, '2.0.23') && (ZeresPluginLibraryOutdated = !0);
   } catch (e) {
     console.error('Error checking if ZeresPluginLibrary is out of date', e);
   }
