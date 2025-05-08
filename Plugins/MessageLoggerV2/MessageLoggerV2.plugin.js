@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.2
+ * @version 1.9.3
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.2';
+    return '1.9.3';
   }
   getAuthor() {
     return 'Lighty';
@@ -77,7 +77,7 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.23')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.24')) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '2.0.23')) ZeresPluginLibraryOutdated = true;
     }
     if (/* !global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated */!BdApi.Plugins.get('XenoLib') || XenoLibOutdated) {
@@ -128,8 +128,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed a bug where disabling `Display edited messages in chat` OR right clicking and hiding edits would accidentally display the previous edit instead of latest.',
-          'We love introducing more bugs while squashing bugs! You were no longer allowed to see your own edits!'
+          'Fixed crashes and issues that arose from Discord updating to newer React.',
         ]
       }
     ];
@@ -1939,11 +1938,11 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
     const markup = document.createElement('div');
 
     const parsed = this.tools.parse(content, true, channelId ? { channelId: channelId } : {});
-    // console.log(parsed);
     // error, this render doesn't work with tags
     //  TODO: this parser and renderer sucks
     // this may be causing a severe memory leak over the course of a few hours
-    ZeresPluginLibrary.DiscordModules.ReactDOM.render(ZeresPluginLibrary.DiscordModules.React.createElement('div', { className: '' }, parsed), markup);
+    const root = BdApi.ReactDOM.createRoot(markup);
+    root.render(parsed);
 
     const hiddenClass = this.classes.hidden;
 
@@ -1952,24 +1951,24 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
     for (let i = 0; i < hidden.length; i++) {
       hidden[i].classList.remove(hiddenClass);
     }
-    const child = markup.firstChild;
     let previousTab = this.menu.selectedTab;
     let previousOpen = this.menu.open;
     const callback = () => {
       if (this.menu.open === previousOpen && this.menu.selectedTab === previousTab) return; /* lol ez */
       try {
-        markup.appendChild(child);
-        ZeresPluginLibrary.DiscordModules.ReactDOM.unmountComponentAtNode(markup);
-      } catch (e) { }
+        root.unmount();
+      } catch (e) {
+        ZeresPluginLibrary.Logger.stacktrace(this.getName(), 'Error unmounting markup', e);
+      }
       ZeresPluginLibrary.DOMTools.observer.unsubscribe(callback);
     };
     ZeresPluginLibrary.DOMTools.observer.subscribe(callback, mutation => {
       const nodes = Array.from(mutation.removedNodes);
-      const directMatch = nodes.indexOf(child) > -1;
-      const parentMatch = nodes.some(parent => parent.contains(child));
+      const directMatch = nodes.indexOf(markup) > -1;
+      const parentMatch = nodes.some(parent => parent.contains(markup));
       return directMatch || parentMatch;
     });
-    return child;
+    return markup;
   }
   async showToast(content, options = {}) {
     // credits to Zere, copied from Zeres Plugin Library
@@ -3085,6 +3084,11 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
     };
     this.menu.queueInterval = setInterval(messageDataManager, this.processUserRequestQueue.queueIntervalTime);
   }
+  getReactInstance(node) {
+    const domNode = ZeresPluginLibrary.DOMTools.resolveElement(node);
+    if (!(domNode instanceof Element)) return undefined;
+    return domNode[Object.keys(domNode).find((key) => key.startsWith("__reactInternalInstance") || key.startsWith("__reactFiber") || key.startsWith("__reactContainer"))];
+  }
   async patchMessages() {
     const Tooltip = (() => {
       let ret = null;
@@ -3151,7 +3155,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
       })()
       if (parse) {
         return function parseContent() {
-          const ReactDispatcher = ZeresPluginLibrary.DiscordModules.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher.current;
+          const ReactDispatcher = Object.values(ZeresPluginLibrary.DiscordModules.React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE).find(e => e.useState);
           const oUseMemo = ReactDispatcher.useMemo;
           ReactDispatcher.useMemo = memo => memo();
           try {
@@ -3173,7 +3177,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
           res(document.querySelector(selector));
         }, selector, null, true)
       }));
-      return ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(el), e => ((typeof e?.memoizedProps?.renderContentOnly) === 'boolean'), { walkable: ['return'] })?.elementType
+      return ZeresPluginLibrary.Utilities.findInTree(this.getReactInstance(el), e => ((typeof e?.memoizedProps?.renderContentOnly) === 'boolean'), { walkable: ['return'] })?.elementType
     })()
     if (!MessageContent || !MemoMessage) return XenoLib.Notifications.error('Failed to patch message components, edit history and deleted tint will not show!', { timeout: 0 });
     this.unpatches.push(
@@ -3350,7 +3354,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
     this.forceReloadMessages();
   }
   forceReloadMessages() {
-    const instance = ZeresPluginLibrary.Utilities.findInTree(ZeresPluginLibrary.ReactTools.getReactInstance(document.querySelector('.chatContent-3KubbW')), e => ((typeof e?.memoizedProps?.showQuarantinedUserBanner) === 'boolean'), { walkable: ['return'] })?.stateNode;
+    const instance = ZeresPluginLibrary.Utilities.findInTree(this.getReactInstance(document.querySelector('.chatContent-3KubbW')), e => ((typeof e?.memoizedProps?.showQuarantinedUserBanner) === 'boolean'), { walkable: ['return'] })?.stateNode;
     if (!instance) return;
     const unpatch = this.Patcher.after(instance, 'render', (_this, _, ret) => {
       unpatch();
