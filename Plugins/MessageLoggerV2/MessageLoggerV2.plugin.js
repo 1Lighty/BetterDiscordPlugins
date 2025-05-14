@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.3
+ * @version 1.9.4
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.3';
+    return '1.9.4';
   }
   getAuthor() {
     return 'Lighty';
@@ -128,7 +128,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed crashes and issues that arose from Discord updating to newer React.',
+          'Fixed logger not being able to find critical message component and showing an error.',
         ]
       }
     ];
@@ -3168,7 +3168,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
       }
       return null;
     })();
-    const MessageContent = ZeresPluginLibrary.WebpackModules.getModule(e => e?.type?.toString()?.includes('.editedTimestamp,'));
+    const MessageContent = ZeresPluginLibrary.WebpackModules.getModule(e => !!e?.type?.toString()?.match(/,\w=\w\.state===\w\.(?:\w[^.]+)\.SEND_FAILED,\w=\w\.state===\w\.(?:\w[^.]+)\.SENDING/));
     const MemoMessage = await (async () => {
       const selector = `.${XenoLib.getSingleClass('message messageListItem')}`;
       var el = document.querySelector(selector) || (await new Promise(res => {
@@ -3178,7 +3178,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         }, selector, null, true)
       }));
       return ZeresPluginLibrary.Utilities.findInTree(this.getReactInstance(el), e => ((typeof e?.memoizedProps?.renderContentOnly) === 'boolean'), { walkable: ['return'] })?.elementType
-    })()
+    })();
     if (!MessageContent || !MemoMessage) return XenoLib.Notifications.error('Failed to patch message components, edit history and deleted tint will not show!', { timeout: 0 });
     this.unpatches.push(
       this.Patcher.after(MessageContent, 'type', (_, [props], ret) => {
