@@ -3135,7 +3135,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
                 ZeresPluginLibrary.Logger.stacktrace(this.getName(), 'Failed to show all edited messages', err);
               }
             }
-          }), `(${/* i18n.Messages.MESSAGE_EDITED uhhhhhhhhh what now? */'Edited'})${e.__MLV2_hasMore === 'before' ? ` <(${e.__MLV2_numHidden})` : e.__MLV2_hasMore === 'after' ? ` (${e.__MLV2_numHidden})>` : ''}`))
+          }), `(${/* i18n.Messages.MESSAGE_EDITED uhhhhhhhhh what now? */'edited'})${e.__MLV2_hasMore === 'before' ? ` <(${e.__MLV2_numHidden})` : e.__MLV2_hasMore === 'after' ? ` (${e.__MLV2_numHidden})>` : ''}`))
     });
     SuffixEdited.displayName = 'SuffixEdited';
     const parseContent = (() => {
