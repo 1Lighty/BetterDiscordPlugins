@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.4
+ * @version 1.9.5
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.4';
+    return '1.9.5';
   }
   getAuthor() {
     return 'Lighty';
@@ -128,7 +128,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed logger not being able to find critical message component and showing an error.',
+          'Fixed nothing showing up in the logger menu.',
         ]
       }
     ];
@@ -3488,7 +3488,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         /* 4 */ XenoLib.joinClassNames(XenoLib.getClass('timestampTooltip username'), XenoLib.getClass('edited avatar clickable')),
         /* 5 */ XenoLib.joinClassNames(XenoLib.getClass('separator timestamp'), XenoLib.getClass('separator timestampInline')),
         /* 6 */ XenoLib.joinClassNames(this.multiClasses.markup, XenoLib.getClass('buttonContainer markupRtl')),
-        /* 7 */ XenoLib.getClass('embedWrapper container'),
+        /* 7 */ XenoLib.getClass('avatarDecoration messageContent'),
         /* 8 */ XenoLib.joinClassNames(XenoLib.getClass('zalgo latin24CompactTimeStamp'), XenoLib.getClass('separator timestamp'), XenoLib.getClass('alt timestampVisibleOnHover'), XenoLib.getClass('timestampVisibleOnHover alt')),
         /* 9 */ XenoLib.getClass('latin24CompactTimeStamp separator'),
         /* 10 */ XenoLib.getSingleClass('timestampTooltip username'),
@@ -3882,7 +3882,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         }
         lastMessage = message;
         const markup = messageGroup.getElementsByClassName(this.classes.markup)[0];
-        const contentDiv = messageGroup.getElementsByClassName(XenoLib.getSingleClass('embedWrapper container'))[0];
+        const contentDiv = messageGroup.getElementsByClassName(XenoLib.getSingleClass('avatarDecoration messageContent'))[0];
         if (record && record.edit_history) {
           markup.classList.add(this.style.edited);
           for (let ii = 0; ii < record.edit_history.length; ii++) {
