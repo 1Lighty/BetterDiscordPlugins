@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.24
+ * @version 1.4.25
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -132,7 +132,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.24',
+      version: '1.4.25',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -140,7 +140,7 @@ module.exports = (() => {
     changelog: [
       {
         type: 'fixed',
-        items: ['Fixed issues related to Discord updating React to a newer version.']
+        items: ['Fixed changelog error.']
       }
     ],
     defaultConfig: [
@@ -1121,7 +1121,16 @@ module.exports = (() => {
       XenoLib.ReactComponents.PluginFooter = NOOP_NULL;
     }
 
-    const TextElement = WebpackModules.getModule(e => (Object.keys(e).length === 2) && e.Colors && e.Sizes);
+    const TextElement = (() => {
+      let key = null;
+      const mod = WebpackModules.getModule(e => {
+        if (Object.keys(e).length !== 1) return false;
+        key = Object.keys(e)[0];
+        const ref = e[key];
+        return ref?.render?.toString()?.includes('data-excessive-heading-level')
+      });
+      return (mod && key && mod[key]) || null;
+    })();
 
     /* shared between FilePicker and ColorPicker */
     const MultiInputClassname = 'xenoLib-multiInput';
