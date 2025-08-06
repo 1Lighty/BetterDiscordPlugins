@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.6
+ * @version 1.9.7
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -44,7 +44,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.6';
+    return '1.9.7';
   }
   getAuthor() {
     return 'Lighty';
@@ -128,9 +128,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed some issues causing it to not log messages anymore.',
-          'Fixed a bug that probably existed from the start where it would not log messages if there was only an attachment or only an embed and no text content.',
-          'Fixed Clear Log button not working.'
+          'Fixed an internal Discord change causing the logger to malfunction, not properly showing edits and deletes anymore.',
         ]
       }
     ];
@@ -483,7 +481,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
       getUserAsync: /* ZeresPluginLibrary.WebpackModules.getByProps('getUser', 'acceptAgreements').getUser */ () => Promise.resolve(),
       isBlocked: ZeresPluginLibrary.WebpackModules.getByProps('isBlocked').isBlocked,
       createMomentObject: ZeresPluginLibrary.WebpackModules.getByProps('createFromInputFallback'),
-      isMentioned: (e, id) => isMentioned({ userId: id, channelId: e.channel_id, mentionEveryone: e.mentionEveryone || e.mention_everyone, mentionUsers: e.mentions.map(e => e.id || e), mentionRoles: e.mentionRoles || e.mention_roles }),
+      isMentioned: (e, id) => isMentioned({ userId: id, channelId: e.channel_id, mentionEveryone: e.mentionEveryone || e.mention_everyone, mentionUsers: e.mentions.map(e => e.id || e), mentionRoles: e.mentionRoles || e.mention_roles, mentionGames: [] }),
       DiscordUtils: ZeresPluginLibrary.WebpackModules.getByProps('bindAll', 'debounce')
     };
 
