@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.25
+ * @version 1.4.26
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -96,8 +96,6 @@ try {
   const HOTFIXES = {
     'className: "react-wrapper", ref: "element"': 'className: "react-wrapper", ref: (e) => {if (!this.refs) this.refs = {}; this.refs.element = e;}',
     '    /** Fired when root node added to DOM */\n    onAdded() {\n        const reactElement = modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.ReactDOM.render(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement(ReactSetting, Object.assign({\n            title: this.name,\n            type: this.type,\n            note: this.note,\n        }, this.props)), this.getElement());\n\n        if (this.props.onChange) reactElement.props.onChange = this.props.onChange(reactElement);\n        reactElement.forceUpdate();\n    }\n\n    /** Fired when root node removed from DOM */\n    onRemoved() {\n        modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.ReactDOM.unmountComponentAtNode(this.getElement());\n    }': '    /** Fired when root node added to DOM */\n    onAdded() {\n        this.rroot = BdApi.ReactDOM.createRoot(this.getElement());\n        this.rroot.render(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement(ReactSetting, Object.assign({\n            title: this.name,\n            type: this.type,\n            note: this.note,\n        }, this.props)));\n\n        const instance = this.rroot?._internalRoot?.current?.child?.stateNode;\n        if (!instance) return;\n        if (this.props.onChange) instance.props.onChange = this.props.onChange(instance);\n        instance.forceUpdate();\n    }\n\n    /** Fired when root node removed from DOM */\n    onRemoved() {\n        this.rroot.unmount();\n    }',
-    "/** \n * Creates a textbox using discord's built in textbox.\n * @memberof module:Settings\n * @extends module:Settings.SettingField\n */\nclass Textbox": "/** \n * Creates a textbox using discord's built in textbox.\n * @memberof module:Settings\n * @extends module:Settings.SettingField\n */\n\nclass TextBoxWrapper extends BdApi.React.PureComponent {\n    constructor(...args) {\n        super(...args);\n        this.state = {\n          value: this.props.value\n        };\n\n        this.onChange = this.onChange.bind(this);\n      }\n\n      onChange(value) {\n        this.setState({ value });\n        this.props.onChange(value);\n      }\n\n      render() {\n        return BdApi.React.createElement(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.Textbox, { ...this.props, value: this.state.value, onChange: this.onChange });\n      }\n}\n\nclass Textbox",
-    "super(name, note, onChange, modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.Textbox, {": "super(name, note, onChange, TextBoxWrapper, {"
   }
 
   let ZLibCode = fs.readFileSync(path.join(__dirname, '0PluginLibrary.plugin.js'), 'utf8');
@@ -132,7 +130,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.25',
+      version: '1.4.26',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -140,7 +138,7 @@ module.exports = (() => {
     changelog: [
       {
         type: 'fixed',
-        items: ['Fixed changelog error.']
+        items: ['Fixed Textbox settings element not functioning.']
       }
     ],
     defaultConfig: [
@@ -666,14 +664,20 @@ module.exports = (() => {
       .xenoLib-multiInput.xenoLib-multiInput-error {
         border-color: hsl(359,calc(var(--saturation-factor, 1)*82.6%),59.4%);
       }
-      .xenoLib-multiInputFirst {
+      .xenoLib-multiInput > div[class*="container_"] {
         -webkit-box-flex: 1;
         -ms-flex-positive: 1;
         flex-grow: 1
       }
-      .xenoLib-multiInputField {
+      .xenoLib-multiInputField,
+      .xenoLib-multiInput > div[class*="container_"] > div {
         border: none;
         background-color: transparent
+      }
+
+      .xenoLib-multiInputField {
+        width: 100%;
+        height: 100%;
       }
       `
     );
@@ -1132,9 +1136,20 @@ module.exports = (() => {
       return (mod && key && mod[key]) || null;
     })();
 
+    const TextboxComponent = (() => {
+      let item = null;
+      BdApi.Webpack.getModule(e => {
+        const items = Object.values(e);
+        if (items.length !== 1) return false;
+        item = items[0];
+        if (typeof item !== 'function') return false;
+        return item.toString().match(/inputRef:\w,focusProps:\w,name:\w="",type:\w="text"/);
+      });
+      return item || (() => null);
+    })();
+
     /* shared between FilePicker and ColorPicker */
     const MultiInputClassname = 'xenoLib-multiInput';
-    const MultiInputFirstClassname = 'xenoLib-multiInputFirst';
     const MultiInputFieldClassname = 'xenoLib-multiInputField';
     const ErrorMessageClassname = XenoLib.joinClassNames('xenoLib-error-text', XenoLib.getClass('errorMessage'), Utilities.getNestedProp(TextElement, 'Colors.ERROR'));
     const ErrorClassname = XenoLib.joinClassNames('xenoLib-multiInput-error', XenoLib.getClass('input error'));
@@ -1207,7 +1222,7 @@ module.exports = (() => {
             React.createElement(
               'div',
               { className: XenoLib.joinClassNames(MultiInputClassname, n) },
-              React.createElement(DiscordModules.Textbox, {
+              React.createElement(TextboxComponent, {
                 value: this.state.path,
                 placeholder: this.props.placeholder,
                 onChange: this.handleChange,
@@ -1215,8 +1230,7 @@ module.exports = (() => {
                 onBlur: () => this.setState({ multiInputFocused: false }),
                 onKeyDown: this.handleKeyDown,
                 autoFocus: false,
-                className: MultiInputFirstClassname,
-                inputClassName: MultiInputFieldClassname
+                className: MultiInputFieldClassname
               }),
               React.createElement(XenoLib.ReactComponents.Button, { onClick: this.handleOnBrowse, color: (!!this.state.error && XenoLib.ReactComponents.ButtonOptions.ButtonColors.RED) || XenoLib.ReactComponents.ButtonOptions.ButtonColors.GREY, look: XenoLib.ReactComponents.ButtonOptions.ButtonLooks.GHOST, size: XenoLib.ReactComponents.Button.Sizes.MEDIUM }, 'Browse')
             ),
@@ -1346,15 +1360,14 @@ module.exports = (() => {
                 height: 38
               }
             }),
-            React.createElement(DiscordModules.Textbox, {
+            React.createElement(TextboxComponent, {
               value: this.state.value,
               placeholder: 'Hex color',
               onChange: this.handleChange,
               onFocus: () => this.setState({ multiInputFocused: true }),
               onBlur: () => this.setState({ multiInputFocused: false }),
               autoFocus: false,
-              className: MultiInputFirstClassname,
-              inputClassName: MultiInputFieldClassname
+              className: MultiInputFieldClassname
             }),
             React.createElement(
               XenoLib.ReactComponents.Button,
@@ -1398,6 +1411,39 @@ module.exports = (() => {
       }
     }
     XenoLib.Settings = {};
+
+    class TextboxWrapper extends React.PureComponent {
+      constructor(...args) {
+        super(...args);
+        this.state = { value: this.props.value };
+        this.onChange = this.onChange.bind(this);
+      }
+      onChange(value) {
+        this.setState({ value });
+        this.props.onChange(value);
+      }
+      render() {
+        return React.createElement(TextboxComponent, { ...this.props, value: this.state.value, onChange: this.onChange });
+      }
+    }
+
+    XenoLib.Settings.Textbox = class TextboxSettingField extends Settings.SettingField {
+      constructor(name, note, value, onChange, options = {}) {
+        const { placeholder = "", disabled = false } = options;
+        super(name, note, onChange, TextboxWrapper, {
+          onChange: textbox => val => {
+            textbox.props.value = val;
+            textbox.forceUpdate();
+            this.onChange(val);
+          },
+          value: value,
+          disabled: disabled,
+          placeholder: placeholder || ""
+        });
+      }
+    };
+
+
     XenoLib.Settings.FilePicker = class FilePickerSettingField extends Settings.SettingField {
       constructor(name, note, value, onChange, options = { properties: ['openDirectory', 'createDirectory'], placeholder: 'Path to folder', defaultPath: '' }) {
         super(name, note, onChange, XenoLib.ReactComponents.FilePicker || class b { }, {
@@ -1461,7 +1507,7 @@ module.exports = (() => {
       const Markdown = WebpackModules.getByProps('astParserFor', 'parse');
       try {
         const MentionRule = WebpackModules.find(e => e.react && e.react.toString().includes('className:"mention"'));
-        const ReactParserRules = WebpackModules.find(m => typeof m === 'function' && (m = m.toString()) && (m.toString().replace(/\n/g, '').search(/^function \w\(\w\){return{\.\.\.\w,link:\(0,\w.\w\)\(\w\)/) !== -1));
+        const ReactParserRules = WebpackModules.find(m => typeof m === 'function' && (m = m.toString()) && (m.toString().replace(/\n/g, '').search(/emoji:\w\(\w\),customEmoji:\w\(\w\),channelMention:\(0,\w.\w\)\(\w\),/) !== -1));
         const { RULES } = WebpackModules.getByProps('RULES');
 
         function mergeRules(rules) {
@@ -2560,7 +2606,7 @@ module.exports = (() => {
       else if (type == 'radio') setting = new RadioGroup(name, note, value, data.options, onChange, { disabled: data.disabled });
       else if (type == 'slider') setting = new Settings.Slider(name, note, data.min, data.max, value, onChange, data);
       else if (type == 'switch') setting = new Switch(name, note, value, onChange, { disabled: data.disabled });
-      else if (type == 'textbox') setting = new Settings.Textbox(name, note, value, onChange, { placeholder: data.placeholder || '' });
+      else if (type == 'textbox') setting = new XenoLib.Settings.Textbox(name, note, value, onChange, { placeholder: data.placeholder || '' });
       if (id) setting.id = id;
       return setting;
     };
