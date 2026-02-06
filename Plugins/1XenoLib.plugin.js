@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.30
+ * @version 1.4.31
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -139,7 +139,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.30',
+      version: '1.4.31',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -1317,7 +1317,7 @@ module.exports = (() => {
     }
     const NewModalStack = BdApi.Webpack.getMangled(/\w=null!=\w\.modalKey\?\w\.modalKey:\w\(\)\(\)/, {
       openModalAsync: BdApi.Webpack.Filters.byRegex(/\w=null!=\w\.modalKey\?\w\.modalKey:\w\(\)\(\)/),
-      openModal: BdApi.Webpack.Filters.byRegex(/Layer:\w,render:\w,onCloseRequest:null!=\w\?\w:\(\)=>\w\(\w,\w\),onCloseCallback:\w,/),
+      openModal: BdApi.Webpack.Filters.byRegex(/modalKey:\w,dismissable:\w,/),
       closeModal: BdApi.Webpack.Filters.byRegex(/null!=\w&&null!=\w\.onCloseCallback&&\w\.onCloseCallback\(\)/),
       closeAllModals: BdApi.Webpack.Filters.byRegex(/getState\(\);for\(let \w in \w\)for\(let \w of \w\[\w\]\)\w\(\w\.key,\w\)/),
       hasModalOpen: BdApi.Webpack.Filters.byRegex(/return \w\(\w\.getState\(\),\w,\w\)/),
