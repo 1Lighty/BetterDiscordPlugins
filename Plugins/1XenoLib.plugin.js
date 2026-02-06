@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.29
+ * @version 1.4.30
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -96,7 +96,10 @@ try {
   const HOTFIXES = {
     'className: "react-wrapper", ref: "element"': 'className: "react-wrapper", ref: (e) => {if (!this.refs) this.refs = {}; this.refs.element = e;}',
     '    /** Fired when root node added to DOM */\n    onAdded() {\n        const reactElement = modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.ReactDOM.render(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement(ReactSetting, Object.assign({\n            title: this.name,\n            type: this.type,\n            note: this.note,\n        }, this.props)), this.getElement());\n\n        if (this.props.onChange) reactElement.props.onChange = this.props.onChange(reactElement);\n        reactElement.forceUpdate();\n    }\n\n    /** Fired when root node removed from DOM */\n    onRemoved() {\n        modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.ReactDOM.unmountComponentAtNode(this.getElement());\n    }': ['    /** Fired when root node added to DOM */\n    onAdded() {\n        this.rroot = BdApi.ReactDOM.createRoot(this.getElement());\n        this.rroot.render(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement(ReactSetting, Object.assign({\n            title: this.name,\n            type: this.type,\n            note: this.note,\n        }, this.props)));\n\n        const instance = this.rroot?._internalRoot?.current?.child?.stateNode;\n        if (!instance) return;\n        if (this.props.onChange) instance.props.onChange = this.props.onChange(instance);\n        instance.forceUpdate();\n    }\n\n    /** Fired when root node removed from DOM */\n    onRemoved() {\n        this.rroot.unmount();\n    }', '    /** Fired when root node added to DOM */\n    onAdded() {\n        this.rroot = BdApi.ReactDOM.createRoot(this.getElement());\n        this.rroot.render(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement(ReactSetting, Object.assign({\n            title: this.name,\n            type: this.type,\n            note: this.note,\n            ref: instance => {\n                if (!instance || !this.props.onChange) return;\n                const inst = this.rroot._internalRoot?.current?.child;\n                if (!inst) return;\n                this._onChange = this.props.onChange(inst.stateNode)\n            }\n        }, this.props, { onChange: (...args) => this._onChange(...args) })));\n    }\n\n    /** Fired when root node removed from DOM */\n    onRemoved() {\n        this.rroot.unmount();\n    }'],
-    '        const wasEnabled = BdApi?.isSettingEnabled("settings", "general", "showToasts");\n        if (wasEnabled) BdApi?.disableSetting("settings", "general", "showToasts");\n        this._reloadPlugins();\n        if (wasEnabled) BdApi?.enableSetting("settings", "general", "showToasts");': ''
+    '        const wasEnabled = BdApi?.isSettingEnabled("settings", "general", "showToasts");\n        if (wasEnabled) BdApi?.disableSetting("settings", "general", "showToasts");\n        this._reloadPlugins();\n        if (wasEnabled) BdApi?.enableSetting("settings", "general", "showToasts");': '',
+    'return new _domtools__WEBPACK_IMPORTED_MODULE_1__["default"].ClassName(obj[prop]);': 'return obj[prop];',
+    'this.root = root || document.getElementById("app-mount");': 'this.root = root || document.body;',
+    'get dividerElement() {return modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement("div", {className: modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Dividers.divider.add(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Margins.marginTop20).toString()});}': 'get dividerElement() {return modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement("div", {className: modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Dividers.divider + " " + modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Margins.marginTop20});}'
   }
 
   let ZLibCode = fs.readFileSync(path.join(__dirname, '0PluginLibrary.plugin.js'), 'utf8');
@@ -136,7 +139,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.29',
+      version: '1.4.30',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -2515,7 +2518,7 @@ module.exports = (() => {
       }
     }
 
-    const SwitchRow = WebpackModules.getModule(e => e?.toString?.().includes('data-toggleable-component":"switch"'), { searchExports: true }) || (() => 'SwitchRow not found');
+    const SwitchRow = BdApi.Webpack.getMangled(/,checked:\w,disabled:\w,onChange:\w/, { SwitchRow: e => e.toString().includes(',checked:') })?.SwitchRow || (() => 'SwitchRow not found');
 
     class SwitchItemWrapper extends React.PureComponent {
       constructor(...args) {
@@ -2800,6 +2803,7 @@ module.exports = (() => {
 
       }
       showChangelog(footer) {
+        return;
         XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog, void 0, true);
       }
       get name() {
