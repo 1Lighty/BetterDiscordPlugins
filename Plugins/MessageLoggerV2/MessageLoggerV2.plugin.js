@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.9
+ * @version 1.9.10
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -46,7 +46,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.9';
+    return '1.9.10';
   }
   getAuthor() {
     return 'Lighty';
@@ -118,8 +118,9 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
     try {
       this.shutdown();
       const currLocation = globalThis?.location?.pathname;
-      ZeresPluginLibrary?.DiscordModules?.NavigationUtils?.transitionTo('/channels/@me'); // dirty fix for crash
-      if (currLocation) setTimeout(() => ZeresPluginLibrary.DiscordModules.NavigationUtils.transitionTo(currLocation), 500);
+      const transitionTo = BdApi.Webpack.getByStrings('transitionTo - Transitioning to ', { searchExports: true }) || (() => { });
+      transitionTo('/channels/@me'); // dirty fix for crash
+      if (currLocation) setTimeout(() => transitionTo(currLocation), 500);
     } catch (err) {
       // ZeresPluginLibrary.Logger.stacktrace(this.getName(), 'Failed to stop!', err);
     }
@@ -130,7 +131,8 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Logger crashing Discord after latest update.'
+          'Jumping to messages works now, as do context menus in the menu.',
+          'Messages in the log menu now display the time they were sent at'
         ]
       }
     ];
@@ -265,12 +267,6 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
       this.automaticallyUpdate();
     }
     if (this.settings.versionInfo !== this.getVersion() && this.settings.displayUpdateNotes) {
-      // TRY to avoid the crash preemptively if they were on the non fixed version
-      if (this.settings.versionInfo === '1.8.31') {
-        const currLocation = globalThis?.location?.pathname;
-        ZeresPluginLibrary?.DiscordModules?.NavigationUtils?.transitionTo('/channels/@me'); // dirty fix for crash
-        if (currLocation) setTimeout(() => ZeresPluginLibrary.DiscordModules.NavigationUtils.transitionTo(currLocation), 500);
-      }
       XenoLib.showChangelog(`${this.getName()} has been updated!`, this.getVersion(), this.getChanges());
       this.settings.versionInfo = this.getVersion();
       this.saveSettings();
@@ -474,7 +470,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
       openUserContextMenu: null /* NeatoLib.Modules.get('openUserContextMenu').openUserContextMenu */, // TODO: move here
       getMessage: this.messageStore.getMessage,
       fetchMessages: ZeresPluginLibrary.DiscordModules.MessageActions.fetchMessages.bind(ZeresPluginLibrary.DiscordModules.MessageActions),
-      transitionTo: null /* NeatoLib.Modules.get('transitionTo').transitionTo */,
+      transitionTo: BdApi.Webpack.getByStrings('transitionTo - Transitioning to ', { searchExports: true }) || (() => { }),
       getChannel: this.ChannelStore.getChannel,
       copyToClipboard: global.copy,
       getServer: ZeresPluginLibrary.WebpackModules.getByProps('getGuild', 'getGuildCount').getGuild,
@@ -2042,7 +2038,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
   }
   jumpToMessage(channelId, messageId, guildId) {
     if (this.menu.open) XenoLib.ModalStack.closeModal(this.style.menu);
-    ZeresPluginLibrary.DiscordModules.NavigationUtils.transitionTo(`/channels/${guildId || '@me'}/${channelId}${messageId ? '/' + messageId : ''}`);
+    this.tools.transitionTo(`/channels/${guildId || '@me'}/${channelId}${messageId ? '/' + messageId : ''}`);
   }
   isImage(url) {
     return /\.(jpe?g|png|gif|bmp)(?:$|\?)/i.test(url);
@@ -3490,6 +3486,8 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
 
     details += `at ${this.createTimeStamp(timestamp, true)}`;
 
+    if (deleted || edited) details += ` (sent ${this.createTimeStamp(message.timestamp)})`;
+
     details = details.replace(/[<>"&]/g, c => ({ "<": "&lt;", ">": "&gt;", "\"": "&quot;", "&": "&amp;" })[c]);
     const classes = this.createMessageGroup.classes;
     const getAvatarOf = user => {
@@ -3697,10 +3695,10 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
     }
     const messageContext = e => {
       let target = e.target;
-      if (!target.classList.contains('mention') || (target.tagName == 'DIV' && target.classList.contains(ZeresPluginLibrary.WebpackModules.getByProps('imageError').imageError.split(/ /g)[0]))) {
+      if (!target.classList.contains('mention') || (target.tagName == 'DIV' && target.classList.contains(ZeresPluginLibrary.WebpackModules.getByProps('imageErrorWrapper').imageErrorWrapper.split(/ /g)[0]))) {
         let isMarkup = false;
         let isEdited = false;
-        let isBadImage = target.tagName == 'DIV' && target.classList == ZeresPluginLibrary.WebpackModules.getByProps('imageError').imageError;
+        let isBadImage = target.tagName == 'DIV' && target.classList == ZeresPluginLibrary.WebpackModules.getByProps('imageErrorWrapper').imageErrorWrapper;
         if (!isBadImage) {
           while (target && (!target.classList || !(isMarkup = target.classList.contains(this.classes.markup)))) {
             if (target.classList && target.classList.contains(this.style.edited)) isEdited = target;
@@ -3857,7 +3855,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
       let target = e.target;
       let isMarkup = false;
       let isEdited = false;
-      let isBadImage = target.tagName == 'DIV' && target.classList == ZeresPluginLibrary.WebpackModules.getByProps('imageError').imageError;
+      let isBadImage = target.tagName == 'DIV' && target.classList == ZeresPluginLibrary.WebpackModules.getByProps('imageErrorWrapper').imageErrorWrapper;
       if (!isBadImage) {
         while (!target.classList.contains('message-2qnXI6') && !(isMarkup = target.classList.contains(this.classes.markup))) {
           if (target.classList.contains(this.style.edited)) isEdited = target;
@@ -3958,10 +3956,10 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
               );
             });
             img.onerror = () => {
-              const imageErrorDiv = document.createElement('div');
-              imageErrorDiv.classList = ZeresPluginLibrary.WebpackModules.getByProps('imageError').imageError;
-              imageErrorDiv.messageId = messageId;
-              contentDiv.replaceChild(imageErrorDiv, img);
+              const imageErrorWrapperDiv = document.createElement('div');
+              imageErrorWrapperDiv.classList = ZeresPluginLibrary.WebpackModules.getByProps('imageErrorWrapper').imageErrorWrapper;
+              imageErrorWrapperDiv.messageId = messageId;
+              contentDiv.replaceChild(imageErrorWrapperDiv, img);
             };
             contentDiv.appendChild(img);
             return true;
@@ -4001,10 +3999,10 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
               }
               img.onerror = () => {
                 if (img.triedCache) {
-                  const imageErrorDiv = document.createElement('div');
-                  imageErrorDiv.classList = ZeresPluginLibrary.WebpackModules.getByProps('imageError').imageError;
-                  imageErrorDiv.messageId = messageId;
-                  contentDiv.replaceChild(imageErrorDiv, img);
+                  const imageErrorWrapperDiv = document.createElement('div');
+                  imageErrorWrapperDiv.classList = ZeresPluginLibrary.WebpackModules.getByProps('imageErrorWrapper').imageErrorWrapper;
+                  imageErrorWrapperDiv.messageId = messageId;
+                  contentDiv.replaceChild(imageErrorWrapperDiv, img);
                 }
                 if (record) {
                   fetch(attachment.url, { method: 'HEAD' }).then(res => {
