@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.10
+ * @version 1.9.11
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -46,7 +46,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.10';
+    return '1.9.11';
   }
   getAuthor() {
     return 'Lighty';
@@ -131,8 +131,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Jumping to messages works now, as do context menus in the menu.',
-          'Messages in the log menu now display the time they were sent at'
+          'Failed to start hotfix'
         ]
       }
     ];
@@ -513,8 +512,8 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
       avatarSingle: this.safeGetClass(() => ZeresPluginLibrary.WebpackModules.getByProps('containerCozyBounded').avatar.split(/ /g)[0], 'avatar'),
       avatarImg: XenoLib.getClass('clickable avatar'),
       avatarImgSingle: XenoLib.getSingleClass('clickable avatar'),
-      botTag: ZeresPluginLibrary.WebpackModules.getByProps('botTagRegular').botTagRegular + ' ' + ZeresPluginLibrary.WebpackModules.getByProps('botTagCozy').botTagCozy,
-      markupSingle: ZeresPluginLibrary.WebpackModules.getByProps('markup').markup.split(/ /g)[0]
+      botTag: ZeresPluginLibrary.WebpackModules.getByProps('botTagRegular')?.botTagRegular + ' ' + /* ZeresPluginLibrary.WebpackModules.getByProps('botTagCozy').botTagCozy */'botTagCozy_c19a55',
+      markupSingle: this.safeGetClass(() => ZeresPluginLibrary.WebpackModules.getByProps('markup').markup.split(/ /g)[0], 'markup__75297')
     };
 
     this.multiClasses = {
