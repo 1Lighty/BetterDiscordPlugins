@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.31
+ * @version 1.4.32
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -139,7 +139,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.31',
+      version: '1.4.32',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -147,7 +147,7 @@ module.exports = (() => {
     changelog: [
       {
         type: 'fixed',
-        items: ['Fixed notifs.']
+        items: ['Changed how it fetches class names, so things like message logger should function once more.']
       }
     ],
     defaultConfig: [
@@ -335,7 +335,7 @@ module.exports = (() => {
     XenoLib.getClass = (arg, thrw) => {
       try {
         const args = arg.split(' ');
-        return WebpackModules.getByProps(...args)[args[args.length - 1]];
+        return BdApi.Webpack.getByKeys(...args)[args[args.length - 1]];
       } catch (e) {
         if (thrw) throw e;
         if (XenoLib.DiscordAPI.userId === '239513071272329217' && !XenoLib.getClass.__warns[arg] || Date.now() - XenoLib.getClass.__warns[arg] > 1000 * 60) {
@@ -2803,7 +2803,6 @@ module.exports = (() => {
 
       }
       showChangelog(footer) {
-        return;
         XenoLib.showChangelog(`${this.name} has been updated!`, this.version, this._config.changelog, void 0, true);
       }
       get name() {
