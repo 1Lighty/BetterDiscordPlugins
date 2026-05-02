@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.11
+ * @version 1.9.12
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -46,7 +46,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.11';
+    return '1.9.12';
   }
   getAuthor() {
     return 'Lighty';
@@ -79,7 +79,7 @@ module.exports = class MessageLoggerV2 {
       let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
       if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
       if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
-      if (isOutOfDate(iXenoLib, '1.4.29')) XenoLibOutdated = true;
+      if (isOutOfDate(iXenoLib, '1.4.33') || !(iXenoLib && iXenoLib?._config?.info?.version?.split('.')?.length == 3)) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '2.0.23')) ZeresPluginLibraryOutdated = true;
     }
     if (/* !global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated */!BdApi.Plugins.get('XenoLib') || XenoLibOutdated) {
@@ -131,7 +131,7 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Failed to start hotfix'
+          'Fixed Message component not being patched if you launched Discord on say, the friends list or something, making the logger not show deleted messages as red.'
         ]
       }
     ];
@@ -3176,19 +3176,38 @@ https://astranika.com/bd/download?plugin=1XenoLib`, {
       }
       return null;
     })();
-    const MessageContent = ZeresPluginLibrary.WebpackModules.getModule(e => !!e?.type?.toString()?.match(/,\w=\w\.state===\w\.(?:\w[^.]+)\.SEND_FAILED,\w=\w\.state===\w\.(?:\w[^.]+)\.SENDING/));
     const MemoMessage = await (async () => {
-      const selector = `.${XenoLib.getSingleClass('message messageListItem')}`;
-      var el = document.querySelector(selector) || (await new Promise(res => {
+      var _className = XenoLib.getSingleClass('message messageListItem');
+      var _fallbackSelector = 'li[class*="messageListItem__"]';
+      var _tries = 0;
+      var el = null;
+      var selector = '';
+      var _notifId = 0;
+      while (!_className && _tries < 10 && !document.querySelector(_fallbackSelector)) {
+        await new Promise(res => setTimeout(res, 2000));
+        _className = XenoLib.getSingleClass('message messageListItem')
+      }
+      if (_className) {
+        selector = `.${_className}`;
+      } else if (el = document.querySelector(_fallbackSelector)) {
+        ZeresPluginLibrary.Logger.warn(_this.getName(), 'Could not get messageListItem className for finding MemoMessage, fell back to the fallback selector');
+      } else {
+        ZeresPluginLibrary.Logger.error(_this.getName(), 'Could not get messageListItem className for finding MemoMessage, falling back to DOM observing');
+        _notifId = XenoLib.Notifications.warning('[MessageLoggerV2] Could not find messageListItem, try switching to a DM or a channel. If this doesn\'t disappear, edits and deleted tint won\'t show', { timeout: 0 });
+        selector = _fallbackSelector;
+      }
+      el = el || document.querySelector(selector) || (await new Promise(res => {
         var sub = ZeresPluginLibrary.DOMTools.observer.subscribeToQuerySelector(() => {
           ZeresPluginLibrary.DOMTools.observer.unsubscribe(sub);
           res(document.querySelector(selector));
         }, selector, null, true)
       }));
+      if (_notifId) XenoLib.Notifications.remove(_notifId);
       return ZeresPluginLibrary.Utilities.findInTree(this.getReactInstance(el), e => ((typeof e?.memoizedProps?.renderContentOnly) === 'boolean'), { walkable: ['return'] })?.elementType
     })();
+    const MessageContent = ZeresPluginLibrary.WebpackModules.getModule(e => !!e?.type?.toString()?.match(/,\w=\w\.state===\w\.(?:\w[^.]+)\.SEND_FAILED,\w=\w\.state===\w\.(?:\w[^.]+)\.SENDING/));
 
-    if (!MessageContent || !MemoMessage) return XenoLib.Notifications.error('Failed to patch message components, edit history and deleted tint will not show!', { timeout: 0 });
+    if (!MessageContent || !MemoMessage) return XenoLib.Notifications.error('[MessageLoggerV2] Failed to patch message components, edit history and deleted tint will not show!', { timeout: 0 });
     const useStateConstant = {};
     this.unpatches.push(
       this.Patcher.after(MessageContent, 'type', (_, [props], ret) => {
