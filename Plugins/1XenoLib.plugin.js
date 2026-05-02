@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.32
+ * @version 1.4.33
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -139,7 +139,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.32',
+      version: '1.4.33',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -147,7 +147,7 @@ module.exports = (() => {
     changelog: [
       {
         type: 'fixed',
-        items: ['Changed how it fetches class names, so things like message logger should function once more.']
+        items: ['Updater checks changes.']
       }
     ],
     defaultConfig: [
@@ -2719,25 +2719,25 @@ module.exports = (() => {
                 let plugin = BdApi.Plugins.get(name);
                 if (plugin && plugin.instance) plugin = plugin.instance;
                 // eslint-disable-next-line no-loop-func
-                const req = https.request(`https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/${name}/${name}.plugin.js`, { headers: { origin: 'discord.com' } }, res => {
-                  let body = '';
-                  // eslint-disable-next-line no-void
-                  res.on('data', chunk => ((body += chunk), void 0));
-                  res.on('end', () => {
+                const req = BdApi.Net.fetch(`https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/${name}/${name}.plugin.js`, { headers: { origin: 'discord.com' } }).then(r => {
+                  if (!r.ok) {
+                    throw new Error('Network request threw error ' + r.statusText);
+                  }
+                  return r.text();
+                }).then(body => {
+                  const _versionString = plugin && (name === 'MessageLoggerV2' || Utilities.getNestedProp(plugin, '_config.info.version')) && name === 'MessageLoggerV2' ? plugin.getVersion() : plugin._config.info.version;
+                  if (_versionString && _versionString.split('.').length === 3 && !XenoLib.versionComparator(_versionString, XenoLib.extractVersion(body))) return;
+                  const newFile = `${name}.plugin.js`;
+                  fs.unlinkSync(path.join(pluginsDir, file));
+                  // avoid BDs watcher being shit as per usual
+                  setTimeout(() => {
                     try {
-                      if (res.statusCode !== 200) return /* XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 }) */;
-                      if (plugin && (name === 'MessageLoggerV2' || Utilities.getNestedProp(plugin, '_config.info.version')) && !XenoLib.versionComparator(name === 'MessageLoggerV2' ? plugin.getVersion() : plugin._config.info.version, XenoLib.extractVersion(body))) return;
-                      const newFile = `${name}.plugin.js`;
-                      fs.unlinkSync(path.join(pluginsDir, file));
-                      // avoid BDs watcher being shit as per usual
-                      setTimeout(() => {
-                        try {
-                          fs.writeFileSync(path.join(pluginsDir, newFile), body);
-                          if (isPluginEnabled) setTimeout(() => BdApi.Plugins.enable(name), 3000);
-                        } catch (e) { }
-                      }, 1000);
+                      fs.writeFileSync(path.join(pluginsDir, newFile), body);
+                      if (isPluginEnabled) setTimeout(() => BdApi.Plugins.enable(name), 3000);
                     } catch (e) { }
-                  });
+                  }, 1000);
+                }).catch(err => {
+                  Logger.err(`Failed to update ${name}`, err);
                 });
                 req.on('error', _ => XenoLib.Notifications.error(`Failed to check for updates for ${name}`, { timeout: 0 }));
               }
