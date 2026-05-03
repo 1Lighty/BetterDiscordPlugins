@@ -2668,9 +2668,9 @@ module.exports = (() => {
           if (!BdApi.Plugins) return; /* well shit what now */
           const list = BdApi.Plugins.getAll().filter(k => k._XL_PLUGIN || (k.instance && k.instance._XL_PLUGIN)).map(k => k.instance || k);
           for (let p = 0; p < list.length; p++) try {
-            requestAnimationFrame(() => {
+            setTimeout(() => {
               BdApi.Plugins.reload(list[p].getName());
-            });
+            }, 100);
           } catch (e) {
             try {
               Logger.stacktrace(`Failed to reload plugin ${list[p].getName()}`, e);
