@@ -2711,6 +2711,7 @@ module.exports = (() => {
             } catch (e) { }
           }
           setTimeout(() => {
+            return;
             try {
               const https = require('https');
               for (const { name, file } of pluginsToCheck) {
