@@ -3,7 +3,7 @@
  * @description Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.
  * @author 1Lighty
  * @authorId 239513071272329217
- * @version 1.4.33
+ * @version 1.4.34
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @source https://github.com/1Lighty/BetterDiscordPlugins/blob/master/Plugins/1XenoLib.plugin.js
@@ -140,7 +140,7 @@ module.exports = (() => {
           twitter_username: ''
         }
       ],
-      version: '1.4.33',
+      version: '1.4.34',
       description: 'Simple library to complement plugins with shared code without lowering performance. Also adds needed buttons to some plugins.',
       github: 'https://github.com/1Lighty',
       github_raw: 'https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js'
@@ -2668,7 +2668,9 @@ module.exports = (() => {
           if (!BdApi.Plugins) return; /* well shit what now */
           const list = BdApi.Plugins.getAll().filter(k => k._XL_PLUGIN || (k.instance && k.instance._XL_PLUGIN)).map(k => k.instance || k);
           for (let p = 0; p < list.length; p++) try {
-            BdApi.Plugins.reload(list[p].getName());
+            requestAnimationFrame(() => {
+              BdApi.Plugins.reload(list[p].getName());
+            });
           } catch (e) {
             try {
               Logger.stacktrace(`Failed to reload plugin ${list[p].getName()}`, e);
@@ -2712,7 +2714,6 @@ module.exports = (() => {
             } catch (e) { }
           }
           setTimeout(() => {
-            return;
             try {
               for (const { name, file } of pluginsToCheck) {
                 // eslint-disable-next-line no-undef
@@ -2727,7 +2728,7 @@ module.exports = (() => {
                   return r.text();
                 }).then(body => {
                   const _versionString = plugin && (name === 'MessageLoggerV2' || Utilities.getNestedProp(plugin, '_config.info.version')) && name === 'MessageLoggerV2' ? plugin.getVersion() : plugin._config.info.version;
-                  if (_versionString && _versionString.split('.').length === 3 && !XenoLib.versionComparator(_versionString, XenoLib.extractVersion(body))) return;
+                  if (!_versionString || (_versionString && _versionString.split('.').length === 3 && !XenoLib.versionComparator(_versionString, XenoLib.extractVersion(body)))) return;
                   const newFile = `${name}.plugin.js`;
                   fs.unlinkSync(path.join(pluginsDir, file));
                   // avoid BDs watcher being shit as per usual
