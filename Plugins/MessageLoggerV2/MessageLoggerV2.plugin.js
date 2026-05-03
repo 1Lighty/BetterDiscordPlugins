@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.9.11
+ * @version 1.9.13
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -46,7 +46,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.9.11';
+    return '1.9.13';
   }
   getAuthor() {
     return 'Lighty';
@@ -82,7 +82,7 @@ module.exports = class MessageLoggerV2 {
       if (isOutOfDate(iXenoLib, '1.4.34') || (iXenoLib && !((iXenoLib?._config?.info?.version?.split('.')?.length || 3) === 3))) XenoLibOutdated = true;
       if (isOutOfDate(iZeresPluginLibrary, '2.0.23')) ZeresPluginLibraryOutdated = true;
     }
-    if (/* !global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated */!BdApi.Plugins.get('XenoLib') || XenoLibOutdated) {
+    if (/* !global.XenoLib || !global.ZeresPluginLibrary || XenoLibOutdated || ZeresPluginLibraryOutdated */(!BdApi.Plugins.get('XenoLib') && !global.XenoLib) || XenoLibOutdated) {
       this._XL_PLUGIN = true;
       // asking people to do simple tasks is stupid, relying on stupid modals that are *supposed* to help them is unreliable
       // forcing the download on enable is good enough
