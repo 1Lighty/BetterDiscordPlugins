@@ -99,7 +99,8 @@ try {
     '        const wasEnabled = BdApi?.isSettingEnabled("settings", "general", "showToasts");\n        if (wasEnabled) BdApi?.disableSetting("settings", "general", "showToasts");\n        this._reloadPlugins();\n        if (wasEnabled) BdApi?.enableSetting("settings", "general", "showToasts");': '',
     'return new _domtools__WEBPACK_IMPORTED_MODULE_1__["default"].ClassName(obj[prop]);': 'return obj[prop];',
     'this.root = root || document.getElementById("app-mount");': 'this.root = root || document.body;',
-    'get dividerElement() {return modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement("div", {className: modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Dividers.divider.add(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Margins.marginTop20).toString()});}': 'get dividerElement() {return modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement("div", {className: modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Dividers.divider + " " + modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Margins.marginTop20});}'
+    'get dividerElement() {return modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement("div", {className: modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Dividers.divider.add(modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Margins.marginTop20).toString()});}': 'get dividerElement() {return modules__WEBPACK_IMPORTED_MODULE_1__.DiscordModules.React.createElement("div", {className: modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Dividers.divider + " " + modules__WEBPACK_IMPORTED_MODULE_1__.DiscordClasses.Margins.marginTop20});}',
+    'module.exports.ZeresPluginLibrary = __webpack_exports__["default"];': 'module.exports = __webpack_exports__["default"];'
   }
 
   let ZLibCode = fs.readFileSync(path.join(__dirname, '0PluginLibrary.plugin.js'), 'utf8');
@@ -2713,7 +2714,6 @@ module.exports = (() => {
           setTimeout(() => {
             return;
             try {
-              const https = require('https');
               for (const { name, file } of pluginsToCheck) {
                 // eslint-disable-next-line no-undef
                 const isPluginEnabled = BdApi.Plugins.isEnabled(name);
