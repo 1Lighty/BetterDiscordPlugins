@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.10.4
+ * @version 1.10.5
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -48,7 +48,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.10.4';
+    return '1.10.5';
   }
   getAuthor() {
     return 'Lighty';
@@ -95,7 +95,7 @@ module.exports = class MessageLoggerV2 {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed a critical issue that caused channels to not load',
+          'Fixed settings menu ceasing to function',
         ]
       },
       {
@@ -253,7 +253,7 @@ module.exports = class MessageLoggerV2 {
       this.automaticallyUpdate();
     }
 
-    this.TextElement = Webpack.getBySource('data-excessive-heading-level', { declarationFilter: e => e?.render?.toString?.()?.includes('data-excessive-heading-level') });
+    this.TextElement = Webpack.getBySource('"data-text-variant"', { declarationFilter: e => e?.toString?.()?.includes('"data-text-variant"') });
 
     if (global.XenoLib || global.ZeresPluginLibrary) {
       BdApi.UI.showConfirmationModal('XenoLib and ZeresPluginLibrary EOL', 'The libraries are deprecated and can cause issues, click Delete Now to delete them. Your Discord will refresh after.', {
@@ -3279,6 +3279,9 @@ module.exports = class MessageLoggerV2 {
         ReactDispatcher.useMemo = memo => memo();
         try {
           return parse(...arguments);
+        } catch (err) {
+          Logger.stacktrace(this.getName(), 'Error in parseContent', err);
+          BdApi.UI.showNotification({ title: this.getName(), content: 'Internal error: parseContent failed to execute!', type: 'warning' });
         } finally {
           ReactDispatcher.useMemo = oUseMemo;
         }
