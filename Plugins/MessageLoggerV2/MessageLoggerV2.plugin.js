@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.10.5
+ * @version 1.10.6
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -48,7 +48,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.10.5';
+    return '1.10.6';
   }
   getAuthor() {
     return 'Lighty';
@@ -95,7 +95,8 @@ module.exports = class MessageLoggerV2 {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed settings menu ceasing to function',
+          'Fixed error relating to not finding parseContent',
+          'Fixed hidden error that would cause the channel to infinitely reload if there was a deleted image in the channel'
         ]
       },
       {
@@ -579,7 +580,7 @@ module.exports = class MessageLoggerV2 {
 
     // have to patch (what was previously named) messageHasExpiredAttachmentUrl, otherwise Discord will needlessly
     // reload the channel causing scrolling issues, quite annoying!
-    const AttachmentUtils = Webpack.getBySource('(["/attachments/","/ephemeral-attachments/"])');
+    const AttachmentUtils = Webpack.getBySource(/\.ATTACHMENTS_REFRESH_URLS/);
 
     if (AttachmentUtils) {
       try {
@@ -3267,7 +3268,7 @@ module.exports = class MessageLoggerV2 {
     if (!MessageContent || !MemoMessage) return BdApi.UI.showNotification({ title: this.getName(), content: '[MessageLoggerV2] Failed to patch message components, edit history and deleted tint will not show!', type: 'error', duration: Infinity });
 
     const parseContent = (() => {
-      const parse = Webpack.getByStrings('customRenderedContent', 'hideSimpleEmbedContent');
+      const parse = Webpack.getByStrings('customRenderedContent', 'useMessageRenderedContent');
       if (!parse) {
         Logger.warn(this.getName(), 'Could not set up parseContent, edits will not have markdown');
         BdApi.UI.showNotification({ title: this.getName(), content: 'Internal error: parseContent not found, edits will not have markdown!', type: 'warning' });
