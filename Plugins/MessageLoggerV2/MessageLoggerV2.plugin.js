@@ -1,6 +1,6 @@
 /**
  * @name MessageLoggerV2
- * @version 1.10.6
+ * @version 1.10.7
  * @invite NYvWdN5
  * @donate https://paypal.me/lighty13
  * @website https://1lighty.github.io/BetterDiscordStuff/?plugin=MessageLoggerV2
@@ -48,7 +48,7 @@ module.exports = class MessageLoggerV2 {
     return 'MessageLoggerV2';
   }
   getVersion() {
-    return '1.10.6';
+    return '1.10.7';
   }
   getAuthor() {
     return 'Lighty';
@@ -60,7 +60,7 @@ module.exports = class MessageLoggerV2 {
   start() {
     let onLoaded = () => {
       try {
-        if (!this.UserStore) this.UserStore = Webpack.getByKeys('getCurrentUser', 'getUser');
+        if (!this.UserStore) this.UserStore = Webpack.getByKeys('getCurrentUser', 'getUser', { searchExports: true });
         if (!this.UserStore || !(this.localUser = this.UserStore.getCurrentUser())) setTimeout(onLoaded, 1000);
         else this.initialize();
       } catch (err) {
@@ -95,23 +95,14 @@ module.exports = class MessageLoggerV2 {
         title: 'Fixed',
         type: 'fixed',
         items: [
-          'Fixed error relating to not finding parseContent',
-          'Fixed hidden error that would cause the channel to infinitely reload if there was a deleted image in the channel'
-        ]
-      },
-      {
-        title: 'MessageLoggerV2 is now standalone!',
-        type: 'progress',
-        items: [
-          '----> **YOU CAN SAFELY DELETE XENOLIB AND ZERESPLUGINLIBRARY** <----',
-          'You MUST delete them if you still have them!!'
+          'Fixed total logger failure, most functionality should be restored'
         ]
       }
     ];
   }
 
   showChangelog() {
-    const AnchorClasses = Webpack.getByKeys('anchor', 'anchorUnderlineOnHover') || {};
+    const AnchorClasses = this.getClassesModule('anchor', 'anchorUnderlineOnHover') || {};
     const renderFooter = () => [
       React.createElement(this.TextElement || 'span',
         {
@@ -228,12 +219,7 @@ module.exports = class MessageLoggerV2 {
       imageCacheDir: this.pluginDir + '/MLV2_IMAGE_CACHE',
       flags: 0,
       autoUpdate: true,
-      versionInfo: '0.0.0',
-      userCounter: {
-        enabled: true,
-        enableTime: 0,
-        lastSubmission: 0
-      }
+      versionInfo: '0.0.0'
     };
     const Flags = {
       STOLEN: 1 << 0,
@@ -254,7 +240,7 @@ module.exports = class MessageLoggerV2 {
       this.automaticallyUpdate();
     }
 
-    this.TextElement = Webpack.getBySource('"data-text-variant"', { declarationFilter: e => e?.toString?.()?.includes('"data-text-variant"') });
+    this.TextElement = Webpack.getMangled('"data-text-variant"', { TextElement: e => e?.toString?.()?.includes('"data-text-variant"') })?.TextElement || 'span';
 
     if (global.XenoLib || global.ZeresPluginLibrary) {
       BdApi.UI.showConfirmationModal('XenoLib and ZeresPluginLibrary EOL', 'The libraries are deprecated and can cause issues, click Delete Now to delete them. Your Discord will refresh after.', {
@@ -498,11 +484,11 @@ module.exports = class MessageLoggerV2 {
       isMentioned: (e, id) => isMentioned({ userId: id, channelId: e.channel_id, mentionEveryone: e.mentionEveryone || e.mention_everyone, mentionUsers: e.mentions.map(e => e.id || e), mentionRoles: e.mentionRoles || e.mention_roles, mentionGames: [] }),
     };
 
-    const { getClass } = this;
+    const getClass = this.getClass.bind(this);
 
     this.createButton.classes = {
-      button: (function () {
-        let buttonData = Webpack.getByKeys('button', 'colorBrand');
+      button: (() => {
+        let buttonData = this.getClassesModule('button', 'colorBrand');
         return `${buttonData.button} ${buttonData.lookFilled} ${buttonData.colorBrand} ${buttonData.sizeSmall} ${buttonData.grow}`;
       })(),
       buttonContents: getClass('button colorBrand contents')
@@ -523,7 +509,7 @@ module.exports = class MessageLoggerV2 {
         delete this.edited;
         return this.edited = className(getClass('separator timestamp'), getClass('separator timestampInline'));
       },
-      markup: Webpack.getByKeys('markup')['markup'],
+      markup: getClass('markup'),
       message: {
         cozy: {
           containerBounded: this.safeGetClass(() => getClass('containerCozyBounded', true), 'containerCozyBounded'),
@@ -555,7 +541,7 @@ module.exports = class MessageLoggerV2 {
     this.menu.filter = '';
     this.menu.open = false;;
 
-    const chatContent = Webpack.getByKeys('chatContent');
+    const chatContent = this.getClassesModule('chatContent');
     this.observer.chatContentClass = ((chatContent && chatContent.chatContent) || 'chat-3bRxxu').split(/ /g)[0];
     this.observer.chatClass = this.getClass('chatContent chat') || 'chat_f75fb0';
     this.observer.titleClass = !chatContent ? 'ERROR-CLASSWTF' : this.getSingleClass('chatContent title');
@@ -563,7 +549,12 @@ module.exports = class MessageLoggerV2 {
 
     this.localUser = this.UserStore.getCurrentUser();
 
-    this.ModalStack = Webpack.getByKeys("openModal");
+    this.ModalStack = Webpack.getMangled(/null!=\w\.modalKey\?\w\.modalKey/, {
+      closeModal: e => !!e.toString().match(/null!=\w&&null!=\w\.onCloseCallback&&\w\.onCloseCallback\(\)/),
+      useModalStore: e => e.getState && e.subscribe,
+      hasModalOpen: e => !!e.toString().match(/return \w\(\w\.getState\(\),\w,\w\)/),
+      openModal: (e, _) => (_ = e.toString(), ['modalKey', 'contextKey', 'onCloseRequest'].every(e => _.includes(e)))
+    });
 
     this.deletedChatMessagesCount = {};
     this.editedChatMessagesCount = {};
@@ -956,7 +947,7 @@ module.exports = class MessageLoggerV2 {
     );
 
     this.menu.shownMessages = -1;
-    const iconShit = Webpack.getByKeys('container', 'children', 'toolbar', 'iconWrapper');
+    const iconShit = this.getClassesModule('container', 'children', 'toolbar', 'iconWrapper');
     // Icon by font awesome
     // https://fontawesome.com/license
     this.channelLogButton = this.parseHTML(`<div tabindex="0" class="${iconShit.iconWrapper} ${iconShit.clickable}" role="button">
@@ -1020,26 +1011,6 @@ module.exports = class MessageLoggerV2 {
         type: 'MESSAGE_LOGGER_V2_SELF_TEST'
       });
     }, 10000);
-
-    try {
-      if (this.settings.userCounter.enabled) {
-        const { enableTime, lastSubmission } = this.settings.userCounter;
-        let changed = false;
-        if (enableTime) {
-          if ((Date.now() - enableTime > USER_COUNTER_INTERVAL) && (Date.now() - lastSubmission > USER_COUNTER_INTERVAL)) {
-            this.settings.userCounter.lastSubmission = Date.now();
-            changed = true;
-            BdApi.Net.fetch('https://astranika.com/api/analytics/submit').catch(err => { });
-          }
-        } else {
-          this.settings.userCounter.enableTime = Date.now();
-          changed = true;
-        }
-        if (changed) this.saveSettings();
-      }
-    } catch (err) {
-      Logger.stacktrace(this.getName(), 'Failed to load user counter', err);
-    }
 
     if (this.selfTestInited) return;
     this.selfTestFailures = 0;
@@ -1737,54 +1708,6 @@ module.exports = class MessageLoggerV2 {
           ]
         },
         {
-          name: 'User count',
-          id: this.obfuscatedClass('ml2-settings-usercounter'),
-          type: 'category',
-          collapsible: true,
-          shown: false,
-          settings: [
-            {
-              name: 'Enable user counter',
-              note: 'Only active the next day after enabling this setting, enabling will mean you\'re anonymously counted in the user count',
-              id: 'enabled',
-              type: 'switch',
-              value: this.settings.userCounter.enabled,
-              onChange: val => {
-                this.settings.userCounter.enableTime = val ? Date.now() : 0;
-                this.settings.userCounter.lastSubmission = val ? Date.now() : 0;
-                this.settings.userCounter.enabled = val;
-                this.saveSettings();
-                activeRef?.current();
-                lastRef?.current();
-              }
-            },
-            {
-              type: 'custom',
-              id: this.obfuscatedClass('ml2-settings-enableTime'),
-              children: React.createElement(TimerWrapper, {
-                after: 'User counter will be active ',
-                active: 'User counter is currently active',
-                inactive: 'User counter is currently inactive',
-                time: USER_COUNTER_INTERVAL,
-                value: () => this.settings.userCounter.enableTime,
-                cbref: activeRef
-              })
-            },
-            {
-              type: 'custom',
-              id: this.obfuscatedClass('ml2-settings-lastSubmission'),
-              children: React.createElement(TimerWrapper, {
-                after: 'Next user counter submission will be ',
-                active: 'User counter submission will be submitted on next load',
-                inactive: 'User counter submissions are inactive',
-                time: USER_COUNTER_INTERVAL,
-                value: () => this.settings.userCounter.lastSubmission,
-                cbref: lastRef
-              })
-            }
-          ]
-        },
-        {
           type: 'custom',
           id: this.obfuscatedClass('ml2-settings-footer'),
           children: React.createElement(BdApi.ReactUtils.wrapElement(div))
@@ -1798,7 +1721,6 @@ module.exports = class MessageLoggerV2 {
           }
           case this.obfuscatedClass('ml2-settings-toast-dms'): this.settings.toastTogglesDMs[id] = value;
           case this.obfuscatedClass('ml2-settings-caps'):
-          case this.obfuscatedClass('ml2-settings-usercounter'): break;
           default: {
             this.settings[id] = value;
           }
@@ -1811,10 +1733,18 @@ module.exports = class MessageLoggerV2 {
   findInReactTree(tree, filter, options) {
     return BdApi.Utils.findInTree(tree, filter, { walkable: ["props", "children", "child", "sibling"] });
   }
+  getClassesModule(...args) {
+    // returns a demangled object
+    const obj = Webpack.getBySource(...args.map(e => `:"${e}_`));
+    if (!obj) return Logger.warn(this.getName(), 'Could not find classes module with strings ', ...args);
+    const out = {};
+    for (let val of Object.values(obj)) out[val.split('_')[0]] = val;
+    return out;
+  }
   getClass(arg, thrw) {
     try {
       const args = arg.split(' ');
-      return Webpack.getByKeys(...args)[args[args.length - 1]];
+      return this.getClassesModule(...args)[args[args.length - 1]];
     } catch (e) {
       if (thrw) throw e;
       if (!this.getClass.__warns) this.getClass.__warns = [];
@@ -2582,7 +2512,7 @@ module.exports = class MessageLoggerV2 {
         shouldHideMediaOptions: true
       });
     }
-    this.ModalStack.openModal(props => React.createElement(this.createModal.confirmationModal, Object.assign({}, options, props, options.onClose ? { onClose: options.onClose } : {})), { modalKey: name });
+    this.ModalStack.openModal(async _ => props => React.createElement(this.createModal.confirmationModal, Object.assign({}, options, props, options.onClose ? { onClose: options.onClose } : {})), { modalKey: name });
   }
   getMessageAny(id) {
     const record = this.messageRecord[id];
@@ -3260,13 +3190,12 @@ module.exports = class MessageLoggerV2 {
     });
     SuffixEdited.displayName = 'SuffixEdited';
     await new Promise(res => {
-      const sub = this.subscribeToQuerySelector(() => (this.unsubscribeObserver(sub), res()), 'li[class*="messageListItem__"]');
+      const sub = this.subscribeToQuerySelector(() => (this.unsubscribeObserver(sub), res()), 'li[class*="messageListItem_"]');
     })
     const MemoMessage = Webpack.getBySource("Message must not be a thread starter message", { declarationFilter: x => String(x?.type).includes("Message must not be a thread starter message") });
     const MessageContent = Webpack.getModule(e => !!e?.type?.toString()?.match(/,\w=\w\.state===\w\.(?:\w[^.]+)\.SEND_FAILED,\w=\w\.state===\w\.(?:\w[^.]+)\.SENDING/));
 
     if (!MessageContent || !MemoMessage) return BdApi.UI.showNotification({ title: this.getName(), content: '[MessageLoggerV2] Failed to patch message components, edit history and deleted tint will not show!', type: 'error', duration: Infinity });
-
     const parseContent = (() => {
       const parse = Webpack.getByStrings('customRenderedContent', 'useMessageRenderedContent');
       if (!parse) {
@@ -3523,7 +3452,7 @@ module.exports = class MessageLoggerV2 {
         }
       };
     } catch { }
-    if (this.ModalStack.useModalsStore?.subscribe) {
+    if (this.ModalStack?.useModalsStore?.subscribe) {
       this._modalsApiUnsubcribe = this.ModalStack.useModalsStore.subscribe(_ => {
         if (this.menu.open && !this.ModalStack.hasModalOpen(this.style.menu)) {
           this.menu.filter = '';
