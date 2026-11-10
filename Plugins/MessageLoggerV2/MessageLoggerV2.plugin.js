@@ -551,7 +551,7 @@ module.exports = class MessageLoggerV2 {
 
     this.ModalStack = Webpack.getMangled(/null!=\w\.modalKey\?\w\.modalKey/, {
       closeModal: e => !!e.toString().match(/null!=\w&&null!=\w\.onCloseCallback&&\w\.onCloseCallback\(\)/),
-      useModalStore: e => e.getState && e.subscribe,
+      useModalsStore: e => e.getState && e.subscribe,
       hasModalOpen: e => !!e.toString().match(/return \w\(\w\.getState\(\),\w,\w\)/),
       openModal: (e, _) => (_ = e.toString(), ['modalKey', 'contextKey', 'onCloseRequest'].every(e => _.includes(e)))
     });
